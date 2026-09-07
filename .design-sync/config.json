@@ -1,0 +1,107 @@
+{
+  "projectId": "42e653f3-f1a8-4e40-8fbc-ccc050f3f2bd",
+  "shape": "package",
+  "pkg": "web",
+  "globalName": "Atelier",
+  "srcDir": "src/components/ui",
+  "tsconfig": "tsconfig.app.json",
+  "cssEntry": ".ds-compiled.css",
+  "guidelinesGlob": [
+    "../../DESIGN.md"
+  ],
+  "docsDir": "../../.design-sync/docs",
+  "provider": {
+    "component": "ThemeProvider",
+    "props": {
+      "defaultTheme": "light"
+    }
+  },
+  "buildCmd": "./.design-sync/prepare.sh",
+  "extraFonts": [
+    "../../node_modules/@fontsource-variable/geist/index.css",
+    "../../node_modules/@fontsource-variable/geist-mono/index.css"
+  ],
+  "storyImports": {
+    "bundle": [
+      "lucide-react"
+    ]
+  },
+  "overrides": {
+    "Dialog": {
+      "cardMode": "single",
+      "primaryStory": "Open",
+      "viewport": "760x460"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "primaryStory": "Open",
+      "viewport": "520x420"
+    },
+    "Attachment": {
+      "cardMode": "column"
+    },
+    "Bubble": {
+      "cardMode": "column"
+    },
+    "Message": {
+      "cardMode": "column"
+    },
+    "Card": {
+      "cardMode": "column"
+    },
+    "Marker": {
+      "cardMode": "column"
+    },
+    "Meter": {
+      "cardMode": "single",
+      "primaryStory": "CostRows"
+    },
+    "Separator": {
+      "cardMode": "column"
+    },
+    "Table": {
+      "cardMode": "column"
+    },
+    "Alert": {
+      "cardMode": "column"
+    },
+    "Empty": {
+      "cardMode": "column"
+    },
+    "Stepper": {
+      "cardMode": "column"
+    },
+    "Field": {
+      "cardMode": "column"
+    },
+    "Input": {
+      "cardMode": "column"
+    },
+    "InputGroup": {
+      "cardMode": "column"
+    },
+    "Label": {
+      "cardMode": "column"
+    },
+    "Select": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "Switch": {
+      "cardMode": "column"
+    },
+    "Textarea": {
+      "cardMode": "column"
+    },
+    "Tabs": {
+      "cardMode": "column"
+    },
+    "Collapsible": {
+      "cardMode": "column"
+    },
+    "ScrollArea": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

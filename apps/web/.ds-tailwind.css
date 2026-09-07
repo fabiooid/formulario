@@ -1,0 +1,13 @@
+/* Design-sync stylesheet entry. Same tokens as the app, but Tailwind also
+   scans .design-sync/previews so utilities used only by preview cards compile,
+   plus an inline safelist of the semantic-token utilities the design agent
+   should be able to reach for even if the app never happens to use them. */
+@import "./src/index.css";
+@source "./src";
+@source "../../.design-sync/previews";
+@source inline("{bg,text,border}-{background,foreground,card,card-foreground,popover,popover-foreground,primary,primary-foreground,secondary,secondary-foreground,muted,muted-foreground,accent,accent-foreground,destructive,border,input,sidebar,sidebar-foreground,sidebar-accent,sidebar-border}");
+@source inline("{w,h,max-w,min-w}-{40,48,56,60,64,72,80,90,100,110,120,140,160}");
+/* Brand violet: text and border only. DESIGN.md is explicit that accent-brand is
+   an accent, never a painted surface, so no bg- utility is generated for it. */
+@source inline("{text,border}-accent-brand");
+@source inline("ring-{ring,border,foreground,accent-brand}");
