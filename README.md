@@ -55,11 +55,14 @@ npm run dev
 
 ## Seeded products
 
+The three design-partner formulas are pinned. INCI and PIF drafts come from the committed formula.
+
 | Product | What to look for |
 |---|---|
-| Dry Unscented Face Oil | Unknown INCI (`MadeUpine`) |
-| Daily Barrier Cream | Phenoxyethanol 1.5% → restricted / reduce % |
-| No. 3 Oil Perfume | Linalool relabel, Lilial EU ban, Fragrance→Parfum wording |
+| SUPERSKIN | Oil perfume, EU, vegan claim. Finished oil + concentrate variant |
+| Gel Doccia Vetiver | Rinse-off shower gel, EU. Raw-material rows with trade names |
+| Crema Mani Cedro | Leave-on hand cream, EU. Full formula rows ~100% |
+| Dry Unscented Face Oil | Unknown INCI (`MadeUpine`) — kept for the unknown-status UI |
 
 ## Env vars
 

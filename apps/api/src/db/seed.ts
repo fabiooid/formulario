@@ -3,17 +3,27 @@ import { eq } from 'drizzle-orm'
 import { db } from './client.js'
 import {
   chatThreads,
+  formulaPatches,
   formulaRows,
   formulaVersions,
   ingredientRules,
+  organizations,
+  pifDocuments,
   productVariants,
   products,
+  regulatoryChecks,
   users,
 } from './schema.js'
 import { hashPassword } from '../lib/auth.js'
 import { ensurePersonalOrganization } from '../services/organizations.js'
 import { refreshDerived, setSelectedFinalVariant } from '../services/products.js'
 import { seedDemoIngredients } from '../services/ingredients.js'
+import {
+  assertDemoFormulasBalanced,
+  DEMO_PRODUCTS,
+  RETIRED_DEMO_PRODUCT_IDS,
+  type SeedProduct,
+} from './demo-products.js'
 
 function now() {
   return new Date().toISOString()
@@ -49,7 +59,7 @@ async function seedRules() {
 async function seedDemoUser() {
   const userId = 'demo-user-id'
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1)
-  if (existing) return { userId, existed: true }
+  if (existing) return userId
   await db.insert(users).values({
     id: userId,
     email: 'demo@local.test',
@@ -57,34 +67,36 @@ async function seedDemoUser() {
     plan: 'free',
     createdAt: now(),
   })
-  return { userId, existed: false }
+  return userId
 }
 
-async function seedProductWithVariants(
-  userId: string,
-  organizationId: string,
-  input: {
-    id: string
-    name: string
-    type: 'skincare' | 'perfume' | 'hybrid'
-    brief: string
-    claims?: Array<'vegan' | 'natural' | 'organic'>
-    variants: Array<{
-      label: string
-      isSelectedFinal?: boolean
-      macerationStartedAt?: string
-      macerationTargetAt?: string
-      macerationNotes?: string
-      rows: Array<{
-        inci: string
-        function: string
-        phase: string
-        percent: number
-        notes?: string
-      }>
-    }>
-  },
-) {
+async function ensureDemoOrganization(userId: string) {
+  const personal = await ensurePersonalOrganization(userId)
+  if (personal.name === 'Personal') {
+    await db.update(organizations).set({ name: 'Design partner demo' }).where(eq(organizations.id, personal.id))
+    return { ...personal, name: 'Design partner demo' }
+  }
+  return personal
+}
+
+async function removeProduct(productId: string) {
+  const versions = await db
+    .select({ id: formulaVersions.id })
+    .from(formulaVersions)
+    .where(eq(formulaVersions.productId, productId))
+  for (const version of versions) {
+    await db.delete(formulaRows).where(eq(formulaRows.versionId, version.id))
+  }
+  await db.delete(formulaVersions).where(eq(formulaVersions.productId, productId))
+  await db.delete(formulaPatches).where(eq(formulaPatches.productId, productId))
+  await db.delete(regulatoryChecks).where(eq(regulatoryChecks.productId, productId))
+  await db.delete(pifDocuments).where(eq(pifDocuments.productId, productId))
+  await db.delete(chatThreads).where(eq(chatThreads.productId, productId))
+  await db.delete(productVariants).where(eq(productVariants.productId, productId))
+  await db.delete(products).where(eq(products.id, productId))
+}
+
+async function seedProductWithVariants(userId: string, organizationId: string, input: SeedProduct, pinnedAt?: string) {
   const created = now()
   await db.insert(products).values({
     id: input.id,
@@ -92,10 +104,12 @@ async function seedProductWithVariants(
     organizationId,
     name: input.name,
     type: input.type,
-    markets: JSON.stringify(['EU', 'ASEAN']),
+    markets: JSON.stringify(input.markets),
     brief: input.brief,
     claims: JSON.stringify(input.claims ?? []),
+    olfactoryPyramid: input.olfactoryPyramid ? JSON.stringify(input.olfactoryPyramid) : null,
     status: 'draft',
+    pinnedAt: input.pinned ? (pinnedAt ?? created) : null,
     createdAt: created,
     updatedAt: created,
   })
@@ -111,10 +125,7 @@ async function seedProductWithVariants(
       productId: input.id,
       label: variantInput.label,
       sortOrder: index,
-      isSelectedFinal: variantInput.isSelectedFinal ?? false,
-      macerationStartedAt: variantInput.macerationStartedAt ?? null,
-      macerationTargetAt: variantInput.macerationTargetAt ?? null,
-      macerationNotes: variantInput.macerationNotes ?? null,
+      isSelectedFinal: false,
       createdAt: created,
     })
 
@@ -133,11 +144,12 @@ async function seedProductWithVariants(
         id: crypto.randomUUID(),
         versionId,
         inci: row.inci,
+        tradeName: row.tradeName ?? null,
         function: row.function,
         phase: row.phase,
         percent: row.percent,
-        notes: row.notes,
-        locked: false,
+        notes: row.notes ?? null,
+        locked: row.locked ?? false,
         sortOrder: rowIndex,
       })),
     )
@@ -160,100 +172,27 @@ async function seedProductWithVariants(
 }
 
 async function main() {
+  assertDemoFormulasBalanced()
   console.log(`Seeding rules ${RULES_VERSION}...`)
   await seedRules()
-  const { userId, existed } = await seedDemoUser()
-  if (existed) {
-    console.log('Demo user already exists — rules refreshed, demo products left untouched.')
-    return
-  }
-  const personal = await ensurePersonalOrganization(userId)
+  const userId = await seedDemoUser()
+  const personal = await ensureDemoOrganization(userId)
   await seedDemoIngredients(personal.id)
 
-  await seedProductWithVariants(userId, personal.id, {
-    id: 'prod-face-oil',
-    name: 'Dry Unscented Face Oil',
-    type: 'skincare',
-    brief: 'Light unscented face oil that feels dry on skin. No essential oils. EU home market.',
-    claims: ['vegan', 'natural'],
-    variants: [
-      {
-        label: 'Main',
-        rows: [
-          { inci: 'Squalane', function: 'Emollient', phase: 'Oil', percent: 70 },
-          { inci: 'Caprylic/Capric Triglyceride', function: 'Emollient', phase: 'Oil', percent: 25 },
-          { inci: 'MadeUpine', function: 'Active', phase: 'Oil', percent: 5, notes: 'Unknown INCI for demo' },
-        ],
-      },
-    ],
-  })
+  for (const productId of RETIRED_DEMO_PRODUCT_IDS) {
+    await removeProduct(productId)
+  }
 
-  await seedProductWithVariants(userId, personal.id, {
-    id: 'prod-cream',
-    name: 'Daily Barrier Cream',
-    type: 'skincare',
-    brief: 'Water-based cream with barrier lipids. Needs preservative.',
-    variants: [
-      {
-        label: 'Main',
-        rows: [
-          { inci: 'Aqua', function: 'Solvent', phase: 'Water', percent: 68.5 },
-          { inci: 'Glycerin', function: 'Humectant', phase: 'Water', percent: 5 },
-          { inci: 'Cetearyl Alcohol', function: 'Emulsifier', phase: 'Water', percent: 4 },
-          { inci: 'Shea Butter', function: 'Emollient', phase: 'Oil', percent: 10 },
-          { inci: 'Squalane', function: 'Emollient', phase: 'Oil', percent: 10 },
-          { inci: 'Phenoxyethanol', function: 'Preservative', phase: 'Water', percent: 1.5 },
-          { inci: 'Tocopherol', function: 'Antioxidant', phase: 'Oil', percent: 1 },
-        ],
-      },
-    ],
-  })
-
-  const macerationStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-  const macerationTarget = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString()
-
-  await seedProductWithVariants(userId, personal.id, {
-    id: 'prod-perfume',
-    name: 'No. 3 Oil Perfume',
-    type: 'perfume',
-    brief: 'Oil-based EDP-style perfume. IFRA + EU allergen labelling.',
-    variants: [
-      {
-        label: 'Variant 1 — softer',
-        macerationStartedAt: macerationStart,
-        macerationTargetAt: macerationTarget,
-        macerationNotes: 'Testing lower coumarin.',
-        rows: [
-          { inci: 'Fragrance', function: 'Fragrance', phase: 'Fragrance', percent: 16 },
-          { inci: 'Linalool', function: 'Fragrance allergen', phase: 'Fragrance', percent: 0.06 },
-          { inci: 'Coumarin', function: 'Fragrance material', phase: 'Fragrance', percent: 0.2 },
-          { inci: 'Butylphenyl Methylpropional', function: 'Fragrance material', phase: 'Fragrance', percent: 0.02 },
-          { inci: 'Caprylic/Capric Triglyceride', function: 'Carrier', phase: 'Oil', percent: 83.72 },
-        ],
-      },
-      {
-        label: 'Variant 2 — original',
-        isSelectedFinal: true,
-        rows: [
-          { inci: 'Fragrance', function: 'Fragrance', phase: 'Fragrance', percent: 18 },
-          { inci: 'Linalool', function: 'Fragrance allergen', phase: 'Fragrance', percent: 0.08 },
-          { inci: 'Coumarin', function: 'Fragrance material', phase: 'Fragrance', percent: 0.3 },
-          { inci: 'Butylphenyl Methylpropional', function: 'Fragrance material', phase: 'Fragrance', percent: 0.02 },
-          { inci: 'Caprylic/Capric Triglyceride', function: 'Carrier', phase: 'Oil', percent: 81.6 },
-        ],
-      },
-      {
-        label: 'Variant 3 — brighter top',
-        rows: [
-          { inci: 'Fragrance', function: 'Fragrance', phase: 'Fragrance', percent: 17 },
-          { inci: 'Linalool', function: 'Fragrance allergen', phase: 'Fragrance', percent: 0.12 },
-          { inci: 'Coumarin', function: 'Fragrance material', phase: 'Fragrance', percent: 0.15 },
-          { inci: 'Butylphenyl Methylpropional', function: 'Fragrance material', phase: 'Fragrance', percent: 0.01 },
-          { inci: 'Caprylic/Capric Triglyceride', function: 'Carrier', phase: 'Oil', percent: 82.72 },
-        ],
-      },
-    ],
-  })
+  const pinBase = Date.now()
+  const pinnedCount = DEMO_PRODUCTS.filter((product) => product.pinned).length
+  let pinIndex = 0
+  for (const product of DEMO_PRODUCTS) {
+    await removeProduct(product.id)
+    const pinnedAt = product.pinned
+      ? new Date(pinBase + (pinnedCount - pinIndex++) * 1000).toISOString()
+      : undefined
+    await seedProductWithVariants(userId, personal.id, product, pinnedAt)
+  }
 
   console.log('Seed complete. Demo login: demo@local.test / demo')
 }

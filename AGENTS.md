@@ -12,6 +12,8 @@ The formula table is the source of truth. Chat proposes changes; the person acce
 
 Demo login: `demo@local.test` / `demo`. Toggle free/paid in Settings.
 
+Seeded products: SUPERSKIN, Gel Doccia Vetiver, Crema Mani Cedro (pinned), plus Dry Unscented Face Oil for the unknown-INCI state. Re-running `npm run db:seed` refreshes those demo formulas.
+
 ## Cursor Cloud specific instructions
 
 Cloud setup lives in `.cursor/environment.json`. The install script already installs packages, migrates the database, and seeds demo data.
