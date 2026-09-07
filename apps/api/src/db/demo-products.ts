@@ -386,7 +386,7 @@ export const DEMO_PRODUCTS: SeedProduct[] = [
         label: 'Main',
         isSelectedFinal: true,
         rows: balanceRows([
-          { inci: 'Aqua', function: 'Solvent', phase: 'Water', percent: 53.9879 },
+          { inci: 'Aqua', function: 'Solvent', phase: 'Water', percent: 53.9877 },
           { inci: 'Prunus Amygdalus Dulcis Oil', function: 'Emollient', phase: 'Oil', percent: 7.1984 },
           { inci: 'Glycerin', function: 'Humectant', phase: 'Water', percent: 7.1264 },
           { inci: 'Polysorbate 60', function: 'Emulsifier', phase: 'Oil', percent: 3.5992 },
