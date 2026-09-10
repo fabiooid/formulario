@@ -241,6 +241,13 @@ export interface ProductProposalPayload {
   markets: string[]
   brief: string
   claims?: ProductClaim[]
+  formula?: Array<{
+    inci: string
+    function: string
+    phase: string
+    percent: number
+    notes?: string
+  }>
 }
 
 const TOKEN_KEY = 'atelier_token'

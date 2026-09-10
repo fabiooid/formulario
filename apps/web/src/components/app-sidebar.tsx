@@ -9,7 +9,7 @@ import {
   LanguagesIcon,
   LayoutGridIcon,
   PanelLeftCloseIcon,
-  PanelLeftIcon,
+  PanelLeftOpenIcon,
   SunMoonIcon,
   TriangleIcon,
   UserIcon,
@@ -162,7 +162,7 @@ export function AppSidebar() {
             <div
               className={cn(
                 'flex min-w-0 items-center transition-[gap,padding] duration-200 ease-out motion-reduce:transition-none',
-                collapsed ? 'gap-0' : 'gap-2.5 px-2.5',
+                collapsed ? 'gap-0' : 'w-full gap-2.5 px-2.5',
               )}
             >
               <Link
@@ -176,26 +176,38 @@ export function AppSidebar() {
                 </span>
                 <span className="truncate text-sm font-semibold tracking-normal">{t('appName')}</span>
               </Link>
-              <div className="group/mark relative hidden size-7 shrink-0 md:block">
+              {collapsed ? (
+                <div className="group/mark relative hidden size-7 shrink-0 md:block">
+                  <Link
+                    to="/"
+                    onClick={closeMobile}
+                    title={t('appName')}
+                    aria-label={t('appName')}
+                    className="flex size-7 items-center justify-center text-foreground group-hover/nav:opacity-0 group-focus-within/mark:opacity-0"
+                  >
+                    <TriangleIcon className="size-4 fill-current" />
+                  </Link>
+                  <button
+                    type="button"
+                    className="pointer-events-none absolute inset-0 flex size-7 items-center justify-center text-foreground opacity-0 outline-none focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-sidebar-ring group-hover/nav:pointer-events-auto group-hover/nav:opacity-100"
+                    onClick={toggleCollapsed}
+                    aria-label={t('sidebar.expand')}
+                    title={t('sidebar.expand')}
+                  >
+                    <PanelLeftOpenIcon className="size-4" />
+                  </button>
+                </div>
+              ) : (
                 <Link
                   to="/"
                   onClick={closeMobile}
                   title={t('appName')}
                   aria-label={t('appName')}
-                  className="flex size-7 items-center justify-center text-foreground group-hover/nav:opacity-0 group-focus-within/mark:opacity-0"
+                  className="hidden size-7 shrink-0 items-center justify-center text-foreground md:flex"
                 >
                   <TriangleIcon className="size-4 fill-current" />
                 </Link>
-                <button
-                  type="button"
-                  className="pointer-events-none absolute inset-0 flex size-7 items-center justify-center text-foreground opacity-0 outline-none focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-sidebar-ring group-hover/nav:pointer-events-auto group-hover/nav:opacity-100"
-                  onClick={toggleCollapsed}
-                  aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
-                  title={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
-                >
-                  {collapsed ? <PanelLeftIcon className="size-4" /> : <PanelLeftCloseIcon className="size-4" />}
-                </button>
-              </div>
+              )}
               <SidebarReveal>
                 <Link
                   to="/"
@@ -206,6 +218,17 @@ export function AppSidebar() {
                   {t('appName')}
                 </Link>
               </SidebarReveal>
+              {collapsed ? null : (
+                <button
+                  type="button"
+                  className="-mr-1.5 ml-auto hidden size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-opacity duration-150 pointer-events-none opacity-0 motion-reduce:transition-none hover:bg-sidebar-accent/70 hover:text-foreground focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-sidebar-ring group-hover/nav:pointer-events-auto group-hover/nav:opacity-100 md:flex"
+                  onClick={toggleCollapsed}
+                  aria-label={t('sidebar.collapse')}
+                  title={t('sidebar.collapse')}
+                >
+                  <PanelLeftCloseIcon className="size-4" />
+                </button>
+              )}
             </div>
           </div>
         )}

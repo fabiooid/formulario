@@ -280,12 +280,24 @@ export const InventoryUpdatePayloadSchema = z.object({
 })
 export type InventoryUpdatePayload = z.infer<typeof InventoryUpdatePayloadSchema>
 
+export const FormulaDraftRowSchema = z.object({
+  inci: z.string().trim().min(1),
+  cas: z.string().optional(),
+  tradeName: z.string().optional(),
+  function: z.string().trim().min(1),
+  phase: z.string().trim().min(1),
+  percent: z.coerce.number(),
+  notes: z.string().optional(),
+})
+export type FormulaDraftRow = z.infer<typeof FormulaDraftRowSchema>
+
 export const ProductCreatePayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
   type: ProductTypeSchema,
   markets: z.array(MarketSchema).default(['EU']),
   brief: z.string().min(1),
   claims: z.array(ProductClaimSchema).optional(),
+  formula: z.array(FormulaDraftRowSchema).optional(),
 })
 export type ProductCreatePayload = z.infer<typeof ProductCreatePayloadSchema>
 

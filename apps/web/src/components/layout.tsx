@@ -83,12 +83,12 @@ function AppShellFrame({
   const full = mode === 'full' && !inSettings
 
   return (
-    <div className="app-grid flex min-h-dvh w-full">
+    <div className="app-grid flex h-dvh w-full overflow-hidden">
       <AppSidebar />
-      <div className="flex min-h-dvh min-w-0 flex-1 overflow-hidden">
+      <div className="flex h-dvh min-h-0 min-w-0 flex-1 overflow-hidden">
         <div
           className={cn(
-            'flex min-h-dvh min-w-0 flex-col overflow-hidden transition-[flex-grow,flex-basis,opacity] duration-200 ease-out motion-reduce:transition-none',
+            'flex min-h-0 min-w-0 flex-col overflow-y-auto transition-[flex-grow,flex-basis,opacity] duration-200 ease-out motion-reduce:transition-none',
             full
               ? 'max-md:flex-1 md:pointer-events-none md:min-w-0 md:flex-none md:basis-0 md:opacity-0'
               : 'flex-1 opacity-100',

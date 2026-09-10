@@ -15,6 +15,18 @@ export type AgentChatMessage = {
   hrefLabel?: string
 }
 
+const MAX_THREAD_TITLE = 48
+
+export function titleFromFirstPrompt(prompt: string) {
+  const text = prompt.replace(/\s+/g, ' ').trim()
+  if (!text) return ''
+  if (text.length <= MAX_THREAD_TITLE) return text
+  const sliced = text.slice(0, MAX_THREAD_TITLE)
+  const lastSpace = sliced.lastIndexOf(' ')
+  const base = lastSpace > 16 ? sliced.slice(0, lastSpace) : sliced
+  return `${base}…`
+}
+
 type AgentContextValue = {
   mode: AgentMode
   open: () => void
@@ -29,6 +41,9 @@ type AgentContextValue = {
   setVariantId: (value: string | null) => void
   messages: AgentChatMessage[]
   setMessages: React.Dispatch<React.SetStateAction<AgentChatMessage[]>>
+  threadTitle: string | null
+  renameThread: (value: string) => void
+  applyFirstPromptTitle: (prompt: string) => void
   input: string
   setInput: (value: string) => void
   streaming: boolean
@@ -57,6 +72,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
   const [mode, setModeState] = useState<AgentMode>(readStoredMode)
   const [variantId, setVariantId] = useState<string | null>(null)
   const [messages, setMessages] = useState<AgentChatMessage[]>([])
+  const [threadTitle, setThreadTitle] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState('')
@@ -99,8 +115,23 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     setPendingPrompt(null)
   }
 
+  function renameThread(value: string) {
+    const next = value.trim()
+    if (!next) return
+    setThreadTitle(next)
+  }
+
+  function applyFirstPromptTitle(prompt: string) {
+    setThreadTitle((current) => {
+      if (current != null) return current
+      const next = titleFromFirstPrompt(prompt)
+      return next || current
+    })
+  }
+
   useEffect(() => {
     setMessages([])
+    setThreadTitle(null)
     setInput('')
     setError('')
     setVariantId(null)
@@ -146,6 +177,9 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       setVariantId,
       messages,
       setMessages,
+      threadTitle,
+      renameThread,
+      applyFirstPromptTitle,
       input,
       setInput,
       streaming,
@@ -153,7 +187,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       error,
       setError,
     }),
-    [mode, pendingPrompt, variantId, messages, input, streaming, error],
+    [mode, pendingPrompt, variantId, messages, threadTitle, input, streaming, error],
   )
 
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>

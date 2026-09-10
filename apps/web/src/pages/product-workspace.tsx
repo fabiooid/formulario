@@ -37,6 +37,11 @@ export function ProductWorkspacePage() {
   })
 
   useEffect(() => {
+    setRows([])
+    setSelectedVariantId(null)
+  }, [id])
+
+  useEffect(() => {
     if (!data) return
     const activeId = data.activeVariantId ?? data.variants[0]?.variant.id ?? null
     setSelectedVariantId(activeId)

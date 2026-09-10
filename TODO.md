@@ -24,6 +24,15 @@ These are intentionally out of scope for the POC. Track as GitHub-style issues f
 - [ ] **Export pack** — zip PIF draft + INCI + regulatory annex for assessor handoff
 - [ ] **CPNP/SCPN filing** — explicit non-goal until assessor workflow is solid
 
+## Formulation quality
+
+- [ ] **Materials library review** — have a formulator check bands, ceilings and notes in `formulation/materials.ts`; grow past ~140 materials (more actives, more aroma materials, surfactants for a future rinse-off format)
+- [ ] **More formats** — cleanser / rinse-off, toner without gum, hair oil, body butter (whipped), room spray
+- [ ] **Show gate warnings on the card** — the accepted proposal already carries `warnings`, `allergens` and `toOrder`; surface them under the proposal card
+- [ ] **Chat-driven format switch** — “make it a balm instead” should re-run the guide for the new format on the same product
+- [ ] **Score history** — keep `eval:briefs` results per model / prompt version so a change can be compared, not eyeballed
+- [ ] **Perfume concentrate view** — optional: build the concentrate at 100% and dilute, instead of flat finished-product percents
+
 ## Agent & platform
 
 - [ ] **First-turn auto-formula** — on “new from brief”, trigger agent propose_formula_patch automatically

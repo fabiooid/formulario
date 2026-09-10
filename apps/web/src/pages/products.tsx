@@ -21,6 +21,7 @@ import { PinButton, isProductPinned, usePinProduct } from '@/components/pin-butt
 type ProductView = 'cards' | 'list'
 
 const VIEW_STORAGE_KEY = 'products-view'
+const CARD_META_MAX = 4
 
 function readStoredView(): ProductView {
   const stored = localStorage.getItem(VIEW_STORAGE_KEY)
@@ -59,24 +60,52 @@ function ProductDates({ product, className }: { product: ProductSummary; classNa
   )
 }
 
-function ProductMeta({ product }: { product: ProductSummary }) {
+function ProductMeta({
+  product,
+  maxItems,
+}: {
+  product: ProductSummary
+  maxItems?: number
+}) {
   const { t } = useLanguage()
+  const items = [
+    {
+      key: 'type',
+      label: t(`productType.${product.type}` as MessageKey),
+      variant: 'secondary' as const,
+    },
+    {
+      key: 'stage',
+      label: t(stageLabelKey(product.stage)),
+      variant: 'secondary' as const,
+    },
+    ...product.markets.map((market) => ({
+      key: `market-${market}`,
+      label: market,
+      variant: 'secondary' as const,
+    })),
+    ...(product.claims ?? []).map((claim) => ({
+      key: `claim-${claim}`,
+      label: t(`claims.${claim}` as MessageKey),
+      variant: 'outline' as const,
+    })),
+  ]
+  const visible =
+    maxItems != null && items.length > maxItems
+      ? items.slice(0, maxItems - 1)
+      : items
+  const extra = items.length - visible.length
 
   return (
     <>
-      {/* DESIGN.md: type / stage / markets are secondary pills; claims are outline (extra info). */}
-      <Badge variant="secondary">{t(`productType.${product.type}` as MessageKey)}</Badge>
-      <Badge variant="secondary">{t(stageLabelKey(product.stage))}</Badge>
-      {product.markets.map((market) => (
-        <Badge key={market} variant="secondary">
-          {market}
+      {visible.map((item) => (
+        <Badge key={item.key} variant={item.variant}>
+          {item.label}
         </Badge>
       ))}
-      {(product.claims ?? []).map((claim) => (
-        <Badge key={claim} variant="outline">
-          {t(`claims.${claim}` as MessageKey)}
-        </Badge>
-      ))}
+      {extra > 0 ? (
+        <Badge variant="outline">{t('products.moreMeta', { count: extra })}</Badge>
+      ) : null}
     </>
   )
 }
@@ -137,6 +166,9 @@ export function ProductsPage() {
     mutationFn: () =>
       api.createProduct({
         name: t('products.untitled'),
+        type: 'skincare',
+        markets: ['EU'],
+        brief: '',
       }),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -159,7 +191,7 @@ export function ProductsPage() {
               disabled={createMutation.isPending}
             >
               <PlusIcon data-icon="inline-start" />
-              {createMutation.isPending ? t('products.creating') : t('products.newProduct')}
+              {createMutation.isPending ? t('products.creating') : t('products.newFromBrief')}
             </Button>
           </>
         }
@@ -235,22 +267,22 @@ export function ProductsPage() {
               {data.products.map((product) => {
                 const pinned = isProductPinned(product)
                 return (
-                  <div key={product.id} className="group/pin relative">
-                    <Link to={`/products/${product.id}`} className="group block">
+                  <div key={product.id} className="group/pin relative h-full max-w-sm">
+                    <Link to={`/products/${product.id}`} className="group block h-full">
                       <Card className="h-full transition-all duration-200 hover:border-border hover:shadow-soft-hover">
                         <CardHeader className="pb-3 pr-10">
-                          <CardTitle className="text-base font-medium tracking-tight group-hover:text-foreground">
+                          <CardTitle className="line-clamp-1 min-h-6 text-base font-medium tracking-tight group-hover:text-foreground">
                             {product.name}
                           </CardTitle>
-                          <CardDescription className="line-clamp-2 text-sm leading-relaxed">
+                          <CardDescription className="line-clamp-2 min-h-[2.875rem] text-sm leading-relaxed">
                             {product.brief.trim() || t('products.noBrief')}
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-3">
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <ProductMeta product={product} />
+                          <div className="flex h-12 flex-wrap content-start items-start gap-2 overflow-hidden text-xs">
+                            <ProductMeta product={product} maxItems={CARD_META_MAX} />
                           </div>
-                          <ProductDates product={product} />
+                          <ProductDates product={product} className="truncate" />
                         </CardContent>
                       </Card>
                     </Link>

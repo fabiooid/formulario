@@ -51,6 +51,15 @@ function clampPaneWidth(value: number) {
   return Math.min(max, Math.max(MIN_PANE_WIDTH, Math.round(value)))
 }
 
+function plainAgentText(text: string) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '')
+}
+
 function readStoredPaneWidth() {
   const raw = Number(localStorage.getItem(PANE_WIDTH_KEY))
   if (!Number.isFinite(raw)) return DEFAULT_PANE_WIDTH
@@ -130,12 +139,14 @@ function AgentPaneResizeHandle({
       tabIndex={0}
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
-      className={cn(
-        'group/resize absolute inset-y-0 left-0 z-10 hidden w-3 cursor-col-resize touch-none md:block',
-        dragging && 'bg-transparent',
-      )}
+      className="group/resize absolute inset-y-0 left-0 z-10 hidden w-3 cursor-col-resize touch-none md:block"
     >
       <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-sidebar-border"
+      />
+      <span
+        aria-hidden
         className={cn(
           'pointer-events-none absolute top-1/2 left-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/35 transition-opacity duration-150',
           dragging ? 'opacity-100' : 'opacity-0 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100',
@@ -188,6 +199,9 @@ export function AgentPane() {
     variantId,
     messages,
     setMessages,
+    threadTitle,
+    renameThread,
+    applyFirstPromptTitle,
     input,
     setInput,
     streaming,
@@ -205,12 +219,6 @@ export function AgentPane() {
 
   const productMatch = location.pathname.match(/^\/products\/([^/]+)$/)
   const productId = productMatch?.[1]
-  const { data: productData } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => api.listProducts(),
-    enabled: !!user && !!productId,
-  })
-  const productName = productData?.products.find((item) => item.id === productId)?.name
 
   const { data: proposalData } = useQuery({
     queryKey: ['proposals'],
@@ -259,6 +267,7 @@ export function AgentPane() {
   async function send(text = input) {
     if (!user || !text.trim() || streaming) return
     const userMessage = text.trim()
+    applyFirstPromptTitle(userMessage)
     setInput('')
     setError('')
     setMessages((prev) => [
@@ -275,7 +284,7 @@ export function AgentPane() {
       await api.streamAgent(
         {
           userId: user.id,
-          threadId: `atelier:${user.activeOrganizationId ?? user.id}`,
+          threadId: `atelier:v2:${user.activeOrganizationId ?? user.id}`,
           message: userMessage,
           productId,
           variantId: variantId ?? undefined,
@@ -341,11 +350,11 @@ export function AgentPane() {
       className={cn(
         'relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-background',
         'fixed inset-0 z-40 transition-[width,flex-grow,flex-basis,transform,opacity,border-color] duration-200 ease-out motion-reduce:transition-none',
-        'md:sticky md:top-0 md:h-dvh md:self-start md:translate-x-0',
+        'md:static md:inset-auto md:h-full md:translate-x-0',
         closed &&
           'pointer-events-none max-md:translate-x-full md:w-0 md:flex-none md:basis-0 md:opacity-0',
         mode === 'pane' &&
-          'max-md:translate-x-0 md:w-[var(--agent-pane-width,22rem)] md:flex-none md:border-l md:border-sidebar-border md:opacity-100',
+          'max-md:translate-x-0 md:w-[var(--agent-pane-width,22rem)] md:flex-none md:opacity-100',
         mode === 'full' &&
           'max-md:translate-x-0 md:min-w-0 md:flex-1 md:opacity-100',
         resizing && 'md:transition-none',
@@ -366,11 +375,11 @@ export function AgentPane() {
         />
       ) : null}
       <div className="flex h-14 shrink-0 items-center gap-2 px-3">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <p className="truncate text-sm font-medium">{t('agent.title')}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {productName ? t('agent.workingOn', { name: productName }) : t('agent.contextAtelier')}
-          </p>
+        <div className="min-w-0 flex-1 text-sm font-medium">
+          <ThreadTitleInput
+            name={threadTitle ?? t('agent.title')}
+            onSave={renameThread}
+          />
         </div>
         <div className="hidden items-center gap-0.5 md:flex">
           {mode === 'pane' ? (
@@ -434,15 +443,7 @@ export function AgentPane() {
           <MessageScrollerProvider autoScroll>
             <MessageScroller className="min-h-0 flex-1">
               <MessageScrollerViewport aria-label={t('agent.messages')}>
-                <MessageScrollerContent className="gap-4 px-3 py-4">
-                  {messages.length === 0 && proposals.length === 0 && !streaming ? (
-                    <MessageScrollerItem messageId="empty">
-                      <Marker>
-                        <MarkerContent>{t('agent.empty')}</MarkerContent>
-                      </Marker>
-                    </MessageScrollerItem>
-                  ) : null}
-
+                <MessageScrollerContent className="mx-auto w-full max-w-[900px] gap-4 px-3 py-4">
                   {messages.map((message) => (
                     <MessageScrollerItem
                       key={message.id}
@@ -468,7 +469,11 @@ export function AgentPane() {
                               {message.role === 'user' ? t('agent.you') : t('agent.agent')}
                             </MessageHeader>
                             <Bubble variant={message.role === 'user' ? 'default' : 'muted'}>
-                              <BubbleContent>{message.content}</BubbleContent>
+                              <BubbleContent>
+                                {message.role === 'assistant'
+                                  ? plainAgentText(message.content)
+                                  : message.content}
+                              </BubbleContent>
                             </Bubble>
                           </MessageContent>
                         </Message>
@@ -516,39 +521,80 @@ export function AgentPane() {
             </MessageScroller>
           </MessageScrollerProvider>
 
-          <div className="flex shrink-0 flex-col gap-2 border-t border-border/80 p-3">
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <InputGroup>
-              <InputGroupTextarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault()
-                    void send()
-                  }
-                }}
-                placeholder={t('agent.placeholder')}
-                rows={2}
-                disabled={streaming}
-                aria-label={t('agent.placeholder')}
-              />
-              <InputGroupAddon align="block-end">
-                <InputGroupButton
-                  variant="default"
-                  size="icon-xs"
-                  className="ml-auto rounded-full"
-                  disabled={streaming || !input.trim()}
-                  onClick={() => void send()}
-                  aria-label={streaming ? t('agent.thinking') : t('agent.send')}
-                >
-                  {streaming ? <Spinner className="size-3" /> : <ArrowUpIcon />}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
+          <div className="flex shrink-0 flex-col gap-2 p-3">
+            <div className="mx-auto flex w-full max-w-[900px] flex-col gap-2">
+              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+              <InputGroup>
+                <InputGroupTextarea
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault()
+                      void send()
+                    }
+                  }}
+                  placeholder={t('agent.placeholder')}
+                  rows={2}
+                  disabled={streaming}
+                  aria-label={t('agent.placeholder')}
+                />
+                <InputGroupAddon align="block-end">
+                  <InputGroupButton
+                    variant="default"
+                    size="icon-xs"
+                    className="ml-auto rounded-full"
+                    disabled={streaming || !input.trim()}
+                    onClick={() => void send()}
+                    aria-label={streaming ? t('agent.thinking') : t('agent.send')}
+                  >
+                    {streaming ? <Spinner className="size-3" /> : <ArrowUpIcon />}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+            </div>
           </div>
         </div>
       )}
     </aside>
+  )
+}
+
+function ThreadTitleInput({
+  name,
+  onSave,
+}: {
+  name: string
+  onSave: (name: string) => void
+}) {
+  const { t } = useLanguage()
+
+  return (
+    <input
+      key={name}
+      defaultValue={name}
+      maxLength={80}
+      onBlur={(event) => {
+        const next = event.currentTarget.value.trim()
+        if (!next) {
+          event.currentTarget.value = name
+          return
+        }
+        if (next !== name) onSave(next)
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          event.currentTarget.blur()
+        }
+        if (event.key === 'Escape') {
+          event.currentTarget.value = name
+          event.currentTarget.blur()
+        }
+      }}
+      aria-label={t('agent.renameThread')}
+      title={name}
+      className="-mx-1 w-full min-w-0 truncate rounded-md bg-transparent px-1 py-0.5 font-[inherit] text-[inherit] leading-[inherit] tracking-[inherit] outline-none hover:bg-muted/50 focus:bg-muted/50 focus:ring-2 focus:ring-ring/40"
+    />
   )
 }

@@ -66,6 +66,31 @@ export function rowFromDb(row: typeof formulaRows.$inferSelect): FormulaRow {
   }
 }
 
+export function rowsFromDraft(
+  rows: Array<{
+    inci: string
+    cas?: string
+    tradeName?: string
+    function: string
+    phase: string
+    percent: number
+    notes?: string
+  }>,
+): FormulaRow[] {
+  return rows.map((row, index) => ({
+    id: crypto.randomUUID(),
+    inci: row.inci,
+    cas: row.cas,
+    tradeName: row.tradeName,
+    function: row.function,
+    phase: row.phase,
+    percent: row.percent,
+    notes: row.notes,
+    locked: false,
+    sortOrder: index,
+  }))
+}
+
 export function variantFromDb(row: typeof productVariants.$inferSelect): ProductVariant {
   return {
     id: row.id,
@@ -258,6 +283,15 @@ export async function createProduct(input: {
   markets: Market[]
   brief: string
   claims?: ProductClaim[]
+  formula?: Array<{
+    inci: string
+    cas?: string
+    tradeName?: string
+    function: string
+    phase: string
+    percent: number
+    notes?: string
+  }>
 }) {
   const id = crypto.randomUUID()
   const now = new Date().toISOString()
@@ -276,7 +310,12 @@ export async function createProduct(input: {
     updatedAt: now,
   })
 
-  await createVariantWithVersion(id, input.type === 'perfume' ? 'Variant 1' : 'Main', 0)
+  await createVariantWithVersion(
+    id,
+    input.type === 'perfume' ? 'Variant 1' : 'Main',
+    0,
+    input.formula?.length ? rowsFromDraft(input.formula) : [],
+  )
 
   const threadId = crypto.randomUUID()
   await db.insert(chatThreads).values({

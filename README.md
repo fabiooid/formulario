@@ -22,6 +22,18 @@ This is **not** a compliance product. It does not replace a qualified safety ass
 
 The agent is a side pane you can open from any signed-in page (sparkle in the breadcrumb, or ⌘J). Expand it to fill the window. Paid-only pieces stay in the same layout with an empty state — they are not hidden.
 
+## How a formula gets drafted
+
+The Lab Assistant does not write formulas from memory. It fills a **skeleton** for the product format and every draft passes a **gate** before it becomes a card:
+
+1. **Format** — the brief is read for a format: cream / lotion, serum, face oil, balm, alcohol perfume (EDP), oil perfume, solid perfume. The agent names the format it chose in its reply; say “make it a balm” to redirect.
+2. **Skeleton** (`packages/domain/src/formulation/skeletons.ts`) — the roles a real product of that format needs (emulsifier, chelator, preservative, pH adjuster, fixative…), the percent band each role takes, the phases, bench steps, and a worked starter split that already adds to 100.
+3. **Materials library** (`packages/domain/src/formulation/materials.ts`) — ~140 real materials with INCI, aliases, roles, usual band, ceiling, phase, allergen and origin flags, and process notes. This is knowledge, separate from your shelf.
+4. **Gate** (`packages/domain/src/formulation/check.ts`) — the draft is rejected and sent back to the agent when: rows do not add to 100, a required role is missing, a material is not in the library or on the shelf, a percent is over its ceiling, water is present without preservative / chelator / pH adjuster, a perfume has fewer than 6–8 aroma materials or a single “Fragrance” row, a seed rule bans or limits a material, or a vegan product has an animal-derived row. Softer issues travel as warnings on the accepted proposal.
+5. **Stock is a flag, not a filter.** The agent proposes the right material and tells you what is not on the shelf. A complete formula beats using only what is in stock.
+
+The seeded briefs in `packages/domain/src/formulation/briefs.ts` are the fixed test set. Run them against the live agent with `npm run eval:briefs --workspace=apps/api` (see the script header for options). A small model (e.g. `gpt-4o-mini`) reaches the gate but rarely repairs a rejected perfume; `gpt-4.1` or an equivalent passes most briefs in one or two tries.
+
 ## Prerequisites
 
 - Node.js **≥ 22.13**
@@ -65,7 +77,11 @@ npm run dev
 
 | Variable | Description |
 |---|---|
+| `GEMINI_API_KEY` | Gemini key for the formulator agent (default) |
 | `OPENAI_API_KEY` | OpenAI key for the formulator agent |
+| `FORMULATOR_PROVIDER` | `gemini` or `openai`. Default is Gemini when both keys exist. The other provider is the fallback when both keys are set. |
+| `GEMINI_MODEL` / `OPENAI_MODEL` | Model ids. Drafting full formulas works much better on a stronger model (e.g. `openai/gpt-4.1`). |
+| `FORMULATOR_MAX_RETRIES` | Retries per model call on rate limits or busy providers, default `4` |
 | `MASTRA_JWT_SECRET` | JWT signing secret (app auth + API) |
 | `DATABASE_URL` | SQLite path, default `file:./data/app.db` |
 | `PORT` | Mastra API port, default `4111` |
@@ -80,14 +96,15 @@ npm run dev
 | `npm run db:migrate` | Run Drizzle migrations |
 | `npm run db:seed` | Seed rules + demo products |
 | `npm run db:setup` | Migrate + seed |
-| `npm run test` | Regulatory engine tests |
+| `npm run test` | Domain tests: rules, claims, materials library, skeletons, draft gate |
+| `npm run eval:briefs --workspace=apps/api` | Run the fixed briefs through the live agent and score the proposals |
 
 ## Project layout
 
 ```
 apps/web/          Vite + React UI
 apps/api/          Mastra agent, REST routes, Drizzle
-packages/domain/   Shared types, rules engine, PIF generator
+packages/domain/   Shared types, rules engine, PIF generator, formulation (materials, skeletons, gate)
 DESIGN.md          Visual and UX rules for the web app
 ```
 

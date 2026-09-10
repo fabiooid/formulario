@@ -269,20 +269,21 @@ export const appRoutes = [
         const parsed = z
           .object({
             name: productNameSchema,
-            type: ProductTypeSchema,
+            type: ProductTypeSchema.default('skincare'),
             markets: z.array(MarketSchema).default(['EU']),
-            brief: z.string().min(1),
+            brief: z.string().default(''),
             claims: z.array(ProductClaimSchema).optional(),
           })
-          .parse(await c.req.json())
+          .safeParse(await c.req.json())
+        if (!parsed.success) return c.json({ error: 'Invalid input' }, 400)
 
         const product = await createProduct({
           userId: user.id,
-          name: parsed.name,
-          type: parsed.type,
-          markets: parsed.markets,
-          brief: parsed.brief,
-          claims: parsed.claims,
+          name: parsed.data.name,
+          type: parsed.data.type,
+          markets: parsed.data.markets,
+          brief: parsed.data.brief,
+          claims: parsed.data.claims,
         })
         await refreshDerived(product.id, user.id)
         return c.json({ product }, 201)

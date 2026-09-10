@@ -12,7 +12,8 @@
     "start": "mastra start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "eval:briefs": "tsx --env-file=../../.env scripts/eval-briefs.ts"
   },
   "dependencies": {
     "@atelier/domain": "*",

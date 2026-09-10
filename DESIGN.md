@@ -104,17 +104,18 @@ Page descriptions: `text-sm leading-relaxed text-muted-foreground`, max width `m
 
 **Agent pane**
 
-The formulator agent is named **Lab Assistant** in the UI (breadcrumb launcher, pane header, message author, paid-gate copy — every place it is named). It is app chrome, not a page and not a card on the formula step.
+The formulator agent is named **Lab Assistant** in the UI (breadcrumb launcher, message author, paid-gate copy). It is app chrome, not a page and not a card on the formula step. The pane header shows the **thread name**, not the agent name.
 
 - Closed (default): sparkle button in the breadcrumb row. Shortcut **⌘J** / **Ctrl+J**. Escape closes the pane.
-- Side pane: default `w-[22rem]` on the right of the page. Drag the left edge to resize; a handle appears on hover. Remembers width. Left nav stays. Page content shrinks.
-- Full window: chat fills the main area; left nav stays. Collapse returns to the side pane.
+- Side pane: default `w-[22rem]` on the right of the page, full viewport height. It stays put while the page scrolls. A 1px split sits in the center of the left-edge hit area. Drag to resize; a short handle appears on that same center line on hover. Remembers width. Left nav stays. Page content shrinks.
+- Full window: chat fills the main area; left nav stays. Collapse returns to the side pane. The thread and composer cap at `900px` and sit in the centre.
 - On small screens, open goes straight to full screen (no side column).
 - Remembers closed / pane / full, like the left nav.
-- Header: title, short context line (“{product} is open · any product or stock”, or “Any product or stock” when no product is open), expand/collapse, close. The line does not imply the agent is only for the open product. Composer placeholder stays general (stock, a formula, or a new product) — not one example formula.
-- Conversation uses MessageScroller, Message, Bubble, Marker, Attachment. Chat text uses the UI font (`text-sm`, relaxed line height), not mono. Composer is shadcn `InputGroup` + `InputGroupTextarea`, with a round send arrow in the footer. Enter sends, Shift+Enter makes a new line.
+- Header: editable thread name (same inline rename as the product title), expand/collapse, close. Before the first prompt it shows Lab Assistant. After that it uses a short title from the first prompt. Composer placeholder stays general (stock, a formula, or a new product) — not one example formula.
+- Conversation uses MessageScroller, Message, Bubble, Marker, Attachment. Chat text uses the UI font (`text-sm`, relaxed line height), not mono, and not markdown. Composer is shadcn `InputGroup` + `InputGroupTextarea`, with a round send arrow in the footer. Enter sends, Shift+Enter makes a new line.
+- Formula replies are a short “why” in the bubble. Percents and INCI live on the accept card, not as a list in chat.
 - Paid gate: same pane, `EmptyState` inside — do not hide the chrome.
-- Chat proposes stock edits, new products, and formula patches. The person accepts. Formula accept/reject stays next to the table. Stock and new-product accept/reject sit on Attachment cards in the thread.
+- Chat proposes stock edits, new products, and formula patches. The person accepts. Formula accept/reject stays next to the table. Stock and new-product accept/reject sit on Attachment cards in the thread. A new product from chat can include a starting formula — accepting it should fill the table.
 - If they ask what the agent can do or how to work together, it answers like a lab partner in a few short sentences: propose / accept, then the menu, then an open question. It does not dump a status report, stack FAQ lists, or lead with “draft a formula”.
 
 **Radius** (`--radius: 0.5rem`)
@@ -208,7 +209,7 @@ The formulator sparkle is hidden here. Breadcrumb: app name / Settings / current
 
 Header actions, right side: view switcher, then primary **New from brief**.
 
-- **Cards** (default): 1 / 2 / 3 columns (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`). Same meta on every card: type badge, stage badge, markets.
+- **Cards** (default): 1 / 2 / 3 columns (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`). Cards cap at `max-w-sm` and share one height: 1-line name, 2-line brief (empty still uses the slot), up to 4 meta pills then `+N`, 1-line dates. Same meta order as list: type, stage, markets, then claims.
 - **List:** one bordered card wrapping rows (`rounded-xl border-border/70 shadow-soft`). Each row is a link. Same meta as cards.
 - Remember the last view in `localStorage`.
 - On small screens the switcher shows icons only.
@@ -314,7 +315,7 @@ Sonner, themed with popover colors. Use for short confirmations later; do not to
 - Active item: muted fill only
 - Inactive: `text-muted-foreground`, hover to foreground on a light accent fill
 - Pinned products under a tiny muted heading (“Pinned”). Hide the block if nothing is pinned, and while in Settings.
-- Account lives at the **bottom**. On desktop, hover the sidebar to turn the logo mark into collapse / expand.
+- Account lives at the **bottom**. When the nav is expanded, a collapse control sits on the right of the logo row and appears on sidebar hover. When the nav is collapsed, hover the logo mark to expand (same overlay as before).
 - Collapsed: icons only, `title` tooltip, menus open to the right
 - Settings mode reuses this same nav, always expanded. No logo, no org switcher, no collapse. Do not add a second in-page settings menu.
 
@@ -337,7 +338,7 @@ Plain, short, calm. No hype, no emoji in product UI, no “AI-powered” languag
 
 ## Interaction details worth keeping
 
-- **Inline rename:** the workspace title is an input that looks like a heading until hover/focus (`hover:bg-muted/50`, ring on focus). Enter saves, Escape cancels, empty blur restores the old name.
+- **Inline rename:** the workspace title and the Lab Assistant thread name are inputs that look like a heading until hover/focus (`hover:bg-muted/50`, ring on focus). Enter saves, Escape cancels, empty blur restores the old name.
 - **Remembered chrome:** sidebar collapsed, product view (cards/list), theme, language.
 - **Locked formula rows:** cannot edit, cannot delete. Show the lock icon at the front of the ingredient name, not next to the Lock switch — the Lock column holds only the centred switch.
 - **Paid gates:** same layout, `EmptyState` inside — do not hide the panel entirely. Agent pane included.
