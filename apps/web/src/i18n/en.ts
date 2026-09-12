@@ -1,5 +1,11 @@
 export const en = {
   appName: 'Atelier',
+  common: {
+    loading: "Loading…",
+    saving: "Saving…",
+    saveFailed: "Could not save. Please try again.",
+    retry: "Retry",
+  },
   nav: {
     home: 'Home',
     products: 'Products',
@@ -129,7 +135,7 @@ export const en = {
     viewCards: 'Cards',
     viewList: 'List',
     created: 'Created {date}',
-    edited: 'Edited {date}',
+    updated: 'Updated {date}',
     pin: 'Pin',
     unpin: 'Unpin',
     stageIdea: 'Idea',
@@ -137,8 +143,35 @@ export const en = {
     stageFinal: 'Final INCI',
     noBrief: 'No brief yet',
     moreMeta: '+{count}',
+    actionsFor: 'Actions for {name}',
+    duplicate: 'Duplicate',
+    duplicating: 'Duplicating…',
+    copyName: '{name} (copy)',
+    archive: 'Archive',
+    restore: 'Restore',
+    archivedNotice: 'This product is archived. It stays out of Home, pins, and the main list.',
+    delete: 'Delete',
+    deleting: 'Deleting…',
+    deleteTitle: 'Delete this product?',
+    deleteDescription: '{name} and its formulas will be removed. This cannot be undone.',
+    cancel: 'Cancel',
+    confirmDelete: 'Delete',
+    actionFailed: 'Could not complete this action. Please try again.',
+    statusGroup: 'Products to show',
+    statusActive: 'Active',
+    statusArchived: 'Archived',
+    emptyArchivedTitle: 'No archived products',
+    emptyArchivedDescription: 'Archive a product to move it out of this list without deleting it.',
   },
   workspace: {
+    loadFailedTitle: "Could not load workspace",
+    loadFailedDescription: "Please try again. Your saved work is still there.",
+    unsavedDraft: "You have uncommitted formula edits. They are kept in this tab while you switch products or variants.",
+    discardDraft: "Discard edits",
+    confirmDiscard: "Discard your uncommitted formula edits?",
+    saveBeforePatch: "Commit or discard your edits before accepting a proposal.",
+    formulaConflict: "The committed formula changed. Your edits are kept. Review the latest formula before trying again; ask for a new proposal if this patch is out of date.",
+    actionFailed: "Could not complete this action. Please try again.",
     product: 'Product',
     loading: 'Loading workspace…',
     rename: 'Product name',
@@ -149,6 +182,17 @@ export const en = {
     operations: '{count} operation(s)',
     accept: 'Accept',
     reject: 'Reject',
+    findings: {
+      banned: "Banned",
+      reduce: "Reduce percentage",
+      wording: "INCI wording",
+      labelling: "Labelling",
+      source: "Source",
+      details: "Details and source",
+      unknownOne: "1 ingredient without coverage",
+      unknownMany: "{count} ingredients without coverage",
+      unknownDescription: "These ingredients have no rule in the current dataset. Their regulatory status remains unknown.",
+    },
     tabMarkets: 'Market status',
     tabPif: 'PIF draft',
     tabRefs: 'References',
@@ -165,7 +209,7 @@ export const en = {
     },
     brief: {
       title: 'Brief',
-      description: 'Describe what you want to make. Generate asks the agent to propose a formula.',
+      description: 'Describe your product to request a formula proposal.',
       placeholder:
         'A light unscented face oil that feels dry, no essential oils, sellable in EU…',
       generate: 'Generate',
@@ -173,6 +217,7 @@ export const en = {
       generateMessage: 'Propose a formula from this brief:\n\n{brief}',
     },
     variants: {
+      actions: 'Variant actions',
       select: 'Select variant',
       new: 'New variant',
       duplicate: 'Duplicate',
@@ -205,6 +250,8 @@ export const en = {
     },
   },
   olfactory: {
+    purpose: 'Scent direction · top, heart, and base notes. Independent of the ingredient list.',
+    notesPlaceholder: "Separate notes with commas",
     title: 'Olfactory pyramid',
     description: 'Describe the scent direction, generate a starting pyramid, then edit and save it.',
     placeholder: 'For example: fresh citrus opening, floral heart, warm woody and musky base…',
@@ -227,9 +274,8 @@ export const en = {
     inci: 'Ingredient',
     percent: '%',
     lock: 'Lock',
-    purchaseHintTitle: 'Some ingredients are not in house',
-    purchaseHintDescription:
-      'They are missing from inventory, running low, or marked to buy. Add them so the atelier knows what you can work with.',
+    purchaseCountOne: '1 ingredient to purchase',
+    purchaseCount: '{count} ingredients to purchase',
     openInventory: 'Open inventory',
   },
   agent: {
@@ -329,8 +375,10 @@ export const en = {
     },
   },
   ingredients: {
+    actions: 'Actions',
+    actionsFor: 'Actions for {name}',
     title: 'Ingredients',
-    subtitle: 'What you have in house. Formulas can then prefer stock and flag what you still need to buy.',
+    subtitle: 'Track your ingredients and what you need to buy.',
     add: 'Add ingredient',
     edit: 'Edit ingredient',
     dialogCreate: 'New ingredient',
@@ -404,4 +452,5 @@ export const en = {
   },
 } as const
 
-export type Messages = typeof en
+type MessageShape<T> = { [K in keyof T]: T[K] extends string ? string : MessageShape<T[K]> }
+export type Messages = MessageShape<typeof en>

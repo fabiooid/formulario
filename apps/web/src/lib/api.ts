@@ -37,6 +37,8 @@ export interface OrganizationSummary {
   createdAt: string
 }
 
+export type ProductStatus = 'draft' | 'archived'
+
 export interface ProductSummary {
   id: string
   name: string
@@ -45,7 +47,7 @@ export interface ProductSummary {
   brief: string
   claims?: ProductClaim[]
   olfactoryPyramid?: OlfactoryPyramid | null
-  status: string
+  status: ProductStatus
   stage?: ProductStage
   pinnedAt?: string | null
   createdAt: string
@@ -261,10 +263,20 @@ export function setToken(token: string | null) {
   else localStorage.removeItem(TOKEN_KEY)
 }
 
+export class ApiError extends Error {
+  status: number
+  code?: string
+  constructor(message: string, status: number, code?: string) {
+    super(message)
+    this.status = status
+    this.code = code
+  }
+}
+
 async function throwIfNotOk(res: Response) {
   if (res.ok) return
   const body = await res.json().catch(() => ({}))
-  throw new Error(body.message || body.error || `Request failed (${res.status})`)
+  throw new ApiError(body.message || body.error || `Request failed (${res.status})`, res.status, body.code)
 }
 
 function authHeaders(): Record<string, string> {
@@ -342,7 +354,10 @@ export const api = {
     }),
   deleteIngredient: (ingredientId: string) =>
     request<{ ok: boolean }>(`/app/ingredients/${ingredientId}`, { method: 'DELETE' }),
-  listProducts: () => request<{ products: ProductSummary[] }>('/app/products'),
+  listProducts: (options?: { archived?: boolean }) =>
+    request<{ products: ProductSummary[] }>(
+      options?.archived ? '/app/products?archived=1' : '/app/products',
+    ),
   createProduct: (input: {
     name: string
     type: string
@@ -354,6 +369,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(input),
     }),
+  duplicateProduct: (productId: string, name: string) =>
+    request<{ product: ProductSummary }>(`/app/products/${productId}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  deleteProduct: (productId: string) =>
+    request<{ ok: boolean }>(`/app/products/${productId}`, { method: 'DELETE' }),
   getWorkspace: (productId: string) =>
     request<Workspace>(`/app/products/${productId}`),
   updateProductName: (productId: string, name: string) =>
@@ -371,6 +393,11 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ pinned }),
     }),
+  setProductArchived: (productId: string, archived: boolean) =>
+    request<{ workspace: Workspace }>(`/app/products/${productId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ archived }),
+    }),
   updateProductClaims: (productId: string, claims: ProductClaim[]) =>
     request<{ workspace: Workspace }>(`/app/products/${productId}`, {
       method: 'PATCH',
@@ -381,10 +408,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(pyramid),
     }),
-  saveFormula: (productId: string, variantId: string, rows: FormulaRow[]) =>
-    request<{ inci: string; checks: RegulatoryCheck[]; pif: unknown }>(
+  saveFormula: (productId: string, variantId: string, rows: FormulaRow[], expectedVersionId: string | null) =>
+    request<{ versionId: string; workspace: Workspace }>(
       `/app/products/${productId}/formula`,
-      { method: 'PUT', body: JSON.stringify({ variantId, rows }) },
+      { method: 'PUT', body: JSON.stringify({ variantId, rows, expectedVersionId }) },
     ),
   createVariant: (
     productId: string,
@@ -444,7 +471,7 @@ export const api = {
     if (input.productId) requestContext.productId = input.productId
     if (input.variantId) requestContext.variantId = input.variantId
 
-    const res = await fetch('/api/agents/formulatorAgent/stream', {
+    const res = await fetch('/api/agents/assistantAgent/stream', {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({

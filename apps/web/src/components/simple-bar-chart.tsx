@@ -23,11 +23,11 @@ export function SimpleBarChart({
 
         const inner = (
           <Meter
-            className="flex-row items-center gap-4"
+            className="flex-row flex-wrap items-center gap-x-4 gap-y-2"
             max={max || 1}
             value={item.value}
           >
-            <div className="w-50 flex-none">
+            <div className="w-full min-w-0 sm:w-50 sm:flex-none">
               <MeterLabel
                 className={priced ? undefined : 'text-muted-foreground'}
               >
@@ -39,7 +39,7 @@ export function SimpleBarChart({
                 </span>
               ) : null}
             </div>
-            <MeterTrack className="flex-1">
+            <MeterTrack className="min-w-0 flex-1">
               <MeterIndicator
                 className={priced ? 'min-w-[6%]' : undefined}
                 variant={priced ? 'default' : 'muted'}

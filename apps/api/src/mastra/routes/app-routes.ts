@@ -22,13 +22,17 @@ import {
 } from '../../lib/auth.js'
 import {
   commitNewVersion,
+  ProductWriteError,
   createProduct,
   createVariant,
+  deleteProduct,
+  duplicateProduct,
   getWorkspace,
   listProducts,
   refreshDerived,
   renameVariant,
   resolvePatch,
+  setProductArchived,
   setSelectedFinalVariant,
   updateMaceration,
   setProductPinned,
@@ -55,7 +59,12 @@ import { listPendingProposals, resolveProposal } from '../../services/proposals.
 import { createFeedback } from '../../services/feedback.js'
 
 type HonoLike = {
-  req: { header: (name: string) => string | undefined; json: () => Promise<unknown>; param: (name: string) => string }
+  req: {
+    header: (name: string) => string | undefined
+    json: () => Promise<unknown>
+    param: (name: string) => string
+    query?: (name: string) => string | undefined
+  }
   json: (body: unknown, status?: number) => Response
 }
 
@@ -94,7 +103,15 @@ async function requireUser(c: BearerContext): Promise<AuthUser | null> {
 async function withUser(c: HonoLike, handler: (user: AuthUser) => Promise<Response>) {
   const user = await requireUser(c)
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
-  return handler(user)
+  try {
+    return await handler(user)
+  } catch (error) {
+    if (error instanceof ProductWriteError) {
+      return c.json({ error: error.message, code: error.code }, error.status)
+    }
+    if (error instanceof z.ZodError) return c.json({ error: 'Invalid request' }, 400)
+    throw error
+  }
 }
 
 export const authRoutes = [
@@ -259,7 +276,11 @@ export const appRoutes = [
   registerApiRoute('/app/products', {
     method: 'GET',
     requiresAuth: false,
-    handler: async (c) => withUser(c, async (user) => c.json({ products: await listProducts(user.id) })),
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const archived = c.req.query?.('archived') === '1' || c.req.query?.('archived') === 'true'
+        return c.json({ products: await listProducts(user.id, { archived }) })
+      }),
   }),
   registerApiRoute('/app/products', {
     method: 'POST',
@@ -309,6 +330,7 @@ export const appRoutes = [
             name: productNameSchema.optional(),
             brief: z.string().trim().min(1).optional(),
             pinned: z.boolean().optional(),
+            archived: z.boolean().optional(),
             claims: z.array(ProductClaimSchema).optional(),
           })
           .refine(
@@ -316,6 +338,7 @@ export const appRoutes = [
               value.name !== undefined ||
               value.brief !== undefined ||
               value.pinned !== undefined ||
+              value.archived !== undefined ||
               value.claims !== undefined,
           )
           .parse(await c.req.json())
@@ -334,11 +357,38 @@ export const appRoutes = [
           workspace = await setProductPinned(productId, user.id, body.pinned)
           if (!workspace) return c.json({ error: 'Not found' }, 404)
         }
+        if (body.archived !== undefined) {
+          workspace = await setProductArchived(productId, user.id, body.archived)
+          if (!workspace) return c.json({ error: 'Not found' }, 404)
+        }
         if (body.claims !== undefined) {
           workspace = await updateProductClaims(productId, user.id, body.claims)
           if (!workspace) return c.json({ error: 'Not found' }, 404)
         }
         return c.json({ workspace })
+      }),
+  }),
+  registerApiRoute('/app/products/:productId', {
+    method: 'DELETE',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        await deleteProduct(c.req.param('productId'), user.id)
+        return c.json({ ok: true })
+      }),
+  }),
+  registerApiRoute('/app/products/:productId/duplicate', {
+    method: 'POST',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const parsed = z
+          .object({ name: productNameSchema.optional() })
+          .safeParse(await c.req.json().catch(() => ({})))
+        if (!parsed.success) return c.json({ error: 'Invalid input' }, 400)
+        const product = await duplicateProduct(c.req.param('productId'), user.id, parsed.data.name)
+        if (!product) return c.json({ error: 'Not found' }, 404)
+        return c.json({ product }, 201)
       }),
   }),
   registerApiRoute('/app/products/:productId/olfactory-pyramid', {
@@ -373,13 +423,21 @@ export const appRoutes = [
           .object({
             variantId: z.string(),
             rows: z.array(FormulaRowSchema),
+            expectedVersionId: z.string().nullable(),
           })
           .parse(await c.req.json())
-        await commitNewVersion(productId, body.variantId, body.rows)
+        const versionId = await commitNewVersion(
+          productId, body.variantId, user.id, body.rows, body.expectedVersionId,
+        )
         const finalWorkspace = await getWorkspace(productId, user.id)
         const isFinal = finalWorkspace?.selectedFinalVariantId === body.variantId
         const derived = isFinal ? await refreshDerived(productId, user.id) : null
-        return c.json({ ok: true, ...(derived ?? {}) })
+        return c.json({
+          ok: true,
+          versionId,
+          workspace: isFinal ? await getWorkspace(productId, user.id) : finalWorkspace,
+          ...(derived ?? {}),
+        })
       }),
   }),
   registerApiRoute('/app/products/:productId/variants', {

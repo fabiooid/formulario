@@ -1,3 +1,4 @@
+import { materialEvidenceSummary } from './evidence.ts'
 import type { IngredientCategory, ProductClaim } from '../types.ts'
 import { normalizeInci } from '../types.ts'
 import type { DraftInventoryItem } from './check.ts'
@@ -14,6 +15,7 @@ export type GuideInventoryItem = DraftInventoryItem & { category?: IngredientCat
 
 export type GuideCandidate = {
   inci: string
+  evidence: ReturnType<typeof materialEvidenceSummary>
   aliases?: string[]
   typical?: [number, number]
   max?: number
@@ -45,7 +47,7 @@ export type FormulationGuide = {
   rows: [number, number]
   phases: Array<{ code: string; label: string; instruction: string }>
   process: string[]
-  /** A worked split that already passes the check. Copy the shape, swap materials for the brief. */
+  /** Reference split; not a required composition. Validator requirements are listed separately. */
   starter: string[]
   roles: GuideRole[]
   checklist: string[]
@@ -102,11 +104,12 @@ export function buildFormulationGuide(input: {
       .filter((material) => !(claims.includes('vegan') && material.animalDerived === 'yes'))
       .map((material) => {
         const own = findOnShelf(material.inci, inventory, material)
-        return { material, own, score: claimScore(material, claims) + (own && own.stockStatus === 'in_house' ? 1 : 0) }
+        return { material, own, score: claimScore(material, claims) }
       })
       .sort((a, b) => b.score - a.score)
       .map<GuideCandidate>(({ material, own }) => ({
         inci: material.inci,
+        evidence: materialEvidenceSummary(material.inci),
         aliases: material.aliases?.slice(0, 1),
         typical: material.typical,
         max: material.max,
@@ -123,6 +126,7 @@ export function buildFormulationGuide(input: {
       .filter((own) => !(claims.includes('vegan') && own.animalDerived === 'yes'))
       .map<GuideCandidate>((own) => ({
         inci: own.inci,
+        evidence: materialEvidenceSummary(own.inci),
         aliases: own.tradeName ? [own.tradeName] : undefined,
         stock: own.stockStatus,
         fromShelf: true,
@@ -142,21 +146,21 @@ export function buildFormulationGuide(input: {
 
   const required = skeleton.roles.filter((role) => role.requirement === 'required')
   const checklist = [
-    'Start from the starter split below: same number of rows and roles, then swap materials and adjust amounts for the brief.',
+    'Choose a formulation strategy for the brief. The starter split is an optional reference; do not copy its composition or add rows merely to match it.',
     `Rows add up to 100%. ${MATERIAL_ROLE_LABELS[skeleton.balanceRole]} is the balance.`,
-    `At least ${skeleton.rows[0]} rows (${skeleton.rows[1]} is typical). One material per row.`,
-    `Every required role filled: ${required.map((role) => MATERIAL_ROLE_LABELS[role.role].toLowerCase()).join(', ')}.`,
-    'Every INCI comes from the library or the shelf. Do not invent names. Materials listed in this guide are already verified — no need to search for them again.',
-    'Every percent inside the material’s usual band.',
+    `At least ${skeleton.rows[0]} rows (${skeleton.rows[1]} is a reference upper count). This minimum is a current validator constraint, not a measure of formulation quality. Do not pad a formula to pass.`,
+    `Current validator requires these roles: ${required.map((role) => MATERIAL_ROLE_LABELS[role.role].toLowerCase()).join(', ')}.`,
+    'Every INCI comes from the library or the shelf. Do not invent names. Library membership is not verification. Use get_material_evidence for source-backed properties; unsourced guidance remains unverified.',
+    'Typical bands are unverified reference guidance, not safety limits. The validator blocks library ceilings and some role-band violations; disclose unsupported doses.',
     `Phase is one of ${skeleton.phases.map((phase) => phase.code).join(' / ')} as listed here.`,
     ...(skeleton.aqueous
-      ? ['Water is present, so a preservative, a chelator and a pH adjuster are required.']
-      : ['No water, so no preservative. An antioxidant protects the oils.']),
+      ? ['This template currently requires preservative, chelator and pH-adjuster roles. This is a validator constraint, not proof that the system is appropriate; assess the specific product.']
+      : ['Assess preservation and oxidation for the actual system. Anhydrous templates currently reject water; report conflicts with the intended format rather than silently changing it.']),
     ...(skeleton.productType === 'perfume'
-      ? ['List aroma materials one per row — never a single "Fragrance" or "Parfum" row.', 'Respect IFRA limits and EU allergen labelling; the check will flag them.']
+      ? ['List aroma materials one per row — never a single "Fragrance" or "Parfum" row.', 'Only seeded restrictions are checked. IFRA and allergen coverage is incomplete; missing data remains unknown.']
       : []),
     'Respect the product claims (vegan, natural, organic).',
-    'Stock is a flag, not a limit. Use the right material and say what needs ordering.',
+    'Stock is a flag for purchasing only. Never prefer, rank or substitute materials because they are in stock. Choose materials for the brief, then say what needs ordering.',
   ]
 
   return {

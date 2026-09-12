@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { LayoutGridIcon, ListIcon, PlusIcon } from 'lucide-react'
+import { LeafIcon, SproutIcon, VeganIcon, ArrowUpRightIcon, ArchiveIcon, InboxIcon, LayoutGridIcon, ListIcon, PlusIcon } from 'lucide-react'
 import { AppShell, PageHeader } from '@/components/layout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -17,11 +17,11 @@ import type { ProductStage, ProductSummary } from '@/lib/api'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { PinButton, isProductPinned, usePinProduct } from '@/components/pin-button'
+import { ProductActionsMenu, isProductArchived } from '@/components/product-actions'
 
 type ProductView = 'cards' | 'list'
 
 const VIEW_STORAGE_KEY = 'products-view'
-const CARD_META_MAX = 4
 
 function readStoredView(): ProductView {
   const stored = localStorage.getItem(VIEW_STORAGE_KEY)
@@ -47,66 +47,96 @@ function formatProductDate(value: string | undefined, language: Language) {
 
 function ProductDates({ product, className }: { product: ProductSummary; className?: string }) {
   const { t, language } = useLanguage()
+  const updatedAt = formatProductDate(product.updatedAt, language) ? product.updatedAt : product.createdAt
+  const updated = formatProductDate(updatedAt, language)
   const created = formatProductDate(product.createdAt, language)
-  const edited = formatProductDate(product.updatedAt, language)
-  if (!created && !edited) return null
+  if (!updated) return null
 
   return (
-    <p className={cn('text-xs text-muted-foreground', className)}>
-      {created ? t('products.created', { date: created }) : null}
-      {created && edited ? <span className="mx-1.5 text-border">·</span> : null}
-      {edited ? t('products.edited', { date: edited }) : null}
+    <p
+      className={cn('text-xs text-muted-foreground', className)}
+      title={created ? t('products.created', { date: created }) : undefined}
+    >
+      <time dateTime={updatedAt}>{t('products.updated', { date: updated })}</time>
+      {created ? <span className="sr-only"> · {t('products.created', { date: created })}</span> : null}
     </p>
   )
 }
 
-function ProductMeta({
-  product,
-  maxItems,
-}: {
-  product: ProductSummary
-  maxItems?: number
-}) {
+function ProductMeta({ product }: { product: ProductSummary }) {
   const { t } = useLanguage()
-  const items = [
-    {
-      key: 'type',
-      label: t(`productType.${product.type}` as MessageKey),
-      variant: 'secondary' as const,
-    },
-    {
-      key: 'stage',
-      label: t(stageLabelKey(product.stage)),
-      variant: 'secondary' as const,
-    },
-    ...product.markets.map((market) => ({
-      key: `market-${market}`,
-      label: market,
-      variant: 'secondary' as const,
-    })),
-    ...(product.claims ?? []).map((claim) => ({
-      key: `claim-${claim}`,
-      label: t(`claims.${claim}` as MessageKey),
-      variant: 'outline' as const,
-    })),
-  ]
-  const visible =
-    maxItems != null && items.length > maxItems
-      ? items.slice(0, maxItems - 1)
-      : items
-  const extra = items.length - visible.length
 
   return (
     <>
-      {visible.map((item) => (
-        <Badge key={item.key} variant={item.variant}>
-          {item.label}
+      <span className="min-w-0">
+        <Badge variant="secondary" className="max-w-full truncate">
+          {t(`productType.${product.type}` as MessageKey)}
         </Badge>
-      ))}
-      {extra > 0 ? (
-        <Badge variant="outline">{t('products.moreMeta', { count: extra })}</Badge>
-      ) : null}
+      </span>
+      <span className="min-w-0">
+        <Badge variant="secondary" className="max-w-full truncate">
+          {t(stageLabelKey(product.stage))}
+        </Badge>
+      </span>
     </>
+  )
+}
+
+// These represent selected product claims, not verified certifications.
+function ProductClaimIcons({ product }: { product: ProductSummary }) {
+  const { t } = useLanguage()
+  const claims = [
+    { key: 'vegan', icon: VeganIcon },
+    { key: 'natural', icon: LeafIcon },
+    { key: 'organic', icon: SproutIcon },
+  ] as const
+
+  return (
+    <span className="flex w-16 shrink-0 items-center gap-2 text-muted-foreground">
+      {claims.map(({ key, icon: Icon }) => product.claims?.includes(key) ? (
+        <span key={key} role="img" aria-label={t(`claims.${key}`)} title={t(`claims.${key}`)} className="inline-flex size-4 shrink-0">
+          <Icon aria-hidden="true" className="size-4" />
+        </span>
+      ) : null)}
+    </span>
+  )
+}
+
+function ProductStatusSwitcher({
+  archived,
+  onArchivedChange,
+}: {
+  archived: boolean
+  onArchivedChange: (archived: boolean) => void
+}) {
+  const { t } = useLanguage()
+
+  return (
+    <ToggleGroup
+      variant="outline"
+      size="sm"
+      spacing={0}
+      value={[archived ? 'archived' : 'active']}
+      onValueChange={(next) => {
+        const value = next[0]
+        if (value === 'active') onArchivedChange(false)
+        if (value === 'archived') onArchivedChange(true)
+      }}
+      aria-label={t('products.statusGroup')}
+    >
+      <ToggleGroupItem value="active" aria-label={t('products.statusActive')} title={t('products.statusActive')}>
+        <InboxIcon data-icon="inline-start" />
+        <span className="hidden lg:inline">{t('products.statusActive')}</span>
+      </ToggleGroupItem>
+      <ToggleGroupItem
+        value="archived"
+        aria-label={t('products.statusArchived')}
+        title={t('products.statusArchived')}
+      >
+        <ArchiveIcon data-icon="inline-start" />
+        <span className="hidden lg:inline">{t('products.statusArchived')}</span>
+      </ToggleGroupItem>
+    </ToggleGroup>
   )
 }
 
@@ -149,6 +179,7 @@ export function ProductsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [view, setView] = useState<ProductView>(readStoredView)
+  const [archived, setArchived] = useState(false)
   const pinMutation = usePinProduct()
 
   function handleViewChange(next: ProductView) {
@@ -157,8 +188,8 @@ export function ProductsPage() {
   }
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => api.listProducts(),
+    queryKey: archived ? ['products', 'archived'] : ['products'],
+    queryFn: () => api.listProducts({ archived }),
     enabled: !!user,
   })
 
@@ -182,9 +213,9 @@ export function ProductsPage() {
     <AppShell title={t('nav.products')}>
       <PageHeader
         title={t('products.title')}
-        description={t('products.subtitle')}
         actions={
           <>
+            <ProductStatusSwitcher archived={archived} onArchivedChange={setArchived} />
             <ProductViewSwitcher view={view} onViewChange={handleViewChange} />
             <Button
               onClick={() => createMutation.mutate()}
@@ -210,53 +241,58 @@ export function ProductsPage() {
           <EmptyState
             title={t('products.loadFailedTitle')}
             description={t('workspace.loadFailedDescription')}
-            action={
+          >
               <Button variant="outline" onClick={() => refetch()}>
                 {t('common.retry')}
               </Button>
-            }
-          />
+          </EmptyState>
         ) : !data?.products.length ? (
           <EmptyState
-            title={t('products.emptyTitle')}
-            description={t('products.emptyDescription')}
+            title={archived ? t('products.emptyArchivedTitle') : t('products.emptyTitle')}
+            description={
+              archived ? t('products.emptyArchivedDescription') : t('products.emptyDescription')
+            }
           />
         ) : (
           view === 'list' ? (
-            <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-soft">
+            <div className="@container/products overflow-hidden rounded-xl border border-border/70 bg-card shadow-soft">
               {data.products.map((product) => {
                 const pinned = isProductPinned(product)
                 return (
                   <div
                     key={product.id}
-                    className="group/pin flex items-stretch border-b border-border/70 last:border-b-0"
+                    className="group/pin flex min-w-0 items-stretch border-b border-border/70 last:border-b-0"
                   >
                     <Link
                       to={`/products/${product.id}`}
                       className={cn(
-                        'group flex min-w-0 flex-1 flex-col gap-2 px-4 py-3',
-                        'transition-colors hover:bg-muted/50 lg:flex-row lg:items-center lg:justify-between lg:gap-4',
+                        'group grid grid-cols-[minmax(0,1fr)] min-w-0 flex-1 gap-2 overflow-hidden px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                        'transition-colors hover:bg-muted/50 @min-[800px]/products:grid-cols-[minmax(0,1fr)_11rem_19rem] @min-[800px]/products:items-center @min-[800px]/products:gap-4',
                       )}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium tracking-tight group-hover:text-foreground">{product.name}</p>
+                        <p className="truncate font-medium tracking-tight group-hover:text-foreground">{product.name}</p>
                         <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
                           {product.brief.trim() || t('products.noBrief')}
                         </p>
                       </div>
-                      <ProductDates product={product} className="shrink-0 sm:min-w-40" />
-                      <div className="flex flex-wrap items-center gap-2 text-xs sm:justify-end">
+                      <ProductDates product={product} className="truncate" />
+                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_4rem] items-center gap-2 text-xs min-w-0 w-full max-w-76">
                         <ProductMeta product={product} />
+                        <ProductClaimIcons product={product} />
                       </div>
                     </Link>
                     <div className="flex shrink-0 items-center pr-2">
-                      <PinButton
-                        pinned={pinned}
-                        revealOnHover
-                        onToggle={() =>
-                          pinMutation.mutate({ productId: product.id, pinned: !pinned })
-                        }
-                      />
+                      {isProductArchived(product) ? null : (
+                        <PinButton
+                          pinned={pinned}
+                          revealOnHover
+                          onToggle={() =>
+                            pinMutation.mutate({ productId: product.id, pinned: !pinned })
+                          }
+                        />
+                      )}
+                      <ProductActionsMenu product={product} />
                     </div>
                   </div>
                 )
@@ -268,9 +304,9 @@ export function ProductsPage() {
                 const pinned = isProductPinned(product)
                 return (
                   <div key={product.id} className="group/pin relative h-full max-w-sm">
-                    <Link to={`/products/${product.id}`} className="group block h-full">
-                      <Card className="h-full transition-all duration-200 hover:border-border hover:shadow-soft-hover">
-                        <CardHeader className="pb-3 pr-10">
+                    <Link to={`/products/${product.id}`} className="group block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <Card className="h-full gap-3 transition-[border-color,box-shadow] duration-200 hover:border-border hover:shadow-soft-hover motion-reduce:transition-none">
+                        <CardHeader className="pr-24">
                           <CardTitle className="line-clamp-1 min-h-6 text-base font-medium tracking-tight group-hover:text-foreground">
                             {product.name}
                           </CardTitle>
@@ -279,21 +315,29 @@ export function ProductsPage() {
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-3">
-                          <div className="flex h-12 flex-wrap content-start items-start gap-2 overflow-hidden text-xs">
-                            <ProductMeta product={product} maxItems={CARD_META_MAX} />
+                          <div className="flex min-h-6 flex-wrap items-center gap-2 text-xs">
+                            <ProductMeta product={product} />
+                            <span className="ml-auto"><ProductClaimIcons product={product} /></span>
                           </div>
-                          <ProductDates product={product} className="truncate" />
+                          <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
+                            <ProductDates product={product} className="truncate" />
+                            <ArrowUpRightIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+                          </div>
                         </CardContent>
                       </Card>
                     </Link>
-                    <PinButton
-                      pinned={pinned}
-                      revealOnHover
-                      className="absolute top-3 right-3"
-                      onToggle={() =>
-                        pinMutation.mutate({ productId: product.id, pinned: !pinned })
-                      }
-                    />
+                    <div className="absolute top-3 right-3 flex items-center">
+                      {isProductArchived(product) ? null : (
+                        <PinButton
+                          pinned={pinned}
+                          revealOnHover
+                          onToggle={() =>
+                            pinMutation.mutate({ productId: product.id, pinned: !pinned })
+                          }
+                        />
+                      )}
+                      <ProductActionsMenu product={product} />
+                    </div>
                   </div>
                 )
               })}

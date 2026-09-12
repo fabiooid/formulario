@@ -71,14 +71,14 @@ Both light and dark are first-class. The theme switcher lives in the user menu a
 
 | Role | Size | Weight |
 |---|---|---|
-| Page title (`PageHeader`) | `text-2xl` / `sm:text-[1.75rem]` | `font-semibold` |
+| Page title (`PageHeader`) | `text-3xl` / `sm:text-[2rem]` | `font-semibold` |
 | Section title (`WorkspaceSection`, formula) | `text-lg` | `font-semibold` |
 | Card title | `text-base` | `font-medium` |
 | Body, forms, tables | `text-sm` | regular |
 | Meta, hints, table headers | `text-xs` | `font-medium` or muted |
 | Loading / empty helper | `text-sm text-muted-foreground` | regular |
 
-Tracking stays mostly `tracking-normal`. Product names may use `tracking-tight`. Table column headers are `uppercase tracking-wide`.
+Page titles use `tracking-tight`; other tracking stays mostly `tracking-normal`. Product names may use `tracking-tight`. Table column headers are `uppercase tracking-wide`.
 
 Page descriptions: `text-sm leading-relaxed text-muted-foreground`, max width `max-w-2xl`.
 
@@ -91,8 +91,8 @@ Page descriptions: `text-sm leading-relaxed text-muted-foreground`, max width `m
 - App chrome: sidebar + main. No separate page navbar.
 - Main padding: `px-4` → `sm:px-6` → `lg:px-10`, extra space at the bottom (`pb-16` / `sm:pb-20`) so the last block is not cut off
 - Content width: fluid and full-width by default, with comfortable side padding. Wide workspaces may cap at `max-w-[90rem]`. Must shrink (`min-w-0`) so nothing blows past the window.
-- Breadcrumb sits at the top of the page content (same width and padding) and scrolls with the page. Page title (`PageHeader`) follows it. The agent launcher (sparkle) sits on the right of this row. On a product page, the pin sits immediately after the last breadcrumb, and the title sits close to the tabs (`gap-2`, no extra bottom margin).
-- Vertical stacks: `gap-4` inside a section, `gap-6` on a page of cards, `gap-8` between the brief prompt and the formula below
+- Breadcrumb sits at the top of the page content (same width and padding) and scrolls with the page. Page title (`PageHeader`) follows it. The agent launcher (sparkle) sits on the right of this row. On a product page, the pin sits immediately after the last breadcrumb, then the product overflow menu, and the title sits close to the tabs (`gap-2`, no extra bottom margin).
+- Vertical stacks: `gap-4` inside a section, `gap-6` on a page of cards, `gap-4` between the brief prompt and the formula below
 - Prefer `gap-*` over `space-y-*`
 
 **Sidebar**
@@ -104,7 +104,7 @@ Page descriptions: `text-sm leading-relaxed text-muted-foreground`, max width `m
 
 **Agent pane**
 
-The formulator agent is named **Lab Assistant** in the UI (breadcrumb launcher, message author, paid-gate copy). It is app chrome, not a page and not a card on the formula step. The pane header shows the **thread name**, not the agent name.
+The assistant is named **Lab Assistant** in the UI (breadcrumb launcher, message author, paid-gate copy). It is app chrome, not a page and not a card on the formula step. One chat handles app questions and administrative actions, delegating formulation creation and critique to a specialist. There is no separate specialist chat or agent switcher. The pane header shows the **thread name**, not the agent name.
 
 - Closed (default): sparkle button in the breadcrumb row. Shortcut **⌘J** / **Ctrl+J**. Escape closes the pane.
 - Side pane: default `w-[22rem]` on the right of the page, full viewport height. It stays put while the page scrolls. A 1px split sits in the center of the left-edge hit area. Drag to resize; a short handle appears on that same center line on hover. Remembers width. Left nav stays. Page content shrinks.
@@ -112,7 +112,7 @@ The formulator agent is named **Lab Assistant** in the UI (breadcrumb launcher, 
 - On small screens, open goes straight to full screen (no side column).
 - Remembers closed / pane / full, like the left nav.
 - Header: editable thread name (same inline rename as the product title), expand/collapse, close. Before the first prompt it shows Lab Assistant. After that it uses a short title from the first prompt. Composer placeholder stays general (stock, a formula, or a new product) — not one example formula.
-- Conversation uses MessageScroller, Message, Bubble, Marker, Attachment. Chat text uses the UI font (`text-sm`, relaxed line height), not mono, and not markdown. Composer is shadcn `InputGroup` + `InputGroupTextarea`, with a round send arrow in the footer. Enter sends, Shift+Enter makes a new line.
+- Conversation uses MessageScroller, Message, Bubble, Marker, Attachment. Chat text uses the UI font (`text-sm`, relaxed line height), not mono. Assistant messages render Markdown (headings, emphasis, lists and source links) inside the existing Bubble; raw HTML and images are disabled. Keep headings modest and formula rows on proposal cards. Composer is shadcn `InputGroup` + `InputGroupTextarea`, with a round send arrow in the footer. Enter sends, Shift+Enter makes a new line.
 - Formula replies are a short “why” in the bubble. Percents and INCI live on the accept card, not as a list in chat.
 - Paid gate: same pane, `EmptyState` inside — do not hide the chrome.
 - Chat proposes stock edits, new products, and formula patches. The person accepts. Formula accept/reject stays next to the table. Stock and new-product accept/reject sit on Attachment cards in the thread. A new product from chat can include a starting formula — accepting it should fill the table.
@@ -207,10 +207,11 @@ The formulator sparkle is hidden here. Breadcrumb: app name / Settings / current
 
 ### Product list
 
-Header actions, right side: view switcher, then primary **New from brief**.
+Header actions, right side: Active / Archived filter, view switcher, then primary **New from brief**.
 
-- **Cards** (default): 1 / 2 / 3 columns (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`). Cards cap at `max-w-sm` and share one height: 1-line name, 2-line brief (empty still uses the slot), up to 4 meta pills then `+N`, 1-line dates. Same meta order as list: type, stage, markets, then claims.
-- **List:** one bordered card wrapping rows (`rounded-xl border-border/70 shadow-soft`). Each row is a link. Same meta as cards.
+- **Cards** (default): 1 / 2 / 3 columns (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`). Cards cap at `max-w-sm` and share one height: 1-line name, 2-line brief (empty still uses the slot), only type and stage pills, one Updated date (creation date retained in the date hover text and accessible text). Remove the page subtitle; keep card header/content spacing at gap-3 without extra header bottom padding. Same meta order as list: type, then stage. Markets belong inside the product. Selected claims use muted Lucide icons (Vegan, Leaf for natural, Sprout for organic), with translated accessible labels and native hover titles; they do not imply certification. Overflow menu (Duplicate / Archive / Delete) sits top-right; pin sits to its left and still reveals on hover.
+- **List:** one bordered card wrapping rows (`rounded-xl border-border/70 shadow-soft`). Each row is a link. Same type and stage metadata as cards. At 800px of available list width, rows use a flexible name/brief column, an 11rem date column, and a 19rem metadata column with equal type/stage slots and a reserved 4rem claim-icon slot. Below that, rows stack. Pin and the same overflow menu sit at the end of the row.
+- Active / Archived filter beside the view switcher (icons only on small screens). Archived products leave Home, pins, and the default list. Restore from the menu or the product page.
 - Remember the last view in `localStorage`.
 - On small screens the switcher shows icons only.
 
@@ -219,7 +220,7 @@ Header actions, right side: view switcher, then primary **New from brief**.
 A morning brief, not a metrics wall. Same cards as everywhere else.
 
 1. Three small numbers: shelf value, to-purchase count, formulas with a full cost
-2. Two working lists: to purchase (with € / kg) and needs attention
+2. Two working lists: to purchase (with € / kg) and needs attention. Use simple divided purchase rows inside the existing Card. Group attention findings by product link, with the product name once and all issues underneath; preserve severity order and keep every issue visible.
 3. Ranked formula cost (`SimpleBarChart`, foreground fill, mono money)
 
 Money and grams use `font-mono tabular-nums`. Shelf value only counts in-house and low stock that have both a price and an amount on hand. Always show coverage so a missing price cannot look like zero.
@@ -229,11 +230,15 @@ Money and grams use `font-mono tabular-nums`. Shelf value only counts in-house a
 Wide shell. Two peer tabs, not a numbered sequence. One column, so the agent pane can open without squeezing two work areas.
 
 - **Workspace** — brief prompt on top, formula table under it. Claims sit under the table, not inside the prompt.
-- **Regulatory** — final INCI, market checks, PIF draft, and references.
+- **Regulatory** — final INCI, market checks, PIF draft, and references. Market findings lead with ingredient names and action badges, sorted with bans and over-limits first. Blocking messages stay visible; sources and supporting details use shadcn Collapsible. Group unknown coverage into a count with expandable ingredient names and shared citations; never hide real labelling requirements in that group.
 
-The brief is a textarea plus **Generate**. Generate opens the formulator agent with the brief; it does not write the table directly. The person still accepts patches.
+The brief uses shadcn Collapsible: expanded for an empty formula, collapsed initially when the selected variant has a committed formula, with a Brief heading and chevron to reopen it. Keep workspace sections at gap-4 and the tab content at pt-4 so the table stays close to the top. The brief is a textarea plus **Generate**. Generate opens the formulator agent with the brief; it does not write the table directly. The person still accepts patches.
 
 Use `WorkspaceSection` for a quiet heading (no step number). Empty regulatory state uses `EmptyState`, not a locked dashed card or a checklist of steps.
+
+The variant selector sits beside the formula heading and wraps on narrow screens. New variant and Duplicate live in an adjacent shadcn DropdownMenu. Add ingredient and Commit remain visible; Commit is disabled when the rows match the committed formula or a save is pending. Product Duplicate / Archive / Delete live in the breadcrumb overflow menu, next to the pin.
+
+Stock needs above the formula use a compact purchase count in a shadcn Collapsible, followed by an inventory link. Expand to see ingredient names and existing stock badges; keep details closed initially. Only show the summary after inventory loads and when purchases are needed.
 
 Formula table is full width. The agent is not embedded here — it lives in the app chrome.
 
@@ -289,6 +294,10 @@ Small (`sm:max-w-md`), centered, light overlay (`bg-black/10` + slight blur). Ti
 
 The formula editor is a real table, not a list of cards. Header row `bg-muted/60`, uppercase muted labels, cell borders. Inputs sit flush in cells (`border-0 bg-transparent`). Percents are right-aligned mono. Row numbers are mono.
 
+### Ingredient inventory
+
+Use one ingredient cell with mono INCI and optional trade name beneath. Keep category, flags, and notes in the edit dialog. Price and amount remain visible on wider screens. Use a fixed-layout shadcn Table with wrapping ingredient names and reserved widths for Stock and an always-visible row DropdownMenu (Edit / Delete). Delete retains its confirmation dialog.
+
 ### Tabs
 
 Use for peer views of the same record. Product page: Workspace / Regulatory at the top. On Regulatory: Markets / PIF / Refs. Use `variant="line"` (word + underline), not the pill / button look.
@@ -312,7 +321,7 @@ Sonner, themed with popover colors. Use for short confirmations later; do not to
 ## Sidebar & navigation
 
 - Logo: simple triangle mark, product name beside it. Icon only — no fill, border, or card. Do not put the resting logo inside a button-like card.
-- Active item: muted fill only
+- Active item: muted fill with a short violet edge marker
 - Inactive: `text-muted-foreground`, hover to foreground on a light accent fill
 - Pinned products under a tiny muted heading (“Pinned”). Hide the block if nothing is pinned, and while in Settings.
 - Account lives at the **bottom**. When the nav is expanded, a collapse control sits on the right of the logo row and appears on sidebar hover. When the nav is collapsed, hover the logo mark to expand (same overlay as before).
@@ -341,6 +350,9 @@ Plain, short, calm. No hype, no emoji in product UI, no “AI-powered” languag
 - **Inline rename:** the workspace title and the Lab Assistant thread name are inputs that look like a heading until hover/focus (`hover:bg-muted/50`, ring on focus). Enter saves, Escape cancels, empty blur restores the old name.
 - **Remembered chrome:** sidebar collapsed, product view (cards/list), theme, language.
 - **Locked formula rows:** cannot edit, cannot delete. Show the lock icon at the front of the ingredient name, not next to the Lock switch — the Lock column holds only the centred switch.
+- **Uncommitted formula edits:** keep a separate draft for each user, organisation, product and variant in the current browser tab. Refreshing workspace data or switching products/variants must preserve it. Show a quiet text notice and an outline discard action with confirmation. Commit or discard edits before accepting an agent patch. Failed saves keep the draft and show an error; a stale draft must never silently overwrite a newer committed version.
+- **Destructive in menus:** Delete lives last in the product overflow menu (after Duplicate and Archive), with a confirmation dialog. Same pattern as inventory.
+- **Archived product:** quiet restore line under the title (same tone as the uncommitted-draft notice). Hide the pin while archived.
 - **Paid gates:** same layout, `EmptyState` inside — do not hide the panel entirely. Agent pane included.
 - **Empty regulatory / PIF / INCI:** `EmptyState` with a short next step. Do not use a numbered checklist to unlock a tab.
 
@@ -373,3 +385,11 @@ Plain, short, calm. No hype, no emoji in product UI, no “AI-powered” languag
 - Mix cards and a custom “panel” look for the same kind of content
 - Skip empty, loading, locked, and error states
 - Change only one instance of a pattern (if list rows change, product cards should still match)
+
+Product supporting tools: keep INCI preview and Choose as final together directly after the formula/claims. Separate them from the scent pyramid with a separator. The pyramid is a closed-by-default shadcn Collapsible Card describing scent direction, independent of INCI. Maceration follows as a closed-by-default status Card; expand to edit dates side by side and notes below. Keep editors mounted to preserve unsaved input. Choose as final is disabled while formula drafts exist.
+
+## Expressive details
+
+Keep shadcn primitives and the quiet notebook layout. Home summary cards use a fine `accent-brand/40` top edge. Product cards stay neutral, without type icons or violet accents, and have a divided date footer with a directional arrow. Reserve header space for the pin and overflow controls. Large surfaces stay neutral. Product links have a visible keyboard focus ring. Home figures use 30px mono type, with small tinted icon tiles. Do not add decorative motion. Cost rows wrap their labels above the bar on narrow screens.
+
+Product pin and overflow controls use shadcn `icon-sm` buttons (32px targets) and 18px Lucide icons. Card headers reserve `pr-24` for the pair so product names do not overlap the controls.

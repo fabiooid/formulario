@@ -1,4 +1,4 @@
-import { CopyIcon, PlusIcon } from 'lucide-react'
+import { CopyIcon, MoreHorizontalIcon, PlusIcon } from 'lucide-react'
 import type { ProductClaim } from '@atelier/domain'
 import { ClaimPicker } from '@/components/claim-picker'
 import { FormulaBuilder } from '@/components/formula-builder'
@@ -6,6 +6,12 @@ import { InciPreview } from '@/components/inci-preview'
 import { MacerationCard } from '@/components/maceration-card'
 import { OlfactoryPyramidGenerator } from '@/components/olfactory-pyramid'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -35,6 +41,9 @@ export function WorkspaceFormula({
   pendingPatches,
   onAcceptPatch,
   onRejectPatch,
+  patchPending,
+  hasDraft,
+  hasChanges,
   onCreateVariant,
   onDuplicateVariant,
   onSetFinal,
@@ -57,6 +66,9 @@ export function WorkspaceFormula({
   pendingPatches: FormulaPatch[]
   onAcceptPatch: (patchId: string) => void
   onRejectPatch: (patchId: string) => void
+  patchPending?: boolean
+  hasDraft?: boolean
+  hasChanges: boolean
   onCreateVariant: () => void
   onDuplicateVariant: () => void
   onSetFinal: () => void
@@ -79,54 +91,64 @@ export function WorkspaceFormula({
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      {isPerfume ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={selectedVariantId}
-            onValueChange={(value) => value && onSelectVariant(value)}
-          >
-            <SelectTrigger aria-label={t('workspace.variants.select')} className="w-full bg-card sm:w-auto sm:min-w-56">
-              <SelectValue>
-                {selected
-                  ? variantOptionLabel(
-                      selected.variant.label,
-                      selected.variant.isSelectedFinal,
-                      t('workspace.variants.finalBadge'),
-                    )
-                  : t('workspace.variants.select')}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {variants.map(({ variant }) => (
-                  <SelectItem key={variant.id} value={variant.id}>
-                    {variantOptionLabel(
-                      variant.label,
-                      variant.isSelectedFinal,
-                      t('workspace.variants.finalBadge'),
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="sm" onClick={onCreateVariant}>
-            <PlusIcon data-icon="inline-start" />
-            {t('workspace.variants.new')}
-          </Button>
-          <Button variant="outline" size="sm" onClick={onDuplicateVariant}>
-            <CopyIcon data-icon="inline-start" />
-            {t('workspace.variants.duplicate')}
-          </Button>
-        </div>
-      ) : null}
-
       <FormulaBuilder
         rows={rows}
         onChange={onRowsChange}
         onSave={onSave}
         saving={saving}
+        hasChanges={hasChanges}
         claims={product.claims ?? []}
+        variantControls={isPerfume ? (
+          <div className="flex min-w-0 max-w-full items-center gap-1">
+            <Select
+              value={selectedVariantId}
+              onValueChange={(value) => value && onSelectVariant(value)}
+            >
+              <SelectTrigger aria-label={t('workspace.variants.select')} className="min-w-0 max-w-full bg-card">
+                <SelectValue>
+                  {selected
+                    ? variantOptionLabel(
+                        selected.variant.label,
+                        selected.variant.isSelectedFinal,
+                        t('workspace.variants.finalBadge'),
+                      )
+                    : t('workspace.variants.select')}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {variants.map(({ variant }) => (
+                    <SelectItem key={variant.id} value={variant.id}>
+                      {variantOptionLabel(
+                        variant.label,
+                        variant.isSelectedFinal,
+                        t('workspace.variants.finalBadge'),
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="ghost" size="icon-sm" />}
+                aria-label={t('workspace.variants.actions')}
+              >
+                <MoreHorizontalIcon />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={onCreateVariant}>
+                  <PlusIcon />
+                  {t('workspace.variants.new')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onDuplicateVariant}>
+                  <CopyIcon />
+                  {t('workspace.variants.duplicate')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : null}
       />
 
       <FieldGroup>
@@ -144,6 +166,7 @@ export function WorkspaceFormula({
       {pendingPatches.length > 0 ? (
         <div className="flex flex-col gap-4">
           <h3 className="text-base font-medium">{t('workspace.pendingPatches')}</h3>
+          {hasDraft ? <p className="text-sm text-muted-foreground">{t('workspace.saveBeforePatch')}</p> : null}
           {pendingPatches.map((patch, index) => (
             <div key={patch.id} className="flex flex-col gap-2">
               {index > 0 ? <Separator /> : null}
@@ -152,10 +175,10 @@ export function WorkspaceFormula({
                 {t('workspace.operations', { count: patch.operations.length })}
               </p>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => onAcceptPatch(patch.id)}>
+                <Button size="sm" disabled={patchPending || hasDraft} onClick={() => onAcceptPatch(patch.id)}>
                   {t('workspace.accept')}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => onRejectPatch(patch.id)}>
+                <Button size="sm" variant="outline" disabled={patchPending} onClick={() => onRejectPatch(patch.id)}>
                   {t('workspace.reject')}
                 </Button>
               </div>
@@ -168,6 +191,19 @@ export function WorkspaceFormula({
 
       <InciPreview rows={rows} preview />
 
+      <div className="flex">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onSetFinal}
+          disabled={!hasCommittedFormula || hasDraft || setFinalSaving}
+        >
+          {setFinalSaving ? t('workspace.final.generating') : t('workspace.variants.setFinal')}
+        </Button>
+      </div>
+
+      <Separator />
+
       {isPerfume ? (
         <OlfactoryPyramidGenerator
           initialValue={product.olfactoryPyramid}
@@ -177,6 +213,8 @@ export function WorkspaceFormula({
         />
       ) : null}
 
+
+
       {isPerfume && selected ? (
         <MacerationCard
           variant={selected.variant}
@@ -185,16 +223,7 @@ export function WorkspaceFormula({
         />
       ) : null}
 
-      <div className="flex">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onSetFinal}
-          disabled={!hasCommittedFormula || setFinalSaving}
-        >
-          {setFinalSaving ? t('workspace.final.generating') : t('workspace.variants.setFinal')}
-        </Button>
-      </div>
+
     </div>
   )
 }

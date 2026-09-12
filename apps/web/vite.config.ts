@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@atelier/domain": path.resolve(__dirname, "../../packages/domain/src/index.ts"),
+      "react-markdown": path.resolve(__dirname, "../../node_modules/react-markdown"),
     },
   },
   server: {

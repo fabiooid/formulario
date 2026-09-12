@@ -49,7 +49,7 @@ export function PinButton({
     <Button
       type="button"
       variant="ghost"
-      size="icon-xs"
+      size="icon-sm"
       aria-pressed={pinned}
       aria-label={pinned ? t('products.unpin') : t('products.pin')}
       title={pinned ? t('products.unpin') : t('products.pin')}
@@ -65,7 +65,7 @@ export function PinButton({
         onToggle()
       }}
     >
-      <PinIcon className={cn('size-3.5', pinned && 'fill-current')} />
+      <PinIcon className={cn('size-4.5', pinned && 'fill-current')} />
     </Button>
   )
 }

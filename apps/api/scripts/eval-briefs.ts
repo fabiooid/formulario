@@ -1,5 +1,5 @@
 /**
- * Live eval: run the fixed briefs through the Lab Assistant and score what lands on the card.
+ * Live eval: run the fixed briefs through the formulation specialist and score what lands on the card.
  *
  *   npm run eval:briefs --workspace=apps/api            # all briefs
  *   npm run eval:briefs --workspace=apps/api -- ha-serum citrus-edp
@@ -76,7 +76,6 @@ async function main() {
       const result = await agent.generate(prompt, {
         requestContext,
         maxSteps: 14,
-        memory: { resource: USER_ID, thread: `eval-${brief.id}-${Date.now()}` },
       })
       type ToolResultLike = { payload?: { toolName?: string; result?: unknown } }
       const steps = (result as { steps?: Array<{ toolResults?: ToolResultLike[] }> }).steps ?? []

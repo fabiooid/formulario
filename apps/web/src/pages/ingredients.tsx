@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { MoreHorizontalIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { AppShell, PageHeader } from '@/components/layout'
@@ -15,7 +15,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
@@ -86,25 +91,6 @@ function toForm(ingredient?: InventoryIngredient | null): IngredientInput {
     onHandGrams: ingredient.onHandGrams ?? null,
     notes: ingredient.notes ?? '',
   }
-}
-
-function IngredientFlags({ ingredient }: { ingredient: InventoryIngredient }) {
-  const { t } = useLanguage()
-  const badges: string[] = []
-  if (ingredient.animalDerived === 'yes') badges.push(t('ingredients.animalDerived'))
-  if (ingredient.originType === 'natural') badges.push(t('ingredients.origin.natural'))
-  if (ingredient.originType === 'synthetic') badges.push(t('ingredients.origin.synthetic'))
-  if (ingredient.organicCertified === 'yes') badges.push(t('claims.organic'))
-  if (!badges.length) return <span className="text-muted-foreground">—</span>
-  return (
-    <div className="flex flex-wrap gap-1">
-      {badges.map((label) => (
-        <Badge key={label} variant="outline">
-          {label}
-        </Badge>
-      ))}
-    </div>
-  )
 }
 
 export function IngredientsPage() {
@@ -464,38 +450,26 @@ export function IngredientsPage() {
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-soft">
-          <Table>
+          <Table className="table-fixed">
             <TableHeader className="bg-muted/60">
               <TableRow className="hover:bg-transparent">
                 <TableHead>{t('ingredients.inci')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('ingredients.tradeName')}</TableHead>
-                <TableHead className="hidden sm:table-cell">{t('ingredients.category')}</TableHead>
-                <TableHead className="hidden lg:table-cell">{t('ingredients.flagsColumn')}</TableHead>
-                <TableHead className="hidden sm:table-cell">{t('ingredients.price')}</TableHead>
-                <TableHead className="hidden md:table-cell">{t('ingredients.onHand')}</TableHead>
-                <TableHead>{t('ingredients.stock')}</TableHead>
-                <TableHead className="w-24" />
+                <TableHead className="hidden w-32 sm:table-cell">{t('ingredients.price')}</TableHead>
+                <TableHead className="hidden w-28 md:table-cell">{t('ingredients.onHand')}</TableHead>
+                <TableHead className="w-24 sm:w-28">{t('ingredients.stock')}</TableHead>
+                <TableHead className="w-12"><span className="sr-only">{t('ingredients.actions')}</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((ingredient) => (
                 <TableRow key={ingredient.id}>
-                  <TableCell>
-                    <div className="min-w-0">
-                      <p className="font-medium tracking-tight">{ingredient.inci}</p>
-                      {ingredient.notes ? (
-                        <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">{ingredient.notes}</p>
+                  <TableCell className="whitespace-normal">
+                    <div className="min-w-0 [overflow-wrap:anywhere]">
+                      <p className="font-mono font-medium">{ingredient.inci}</p>
+                      {ingredient.tradeName ? (
+                        <p className="mt-0.5 text-sm text-muted-foreground">{ingredient.tradeName}</p>
                       ) : null}
                     </div>
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground md:table-cell">
-                    {ingredient.tradeName || '—'}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {t(`ingredients.categories.${ingredient.category}` as MessageKey)}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <IngredientFlags ingredient={ingredient} />
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     {ingredient.pricePerKg != null ? (
@@ -518,24 +492,24 @@ export function IngredientsPage() {
                     <StockBadge status={ingredient.stockStatus} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => openEdit(ingredient)}
-                        aria-label={t('ingredients.edit')}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={<Button variant="ghost" size="icon-sm" />}
+                        aria-label={t('ingredients.actionsFor', { name: ingredient.inci })}
                       >
-                        <PencilIcon />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setDeleting(ingredient)}
-                        aria-label={t('ingredients.delete')}
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    </div>
+                        <MoreHorizontalIcon />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => openEdit(ingredient)}>
+                          <PencilIcon />
+                          {t('ingredients.edit')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive" onClick={() => setDeleting(ingredient)}>
+                          <Trash2Icon />
+                          {t('ingredients.delete')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}

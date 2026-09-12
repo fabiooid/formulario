@@ -96,7 +96,7 @@ npm run dev
 | `npm run db:migrate` | Run Drizzle migrations |
 | `npm run db:seed` | Seed rules + demo products |
 | `npm run db:setup` | Migrate + seed |
-| `npm run test` | Domain tests: rules, claims, materials library, skeletons, draft gate |
+| `npm run test` | Domain, database/API regression tests, and formula draft state tests (isolated temporary databases) |
 | `npm run eval:briefs --workspace=apps/api` | Run the fixed briefs through the live agent and score the proposals |
 
 ## Project layout
@@ -107,6 +107,12 @@ apps/api/          Mastra agent, REST routes, Drizzle
 packages/domain/   Shared types, rules engine, PIF generator, formulation (materials, skeletons, gate)
 DESIGN.md          Visual and UX rules for the web app
 ```
+
+Formula rows retain their logical IDs across versions; their database key is `(version_id, id)`.
+Version saves and formula patch acceptance are transactional and require the version they were based on.
+Run `npm run db:migrate` after updating an existing checkout. Migration `0011` preserves existing rows;
+older pending patches without a recorded base version must be rejected and requested again.
+Uncommitted formula edits stay in the current browser tab across navigation and reloads.
 
 ## Free vs paid (stub billing)
 
@@ -121,3 +127,9 @@ Toggle plan in **Settings** — no real billing in this POC.
 - [EUR-Lex 1223/2009](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009R1223)
 - [IFRA Standards](https://ifrafragrance.org/standards)
 - [ASEAN Cosmetic Directive](https://asean.org/our-communities/economic-community/integration-with-global-economy/asean-cosmetic-directive/)
+
+### Assistant and formulation specialist
+
+The chat calls `assistantAgent`: it reads app data, proposes empty products and stock edits, and duplicates products through the same service as the UI. New products and stock edits retain their accept/reject cards; an explicitly requested exact copy executes immediately. Other UI actions are not yet exposed as assistant tools.
+
+`delegate_formulation` calls `formulatorAgent` with the brief, authenticated user and selected product/variant. The specialist reads fresh formula data and owns formulation proposals. Review mode exposes only read tools. A new product with a formula is one specialist proposal. Conversation memory belongs to the assistant; specialist calls do not share its thread. Both routes use the existing authenticated paid-plan gate and existing model/fallback settings. The brief eval continues to target the specialist independently.

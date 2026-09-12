@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { SparklesIcon } from 'lucide-react'
+import { ChevronDownIcon, SparklesIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/i18n/language-provider'
@@ -117,10 +118,19 @@ export function OlfactoryPyramidGenerator({
   }
 
   return (
-    <Card>
+    <Collapsible render={<Card />} >
       <CardHeader>
-        <CardTitle>{t('olfactory.title')}</CardTitle>
-        <CardAction>
+        <CardTitle>
+          <CollapsibleTrigger className="group flex min-h-8 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <ChevronDownIcon className="size-4 transition-transform group-aria-expanded:rotate-180" />
+            {t('olfactory.title')}
+          </CollapsibleTrigger>
+        </CardTitle>
+        <CardDescription>{t('olfactory.purpose')}</CardDescription>
+      </CardHeader>
+      <CollapsibleContent keepMounted>
+      <CardContent className="flex flex-col gap-4">
+        <div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -141,10 +151,10 @@ export function OlfactoryPyramidGenerator({
               {saving ? t('olfactory.saving') : t('olfactory.save')}
             </Button>
           </div>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
+        </div>
+
         <Input
+          aria-label={t('olfactory.placeholder')}
           value={direction}
           onChange={(event) => setDirection(event.target.value)}
           placeholder={t('olfactory.placeholder')}
@@ -170,7 +180,8 @@ export function OlfactoryPyramidGenerator({
           />
         </div>
       </CardContent>
-    </Card>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 

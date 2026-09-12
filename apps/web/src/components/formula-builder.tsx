@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { GripVerticalIcon, LockIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { ChevronDownIcon, GripVerticalIcon, LockIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -34,12 +35,16 @@ export function FormulaBuilder({
   onChange,
   onSave,
   saving,
+  hasChanges,
+  variantControls,
   claims = [],
 }: {
   rows: FormulaRow[]
   onChange: (rows: FormulaRow[]) => void
   onSave: () => void
   saving?: boolean
+  hasChanges: boolean
+  variantControls?: ReactNode
   claims?: ProductClaim[]
 }) {
   const { t } = useLanguage()
@@ -102,9 +107,12 @@ export function FormulaBuilder({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold tracking-normal">{t('formula.title')}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-semibold tracking-normal">{t('formula.title')}</h2>
+            {variantControls}
+          </div>
           <p className="text-xs text-muted-foreground">{t('formula.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -115,7 +123,7 @@ export function FormulaBuilder({
             <PlusIcon data-icon="inline-start" />
             {t('formula.addRow')}
           </Button>
-          <Button size="sm" onClick={onSave} disabled={saving}>
+          <Button size="sm" onClick={onSave} disabled={saving || !hasChanges}>
             {saving ? t('formula.saving') : t('formula.commit')}
           </Button>
         </div>
@@ -139,16 +147,28 @@ export function FormulaBuilder({
         </Alert>
       ) : null}
 
-      {purchaseHints.length ? (
-        <Alert>
-          <AlertTitle>{t('formula.purchaseHintTitle')}</AlertTitle>
-          <AlertDescription>
-            {t('formula.purchaseHintDescription')}{' '}
-            <Link to="/ingredients" className="font-medium text-foreground underline-offset-4 hover:underline">
+      {inventoryData && purchaseHints.length ? (
+        <Collapsible>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <CollapsibleTrigger className="group flex min-h-8 items-center gap-1.5 rounded-md text-left text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+              <ChevronDownIcon className="size-3.5 shrink-0 transition-transform duration-200 group-aria-expanded:rotate-180 motion-reduce:transition-none" />
+              {t(purchaseHints.length === 1 ? 'formula.purchaseCountOne' : 'formula.purchaseCount', { count: purchaseHints.length })}
+            </CollapsibleTrigger>
+            <Link to="/ingredients" className="inline-flex min-h-8 items-center rounded-md font-medium text-foreground underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
               {t('formula.openInventory')}
             </Link>
-          </AlertDescription>
-        </Alert>
+          </div>
+          <CollapsibleContent>
+            <ul className="flex flex-col divide-y divide-border pt-1 text-sm">
+              {purchaseHints.map((hint) => (
+                <li key={hint.inci} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span className="min-w-0 break-words">{hint.inci}</span>
+                  <StockBadge status={hint.reason} />
+                </li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
       ) : null}
 
       <div className="min-w-0 overflow-x-auto rounded-lg border border-border bg-card">

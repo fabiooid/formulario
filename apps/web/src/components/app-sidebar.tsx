@@ -48,11 +48,12 @@ function SidebarNavLink({
       to={to}
       title={collapsed ? label : undefined}
       onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
       className={cn(
         'relative flex items-center rounded-lg py-2 text-sm transition-[color,background-color,padding,gap] duration-200 ease-out motion-reduce:transition-none',
         collapsed ? 'justify-center gap-0 px-2' : 'gap-2.5 px-2.5',
         active
-          ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+          ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground before:absolute before:left-0 before:h-4 before:w-0.5 before:rounded-full before:bg-accent-brand'
           : 'text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground',
       )}
     >
@@ -331,7 +332,7 @@ export function AppSidebar() {
                             className={cn(
                               'relative block rounded-lg py-2 pr-8 pl-2.5 text-sm transition-colors duration-150',
                               isActive
-                                ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                                ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground before:absolute before:left-0 before:h-4 before:w-0.5 before:rounded-full before:bg-accent-brand'
                                 : 'text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground',
                             )}
                           >

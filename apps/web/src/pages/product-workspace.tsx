@@ -11,7 +11,24 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PinButton, isProductPinned, usePinProduct } from '@/components/pin-button'
-import { api, type FormulaRow, type OlfactoryPyramid, type ProductSummary } from '@/lib/api'
+import { ProductActionsMenu, ProductArchivedNotice, isProductArchived } from '@/components/product-actions'
+import {
+  ApiError,
+  api,
+  type FormulaRow,
+  type OlfactoryPyramid,
+  type ProductSummary,
+} from '@/lib/api'
+import { useFormulaDrafts } from '@/lib/use-formula-drafts'
+import type { FormulaDraft } from '@/lib/formula-drafts'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth'
 import { useLanguage } from '@/i18n/language-provider'
 import type { ProductClaim } from '@atelier/domain'
@@ -23,31 +40,47 @@ function hasCommittedRows(rows: FormulaRow[]) {
 export function ProductWorkspacePage() {
   const { id } = useParams()
   const { user } = useAuth()
+  if (!user || !id) return <Navigate to="/login" replace />
+  const draftKey = `formula-drafts:${user.id}:${user.activeOrganizationId ?? ''}:${id}`
+  return <ProductWorkspace key={draftKey} id={id} draftKey={draftKey} />
+}
+
+function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
+  const { user } = useAuth()
   const { t } = useLanguage()
   const queryClient = useQueryClient()
   const { setVariantId, ask, streaming } = useAgent()
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
-  const [rows, setRows] = useState<FormulaRow[]>([])
+  const [selectedId, setSelectedVariantId] = useState<string | null>(null)
+  const { drafts, edit, discard, saved } = useFormulaDrafts(draftKey)
   const [tab, setTab] = useState('workspace')
+  const [discardVariantId, setDiscardVariantId] = useState<string | null>(null)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['workspace', id],
     queryFn: () => api.getWorkspace(id!),
     enabled: !!user && !!id,
   })
 
-  useEffect(() => {
-    setRows([])
-    setSelectedVariantId(null)
-  }, [id])
+  const selectedVariantId =
+    selectedId ?? data?.activeVariantId ?? data?.variants[0]?.variant.id ?? null
+  const selected = data?.variants.find((v) => v.variant.id === selectedVariantId)
+  const draft = selectedVariantId ? drafts[selectedVariantId] : undefined
+  const rows = draft?.rows ?? selected?.rows ?? []
+  const baseVersionId = draft ? draft.baseVersionId : (selected?.version?.id ?? null)
+  const dirty = !!draft
 
-  useEffect(() => {
-    if (!data) return
-    const activeId = data.activeVariantId ?? data.variants[0]?.variant.id ?? null
-    setSelectedVariantId(activeId)
-    const activeVariant = data.variants.find((v) => v.variant.id === activeId)
-    setRows(activeVariant?.rows ?? [])
-  }, [data])
+  function setRows(next: FormulaRow[]) {
+    if (!selectedVariantId) return
+    if (
+      !saveMutation.isPending &&
+      baseVersionId === (selected?.version?.id ?? null) &&
+      JSON.stringify(next) === JSON.stringify(selected?.rows ?? [])
+    ) {
+      discard(selectedVariantId)
+      return
+    }
+    edit(selectedVariantId, { rows: next, baseVersionId })
+  }
 
   useEffect(() => {
     setVariantId(selectedVariantId)
@@ -55,9 +88,13 @@ export function ProductWorkspacePage() {
   }, [selectedVariantId, setVariantId])
 
   const saveMutation = useMutation({
-    mutationFn: () => api.saveFormula(id!, selectedVariantId!, rows),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workspace', id] })
+    mutationFn: (input: { variantId: string; draft: FormulaDraft }) =>
+      api.saveFormula(id, input.variantId, input.draft.rows, input.draft.baseVersionId),
+    onSuccess: (result, input) => {
+      queryClient.setQueryData(['workspace', id], result.workspace)
+      saved(input.variantId, input.draft, result.versionId)
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['home'] })
     },
   })
 
@@ -66,10 +103,8 @@ export function ProductWorkspacePage() {
       api.resolvePatch(id!, patchId, action),
     onSuccess: (result) => {
       queryClient.setQueryData(['workspace', id], result.workspace)
-      const active = result.workspace.variants.find(
-        (v) => v.variant.id === selectedVariantId,
-      )
-      if (active) setRows(active.rows)
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['home'] })
     },
   })
 
@@ -79,13 +114,11 @@ export function ProductWorkspacePage() {
     onSuccess: (result) => {
       queryClient.setQueryData(['workspace', id], result.workspace)
       setSelectedVariantId(result.variant.id)
-      const created = result.workspace.variants.find((v) => v.variant.id === result.variant.id)
-      setRows(created?.rows ?? [])
     },
   })
 
   const setFinalMutation = useMutation({
-    mutationFn: () => api.setFinalVariant(id!, selectedVariantId!),
+    mutationFn: (variantId: string) => api.setFinalVariant(id, variantId),
     onSuccess: (result) => {
       queryClient.setQueryData(['workspace', id], result.workspace)
       setTab('regulatory')
@@ -159,22 +192,43 @@ export function ProductWorkspacePage() {
 
   function selectVariant(variantId: string) {
     setSelectedVariantId(variantId)
-    const variant = data?.variants.find((v) => v.variant.id === variantId)
-    setRows(variant?.rows ?? [])
+  }
+
+  function commitFormula(makeFinal = false) {
+    if (!selectedVariantId) return
+    const variantId = selectedVariantId
+    saveMutation.mutate(
+      { variantId, draft: { rows, baseVersionId } },
+      {
+        onSuccess: () => {
+          if (makeFinal) setFinalMutation.mutate(variantId)
+        },
+      },
+    )
   }
 
   function handleSetFinal() {
-    saveMutation.mutate(undefined, {
-      onSuccess: () => setFinalMutation.mutate(),
-    })
+    commitFormula(true)
   }
-
   function handleGenerateFinal() {
-    if (!selectedVariantId) return
-    setFinalMutation.mutate()
+    commitFormula(true)
   }
 
   if (!user) return <Navigate to="/login" replace />
+  if (isError && !data) {
+    return (
+      <AppShell title={t('workspace.product')}>
+        <EmptyState
+          title={t('workspace.loadFailedTitle')}
+          description={t('workspace.loadFailedDescription')}
+        >
+          <Button variant="outline" onClick={() => refetch()}>
+            {t('common.retry')}
+          </Button>
+        </EmptyState>
+      </AppShell>
+    )
+  }
   if (isLoading || !data) {
     return (
       <AppShell title={t('workspace.product')}>
@@ -183,25 +237,44 @@ export function ProductWorkspacePage() {
     )
   }
 
-  const pendingPatches = data.patches.filter((p) => p.status === 'pending')
+  const pendingPatches = data.patches.filter(
+    (p) => p.status === 'pending' && p.variantId === selectedVariantId,
+  )
   const finalWorkspace = data.variants.find((v) => v.variant.id === data.selectedFinalVariantId)
   const currentRowsCommitted = hasCommittedRows(rows)
+  const actionError =
+    saveMutation.error ??
+    patchMutation.error ??
+    setFinalMutation.error ??
+    createVariantMutation.error ??
+    claimsMutation.error ??
+    briefMutation.error ??
+    renameMutation.error ??
+    macerationMutation.error ??
+    pyramidMutation.error
+  const writingFormula =
+    saveMutation.isPending || patchMutation.isPending || setFinalMutation.isPending
 
   return (
     <AppShell
       title={data.product.name}
       wide
       breadcrumbAction={
-        <PinButton
-          className="shrink-0"
-          pinned={isProductPinned(data.product)}
-          onToggle={() =>
-            pinMutation.mutate({
-              productId: data.product.id,
-              pinned: !isProductPinned(data.product),
-            })
-          }
-        />
+        <div className="flex items-center">
+          {isProductArchived(data.product) ? null : (
+            <PinButton
+              className="shrink-0"
+              pinned={isProductPinned(data.product)}
+              onToggle={() =>
+                pinMutation.mutate({
+                  productId: data.product.id,
+                  pinned: !isProductPinned(data.product),
+                })
+              }
+            />
+          )}
+          <ProductActionsMenu product={data.product} />
+        </div>
       }
     >
       <div className="flex flex-col gap-2">
@@ -216,24 +289,52 @@ export function ProductWorkspacePage() {
           }
         />
 
+        <ProductArchivedNotice product={data.product} />
+
+        {actionError ? (
+          <Alert variant="destructive">
+            <AlertTitle>{t('workspace.actionFailed')}</AlertTitle>
+            <AlertDescription>
+              {t(
+                actionError instanceof ApiError && actionError.code === 'formula_conflict'
+                  ? 'workspace.formulaConflict'
+                  : 'common.saveFailed',
+              )}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <Tabs value={tab} onValueChange={(value) => value && setTab(String(value))}>
           <TabsList variant="line">
             <TabsTrigger value="workspace">{t('workspace.tabs.workspace')}</TabsTrigger>
             <TabsTrigger value="regulatory">{t('workspace.tabs.regulatory')}</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="workspace" className="pt-6">
-            <div className="flex min-w-0 flex-col gap-8">
+          <TabsContent value="workspace" className="pt-4">
+            <div className="flex min-w-0 flex-col gap-4">
               <WorkspaceBrief
+                key={data.product.id + selectedVariantId}
+                hasFormula={hasCommittedRows(selected?.rows ?? [])}
                 brief={data.product.brief}
                 saving={briefMutation.isPending}
                 generating={streaming}
                 onSave={(brief) => briefMutation.mutate(brief)}
-                onGenerate={(brief) =>
-                  ask(t('workspace.brief.generateMessage', { brief }))
-                }
+                onGenerate={(brief) => ask(t('workspace.brief.generateMessage', { brief }))}
               />
               <Separator />
+              {dirty ? (
+                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                  <p>{t('workspace.unsavedDraft')}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={writingFormula}
+                    onClick={() => setDiscardVariantId(selectedVariantId)}
+                  >
+                    {t('workspace.discardDraft')}
+                  </Button>
+                </div>
+              ) : null}
               {selectedVariantId ? (
                 <WorkspaceFormula
                   product={data.product}
@@ -242,15 +343,23 @@ export function ProductWorkspacePage() {
                   onSelectVariant={selectVariant}
                   rows={rows}
                   onRowsChange={setRows}
-                  onSave={() => saveMutation.mutate()}
-                  saving={saveMutation.isPending}
+                  onSave={() => commitFormula()}
+                  saving={writingFormula}
                   pendingPatches={pendingPatches}
-                  onAcceptPatch={(patchId) => patchMutation.mutate({ patchId, action: 'accepted' })}
-                  onRejectPatch={(patchId) => patchMutation.mutate({ patchId, action: 'rejected' })}
+                  onAcceptPatch={(patchId) => {
+                    if (!dirty && !writingFormula)
+                      patchMutation.mutate({ patchId, action: 'accepted' })
+                  }}
+                  patchPending={writingFormula}
+                  hasDraft={dirty}
+                  hasChanges={dirty && JSON.stringify(rows) !== JSON.stringify(selected?.rows ?? [])}
+                  onRejectPatch={(patchId) => {
+                    if (!writingFormula) patchMutation.mutate({ patchId, action: 'rejected' })
+                  }}
                   onCreateVariant={() => createVariantMutation.mutate(undefined)}
                   onDuplicateVariant={() => createVariantMutation.mutate(selectedVariantId)}
                   onSetFinal={handleSetFinal}
-                  setFinalSaving={saveMutation.isPending || setFinalMutation.isPending}
+                  setFinalSaving={writingFormula}
                   onMacerationSave={(input) => macerationMutation.mutate(input)}
                   macerationSaving={macerationMutation.isPending}
                   onSaveClaims={(claims) => claimsMutation.mutate(claims)}
@@ -264,11 +373,7 @@ export function ProductWorkspacePage() {
 
           <TabsContent value="regulatory" className="pt-6">
             {finalWorkspace ? (
-              <WorkspaceRegulatory
-                variant={finalWorkspace}
-                checks={data.checks}
-                pif={data.pif}
-              />
+              <WorkspaceRegulatory variant={finalWorkspace} checks={data.checks} pif={data.pif} />
             ) : (
               <EmptyState
                 title={t('workspace.final.lockedTitle')}
@@ -279,10 +384,7 @@ export function ProductWorkspacePage() {
                     <Button
                       size="sm"
                       onClick={handleGenerateFinal}
-                      disabled={
-                        !currentRowsCommitted ||
-                        setFinalMutation.isPending
-                      }
+                      disabled={!currentRowsCommitted || writingFormula}
                     >
                       {setFinalMutation.isPending
                         ? t('workspace.final.generating')
@@ -293,13 +395,39 @@ export function ProductWorkspacePage() {
                     </Button>
                   </div>
                   {!currentRowsCommitted ? (
-                    <p className="text-xs text-muted-foreground">{t('workspace.final.needCommit')}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('workspace.final.needCommit')}
+                    </p>
                   ) : null}
                 </div>
               </EmptyState>
             )}
           </TabsContent>
         </Tabs>
+        <Dialog
+          open={discardVariantId !== null}
+          onOpenChange={(open) => {
+            if (!open) setDiscardVariantId(null)
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('workspace.discardDraft')}</DialogTitle>
+              <DialogDescription>{t('workspace.confirmDiscard')}</DialogDescription>
+            </DialogHeader>
+            <Button
+              onClick={() => {
+                if (discardVariantId) discard(discardVariantId)
+                setDiscardVariantId(null)
+                saveMutation.reset()
+                patchMutation.reset()
+                void refetch()
+              }}
+            >
+              {t('workspace.discardDraft')}
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   )

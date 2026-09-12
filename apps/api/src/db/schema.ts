@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, real, primaryKey } from 'drizzle-orm/sqlite-core'
 
 export const organizations = sqliteTable('organizations', {
   id: text('id').primaryKey(),
@@ -35,7 +35,7 @@ export const products = sqliteTable('products', {
   brief: text('brief').notNull(),
   olfactoryPyramid: text('olfactory_pyramid'),
   claims: text('claims').notNull().default('[]'),
-  status: text('status').notNull().default('draft'),
+  status: text('status', { enum: ['draft', 'archived'] }).notNull().default('draft'),
   pinnedAt: text('pinned_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -65,7 +65,7 @@ export const formulaVersions = sqliteTable('formula_versions', {
 })
 
 export const formulaRows = sqliteTable('formula_rows', {
-  id: text('id').primaryKey(),
+  id: text('id').notNull(),
   versionId: text('version_id').notNull().references(() => formulaVersions.id),
   inci: text('inci').notNull(),
   cas: text('cas'),
@@ -76,12 +76,13 @@ export const formulaRows = sqliteTable('formula_rows', {
   notes: text('notes'),
   locked: integer('locked', { mode: 'boolean' }).notNull().default(false),
   sortOrder: integer('sort_order').notNull(),
-})
+}, (table) => [primaryKey({ columns: [table.versionId, table.id] })])
 
 export const formulaPatches = sqliteTable('formula_patches', {
   id: text('id').primaryKey(),
   productId: text('product_id').notNull().references(() => products.id),
   variantId: text('variant_id').references(() => productVariants.id),
+  baseVersionId: text('base_version_id').references(() => formulaVersions.id),
   status: text('status', { enum: ['pending', 'accepted', 'rejected'] }).notNull(),
   summary: text('summary').notNull(),
   operations: text('operations').notNull(),

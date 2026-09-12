@@ -42,13 +42,13 @@ function HeroCard({
   icon: React.ComponentType<{ className?: string }>
 }) {
   return (
-    <Card size="sm">
+    <Card size="sm" className="relative border-t-2 border-t-accent-brand/40">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardDescription>{label}</CardDescription>
-        <Icon className="size-4 text-muted-foreground" />
+        <span className="flex size-8 items-center justify-center rounded-lg bg-accent-brand/5 text-accent-brand"><Icon className="size-4" /></span>
       </CardHeader>
       <CardContent>
-        <p className="font-mono text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
+        <p className="font-mono text-3xl font-medium tracking-tight tabular-nums">{value}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{hint}</p>
       </CardContent>
     </Card>
@@ -64,6 +64,14 @@ export function HomePage() {
     queryFn: () => api.getHome(),
     enabled: !!user,
   })
+
+  // Each href identifies a product; preserve the API's severity order.
+  const attentionByProduct = new Map<string, HomeAttention[]>()
+  for (const item of data?.attention ?? []) {
+    const group = attentionByProduct.get(item.href)
+    if (group) group.push(item)
+    else attentionByProduct.set(item.href, [item])
+  }
 
   if (!user) return <Navigate to="/login" replace />
 
@@ -132,14 +140,14 @@ export function HomePage() {
                     description={t('home.purchase.emptyDescription')}
                   />
                 ) : (
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col divide-y divide-border">
                     {data.purchaseSuggestions.map((item) => (
                       <div
                         key={`${item.reason}-${item.inci}`}
-                        className="flex flex-col gap-1.5 rounded-lg border border-border/70 px-3 py-2.5"
+                        className="flex min-w-0 flex-col gap-1.5 py-3 first:pt-0 last:pb-0"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-medium tracking-tight">{item.inci}</p>
+                          <p className="min-w-0 break-words font-medium tracking-tight">{item.inci}</p>
                           <div className="flex flex-wrap items-center gap-2">
                             {item.pricePerKg != null ? (
                               <p className="font-mono text-sm tabular-nums tracking-tight">
@@ -178,15 +186,19 @@ export function HomePage() {
                     description={t('home.attention.emptyDescription')}
                   />
                 ) : (
-                  <div className="-mx-1 flex flex-col">
-                    {data.attention.map((item) => (
+                  <div className="flex flex-col divide-y divide-border">
+                    {[...attentionByProduct].map(([href, items]) => (
                       <Link
-                        key={item.id}
-                        to={item.href}
-                        className="rounded-lg px-2 py-2.5 transition-colors hover:bg-muted/50"
+                        key={href}
+                        to={href}
+                        className="flex min-w-0 flex-col gap-1.5 rounded-md px-2 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                       >
-                        <p className="font-medium tracking-tight">{item.productName}</p>
-                        <p className="mt-0.5 text-sm text-muted-foreground">{attentionDetail(item, t)}</p>
+                        <p className="break-words font-medium tracking-tight">{items[0].productName}</p>
+                        <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+                          {items.map((item) => (
+                            <li key={item.id} className="break-words">{attentionDetail(item, t)}</li>
+                          ))}
+                        </ul>
                       </Link>
                     ))}
                   </div>

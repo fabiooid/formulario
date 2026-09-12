@@ -306,6 +306,21 @@ describe('checkFormulaDraft', () => {
 })
 
 describe('buildFormulationGuide', () => {
+  it('keeps the same shortlist when a material outside it becomes in stock', () => {
+    const full = buildFormulationGuide({ format: 'edp', candidatesPerRole: 60 })
+    const aromas = full.roles.find((role) => role.role === 'aroma_material')!.candidates
+    expect(aromas.length).toBeGreaterThan(1)
+    const stocked = aromas[aromas.length - 1].inci
+    const before = buildFormulationGuide({ format: 'edp', candidatesPerRole: 1 })
+    const after = buildFormulationGuide({
+      format: 'edp',
+      candidatesPerRole: 1,
+      inventory: [{ inci: stocked, stockStatus: 'in_house', animalDerived: 'unknown', originType: 'unknown', organicCertified: 'unknown' }],
+    })
+    expect(after.roles.map((role) => role.candidates.map((candidate) => candidate.inci)))
+      .toEqual(before.roles.map((role) => role.candidates.map((candidate) => candidate.inci)))
+  })
+
   it('lists candidates per role with stock flags and keeps vegan clean', () => {
     const guide = buildFormulationGuide({
       format: 'balm',

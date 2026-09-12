@@ -1,3 +1,4 @@
+import Markdown from 'react-markdown'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowUpIcon,
@@ -49,15 +50,6 @@ function clampPaneWidth(value: number) {
   const room = typeof window === 'undefined' ? MAX_PANE_WIDTH : window.innerWidth - 360
   const max = Math.min(MAX_PANE_WIDTH, Math.max(MIN_PANE_WIDTH, room))
   return Math.min(max, Math.max(MIN_PANE_WIDTH, Math.round(value)))
-}
-
-function plainAgentText(text: string) {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/__(.+?)__/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^\s*[-*]\s+/gm, '')
 }
 
 function readStoredPaneWidth() {
@@ -323,6 +315,10 @@ export function AgentPane() {
     } catch (err) {
       setError(err instanceof Error ? err.message : t('agent.failed'))
     } finally {
+      // Tools may have completed even if a later model step failed.
+      for (const key of ['proposals', 'workspace', 'products', 'home', 'ingredients']) {
+        queryClient.invalidateQueries({ queryKey: [key] })
+      }
       setStreaming(false)
     }
   }
@@ -470,9 +466,13 @@ export function AgentPane() {
                             </MessageHeader>
                             <Bubble variant={message.role === 'user' ? 'default' : 'muted'}>
                               <BubbleContent>
-                                {message.role === 'assistant'
-                                  ? plainAgentText(message.content)
-                                  : message.content}
+                                {message.role === 'assistant' ? (
+                                  <div className="min-w-0 whitespace-normal break-words [&>*+*]:mt-3 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_li+li]:mt-1 [&_a]:underline [&_a]:underline-offset-4 [&_a]:break-all [&_a]:focus-visible:outline-ring [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_code]:font-mono [&_code]:text-xs">
+                                    <Markdown skipHtml disallowedElements={['img']}>
+                                      {message.content}
+                                    </Markdown>
+                                  </div>
+                                ) : message.content}
                               </BubbleContent>
                             </Bubble>
                           </MessageContent>

@@ -4,6 +4,20 @@ dist
 .env.local
 *.db
 *.db-journal
+*.duckdb
+*.duckdb.wal
 .mastra
 .DS_Store
 coverage
+
+# Design-sync scratch. Regenerated locally; do not commit.
+.ds-sync/
+ds-bundle/
+.design-sync/sb-reference/
+.design-sync/learnings/
+.design-sync/.cache/
+.design-sync/node_modules
+apps/web/.ds-compiled.css
+apps/web/ds-entry.ts
+apps/web/ds-types/
+apps/web/index.d.ts

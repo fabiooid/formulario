@@ -1,3 +1,5 @@
+import { ChevronDownIcon } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,16 +37,22 @@ export function MacerationCard({
   }
 
   return (
-    <Card>
+    <Collapsible key={variant.id} render={<Card />} >
       <CardHeader>
-        <CardTitle>{t('workspace.maceration.title')}</CardTitle>
+        <CardTitle>
+          <CollapsibleTrigger className="group flex min-h-8 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            <ChevronDownIcon className="size-4 transition-transform group-aria-expanded:rotate-180" />
+            {t('workspace.maceration.title')}
+          </CollapsibleTrigger>
+        </CardTitle>
         <CardAction>
           <Badge variant="secondary">{t(statusKey)}</Badge>
         </CardAction>
         <CardDescription>{t('workspace.maceration.description')}</CardDescription>
       </CardHeader>
+      <CollapsibleContent keepMounted>
       <CardContent>
-        <FieldGroup>
+        <FieldGroup className="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor={`mac-start-${variant.id}`}>{t('workspace.maceration.startDate')}</FieldLabel>
             {/* Keyed on the saved value so the field refreshes after "Start today" or a variant switch,
@@ -79,7 +87,7 @@ export function MacerationCard({
               }
             />
           </Field>
-          <Field>
+          <Field className="sm:col-span-2">
             <FieldLabel htmlFor={`mac-notes-${variant.id}`}>{t('workspace.maceration.notes')}</FieldLabel>
             <Textarea
               key={`${variant.id}:${variant.macerationNotes ?? ''}`}
@@ -98,7 +106,7 @@ export function MacerationCard({
               }}
             />
           </Field>
-          <Button
+          {status === 'fresh' ? <Button
             type="button"
             variant="outline"
             size="sm"
@@ -113,9 +121,10 @@ export function MacerationCard({
             }}
           >
             {t('workspace.maceration.startToday')}
-          </Button>
+          </Button> : null}
         </FieldGroup>
       </CardContent>
-    </Card>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }

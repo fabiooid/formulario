@@ -8,6 +8,7 @@ The formula table is the source of truth. Chat proposes changes; the person acce
 - Env file: copy `.env.example` to `.env` if it is missing
 - Database: `npm run db:setup` (migrate + seed demo data)
 - Dev: `npm run dev` (web http://localhost:5173, API http://localhost:4111)
+- Mastra Studio: same API, http://localhost:4111. Agent Chat needs the demo JWT in Studio headers. Editor, Evaluate, Review, and Traces are wired in `apps/api/src/mastra/index.ts`.
 - Tests: `npm test`
 - Live formula eval: `npm run eval:briefs --workspace=apps/api` (needs a model key; see script header for `VERBOSE`, `KEEP`, `PAUSE_MS`)
 
