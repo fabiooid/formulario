@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronDownIcon, SparklesIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ChevronDownIcon } from 'lucide-react'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -10,16 +9,12 @@ export function WorkspaceBrief({
   brief,
   hasFormula,
   saving,
-  generating,
   onSave,
-  onGenerate,
 }: {
   brief: string
   hasFormula: boolean
   saving?: boolean
-  generating?: boolean
   onSave: (brief: string) => void
-  onGenerate: (brief: string) => void
 }) {
   const { t } = useLanguage()
   const [value, setValue] = useState(brief)
@@ -62,27 +57,12 @@ export function WorkspaceBrief({
               id="product-brief"
               value={value}
               rows={4}
-              disabled={saving || generating}
+              disabled={saving}
               placeholder={t('workspace.brief.placeholder')}
               onChange={(event) => setValue(event.target.value)}
               onBlur={commit}
             />
           </Field>
-          <div className="flex">
-            <Button
-              type="button"
-              disabled={!value.trim() || saving || generating}
-              onClick={() => {
-                const next = value.trim()
-                if (!next) return
-                if (next !== brief) onSave(next)
-                onGenerate(next)
-              }}
-            >
-              <SparklesIcon data-icon="inline-start" />
-              {generating ? t('workspace.brief.generating') : t('workspace.brief.generate')}
-            </Button>
-          </div>
         </FieldGroup>
       </CollapsibleContent>
     </Collapsible>

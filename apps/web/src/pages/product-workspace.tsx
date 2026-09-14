@@ -49,7 +49,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   const { user } = useAuth()
   const { t } = useLanguage()
   const queryClient = useQueryClient()
-  const { setVariantId, ask, streaming } = useAgent()
+  const { setVariantId } = useAgent()
   const [selectedId, setSelectedVariantId] = useState<string | null>(null)
   const { drafts, edit, discard, saved } = useFormulaDrafts(draftKey)
   const [tab, setTab] = useState('workspace')
@@ -58,6 +58,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['workspace', id],
     queryFn: () => api.getWorkspace(id!),
+    refetchInterval: 10_000,
     enabled: !!user && !!id,
   })
 
@@ -317,9 +318,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                 hasFormula={hasCommittedRows(selected?.rows ?? [])}
                 brief={data.product.brief}
                 saving={briefMutation.isPending}
-                generating={streaming}
                 onSave={(brief) => briefMutation.mutate(brief)}
-                onGenerate={(brief) => ask(t('workspace.brief.generateMessage', { brief }))}
               />
               <Separator />
               {dirty ? (

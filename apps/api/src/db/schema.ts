@@ -184,3 +184,32 @@ export const feedback = sqliteTable('feedback', {
   message: text('message').notNull(),
   createdAt: text('created_at').notNull(),
 })
+
+// OAuth state is short-lived; only hashes of authorization codes and bearer tokens are stored.
+export const mcpClients = sqliteTable('mcp_clients', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  redirectUris: text('redirect_uris').notNull(),
+  createdAt: integer('created_at').notNull(),
+})
+export const mcpRequests = sqliteTable('mcp_requests', {
+  id: text('id').primaryKey(),
+  payload: text('payload').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+})
+export const mcpGrants = sqliteTable('mcp_grants', {
+  id: text('id').primaryKey(),
+  clientId: text('client_id').notNull(),
+  userId: text('user_id').notNull().references(() => users.id),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  codeHash: text('code_hash'),
+  codeExpiresAt: integer('code_expires_at').notNull(),
+  challenge: text('challenge').notNull(),
+  redirectUri: text('redirect_uri').notNull(),
+  accessHash: text('access_hash'),
+  accessExpiresAt: integer('access_expires_at'),
+  refreshHash: text('refresh_hash'),
+  expiresAt: integer('expires_at').notNull(),
+  revokedAt: integer('revoked_at'),
+  createdAt: integer('created_at').notNull(),
+})

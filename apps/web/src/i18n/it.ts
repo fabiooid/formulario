@@ -1,6 +1,22 @@
 import type { Messages } from './en'
 
 export const it = {
+  connections: {
+    "title": "Connessioni",
+    "description": "Usa un assistente esterno per la formulazione e valuta le sue proposte in Atelier.",
+    "setup": "Aggiungi questo URL del server MCP al tuo assistente esterno e scegli OAuth. In locale serve un tunnel compatibile o una distribuzione HTTPS raggiungibile.",
+    "boundary": "L’assistente integrato gestisce le attività amministrative. Le proposte restano in attesa finché non le accetti in Atelier.",
+    "authorize": "Connettere {name}?",
+    "disclosure": "Questo assistente potrà leggere descrizioni, formule, versioni e note delle prove nello spazio scelto, cercare fonti e inviare proposte. Queste informazioni possono entrare nel contesto del modello esterno. Il nome del client è autodichiarato: verifica l’indirizzo di ritorno.",
+    "redirect": "Indirizzo di ritorno",
+    "workspace": "Spazio di lavoro",
+    "choose": "Scegli uno spazio",
+    "allow": "Autorizza connessione",
+    "deny": "Rifiuta",
+    "active": "Connessioni attive",
+    "empty": "Nessuna connessione attiva.",
+    "revoke": "Revoca"
+},
   appName: 'Atelier',
   common: {
     loading: "Caricamento…",
@@ -210,13 +226,9 @@ export const it = {
       regulatory: 'Normativa',
     },
     brief: {
-      title: 'Brief',
-      description: 'Descrivi il prodotto per richiedere una proposta di formula.',
-      placeholder:
-        'Un olio viso leggero, senza profumo, finish secco, senza oli essenziali, vendibile in UE…',
-      generate: 'Genera',
-      generating: 'Generazione…',
-      generateMessage: 'Proponi una formula da questo brief:\n\n{brief}',
+      title: 'Descrizione',
+      description: 'Descrivi il carattere del prodotto, il suo scopo e l’uso previsto.',
+      placeholder: 'Un profumo secco e fumoso con resine verdi, caffè e legni scuri…',
     },
     variants: {
       actions: 'Azioni della variante',
@@ -285,12 +297,11 @@ export const it = {
     title: 'Lab Assistant',
     renameThread: 'Nome della conversazione',
     paidTitle: 'Lab Assistant è una funzione a pagamento',
-    paidDescription:
-      'Passa al piano a pagamento in Impostazioni per proposte di formula, compromessi e ricerche regolatorie. Taccuino ed editor restano gratuiti.',
-    subtitle: 'Propone solo modifiche — nulla viene salvato finché non accetti.',
+    paidDescription: 'Passa al piano a pagamento in Impostazioni per l’assistente amministrativo: prodotti salvati, informazioni e inventario. La formulazione avviene con un assistente esterno connesso.',
+    subtitle: 'Aiuto con prodotti, informazioni salvate e inventario.',
     you: 'Tu',
     agent: 'Lab Assistant',
-    placeholder: 'Chiedi dello stock, di una formula, o di un nuovo prodotto…',
+    placeholder: 'Chiedi dei prodotti, delle informazioni salvate o dell’inventario…',
     send: 'Invia',
     thinking: 'Elaborazione…',
     failed: 'Lab Assistant non è riuscito',

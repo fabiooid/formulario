@@ -8,13 +8,15 @@ The formula table is the source of truth. Chat proposes changes; the person acce
 - Env file: copy `.env.example` to `.env` if it is missing
 - Database: `npm run db:setup` (migrate + seed demo data)
 - Dev: `npm run dev` (web http://localhost:5173, API http://localhost:4111)
-- Mastra Studio: same API, http://localhost:4111. Agent Chat needs the demo JWT in Studio headers. Editor, Evaluate, Review, and Traces are wired in `apps/api/src/mastra/index.ts`.
+- The MVP exposes only the authenticated assistant stream under `/api`. Mastra Studio/editor and generic framework APIs are disabled. Run evals from the CLI.
 - Tests: `npm test`
 - Live formula eval: `npm run eval:briefs --workspace=apps/api` (needs a model key; see script header for `VERBOSE`, `KEEP`, `PAUSE_MS`)
 
 ## Formula drafting
 
-The Lab Assistant fills a skeleton, it does not free-write. Knowledge lives in `packages/domain/src/formulation/`: `materials.ts` (library, separate from the shelf), `skeletons.ts` (formats, roles, bands, starters), `check.ts` (the gate every proposal passes), `guide.ts` (what the agent reads first), `briefs.ts` (fixed test set). If a formula looks wrong, fix the library or the skeleton first, then the prompt. A complete formula beats using only what is in stock; stock is a flag on each row.
+MVP: the Lab Assistant is administrative only. Formulation runs in an external assistant through `apps/api/src/mcp/`. MCP connections are authenticated and pinned to an explicitly approved organization. External formulas become pending patches with an exact base version; only Atelier accepts them. Preserve structural validation, locks and stale-version protection. Do not filter or rank materials by inventory. The description field never starts an AI call.
+
+The material library, evidence and experimental skeletons/gate remain in `packages/domain/src/formulation/` for reference and development evals. Do not re-enable the specialist or delegation in the production Mastra registration without an explicit product decision. See `docs/mcp.md` for setup and testing.
 
 Demo login: `demo@local.test` / `demo`. Toggle free/paid in Settings.
 

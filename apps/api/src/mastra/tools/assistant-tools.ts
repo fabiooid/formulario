@@ -9,7 +9,7 @@ import {
 // The assistant cannot smuggle a composition through the product-creation tool.
 export const proposeEmptyProductTool = createTool({
   id: 'propose_empty_product',
-  description: 'Propose a new product without a formula. The person accepts the existing product card. For a requested formula, delegate the complete request to the formulator instead.',
+  description: 'Propose a new product without a formula. The person accepts the existing product card. Formulation is available through a connected external assistant; this tool never creates formula rows.',
   inputSchema: z.object({
     summary: z.string(),
     name: z.string().trim().min(1).max(120),

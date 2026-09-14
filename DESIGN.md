@@ -104,7 +104,7 @@ Page descriptions: `text-sm leading-relaxed text-muted-foreground`, max width `m
 
 **Agent pane**
 
-The assistant is named **Lab Assistant** in the UI (breadcrumb launcher, message author, paid-gate copy). It is app chrome, not a page and not a card on the formula step. One chat handles app questions and administrative actions, delegating formulation creation and critique to a specialist. There is no separate specialist chat or agent switcher. The pane header shows the **thread name**, not the agent name.
+The assistant is named **Lab Assistant** in the UI (breadcrumb launcher, message author, paid-gate copy). It is app chrome, not a page and not a card on the formula step. One chat handles app questions and administrative actions. Formulation happens in an external assistant connected through MCP; the in-app assistant explains that workflow. There is no separate specialist chat or agent switcher. The pane header shows the **thread name**, not the agent name.
 
 - Closed (default): sparkle button in the breadcrumb row. Shortcut **⌘J** / **Ctrl+J**. Escape closes the pane.
 - Side pane: default `w-[22rem]` on the right of the page, full viewport height. It stays put while the page scrolls. A 1px split sits in the center of the left-edge hit area. Drag to resize; a short handle appears on that same center line on hover. Remembers width. Left nav stays. Page content shrinks.
@@ -199,7 +199,7 @@ Centered card (`max-w-[400px]`) on the dotted grid. Logo + name top-left, theme 
 
 ### Settings
 
-Settings is a mode of the left nav, not a second menu on the page. While in Settings, the sidebar stays expanded: no logo, no product name, no collapse control, and no org switcher. A back arrow sits in the header. The list is Account, Appearance, Language, Plan, Organisation. Back leaves Settings and returns to the last app page.
+Settings is a mode of the left nav, not a second menu on the page. While in Settings, the sidebar stays expanded: no logo, no product name, no collapse control, and no org switcher. A back arrow sits in the header. The list is Account, Appearance, Language, Plan, Organisation, Connections. Back leaves Settings and returns to the last app page.
 
 One route per topic (`/settings/account`, and so on). `/settings` opens Account. `PageHeader` then a **narrow stack** of cards (`max-w-lg`, `gap-4`). One topic per card.
 
@@ -232,7 +232,7 @@ Wide shell. Two peer tabs, not a numbered sequence. One column, so the agent pan
 - **Workspace** — brief prompt on top, formula table under it. Claims sit under the table, not inside the prompt.
 - **Regulatory** — final INCI, market checks, PIF draft, and references. Market findings lead with ingredient names and action badges, sorted with bans and over-limits first. Blocking messages stay visible; sources and supporting details use shadcn Collapsible. Group unknown coverage into a count with expandable ingredient names and shared citations; never hide real labelling requirements in that group.
 
-The brief uses shadcn Collapsible: expanded for an empty formula, collapsed initially when the selected variant has a committed formula, with a Brief heading and chevron to reopen it. Keep workspace sections at gap-4 and the tab content at pt-4 so the table stays close to the top. The brief is a textarea plus **Generate**. Generate opens the formulator agent with the brief; it does not write the table directly. The person still accepts patches.
+The product description uses shadcn Collapsible: expanded for an empty formula, collapsed initially when the selected variant has a committed formula, with a Description heading and chevron to reopen it. Keep workspace sections at gap-4 and the tab content at pt-4 so the table stays close to the top. The description is a plain textarea that saves changes on blur. It has no AI-generation action.
 
 Use `WorkspaceSection` for a quiet heading (no step number). Empty regulatory state uses `EmptyState`, not a locked dashed card or a checklist of steps.
 
@@ -393,3 +393,7 @@ Product supporting tools: keep INCI preview and Choose as final together directl
 Keep shadcn primitives and the quiet notebook layout. Home summary cards use a fine `accent-brand/40` top edge. Product cards stay neutral, without type icons or violet accents, and have a divided date footer with a directional arrow. Reserve header space for the pin and overflow controls. Large surfaces stay neutral. Product links have a visible keyboard focus ring. Home figures use 30px mono type, with small tinted icon tiles. Do not add decorative motion. Cost rows wrap their labels above the bar on narrow screens.
 
 Product pin and overflow controls use shadcn `icon-sm` buttons (32px targets) and 18px Lucide icons. Card headers reserve `pr-24` for the pair so product names do not overlap the controls.
+
+### External assistant connections
+
+Connections uses the same narrow Settings card stack. Show the MCP endpoint, brief setup guidance and existing connections with revoke actions. An OAuth request adds a consent card naming the client and return address, explaining which data is shared, and requiring explicit workspace selection. No automatic consent. External proposals appear in the existing formula review UI; the workspace refreshes periodically without replacing local drafts.

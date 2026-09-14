@@ -589,7 +589,7 @@ export async function agentGateMiddleware(
       {
         error: 'Agent requires a paid plan',
         code: 'PLAN_REQUIRED',
-        message: 'Upgrade to use the formulator agent. The notebook and manual editor remain free.',
+        message: 'Upgrade to use the administrative assistant. The notebook and manual editor remain free.',
       },
       402,
     )

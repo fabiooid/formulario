@@ -1,6 +1,22 @@
 import type { Messages } from './en'
 
 export const fr = {
+  connections: {
+    "title": "Connexions",
+    "description": "Utilisez un assistant externe pour la formulation et examinez ses propositions dans Atelier.",
+    "setup": "Ajoutez cette URL de serveur MCP à votre assistant externe et choisissez OAuth. En local, utilisez un tunnel compatible ou un déploiement HTTPS accessible.",
+    "boundary": "L’assistant intégré gère les tâches administratives. Vous acceptez les propositions de formule dans Atelier.",
+    "authorize": "Connecter {name} ?",
+    "disclosure": "Cet assistant pourra lire les descriptions, formules, versions et notes d’essai de l’espace choisi, consulter les sources et soumettre des propositions. Ces informations peuvent entrer dans le contexte du modèle externe. Le nom du client est autodéclaré : vérifiez l’adresse de retour.",
+    "redirect": "Adresse de retour",
+    "workspace": "Espace de travail",
+    "choose": "Choisissez un espace",
+    "allow": "Autoriser la connexion",
+    "deny": "Refuser",
+    "active": "Connexions actives",
+    "empty": "Aucune connexion active.",
+    "revoke": "Révoquer"
+},
   appName: 'Atelier',
   common: {
     loading: "Chargement…",
@@ -211,13 +227,9 @@ export const fr = {
       regulatory: 'Réglementaire',
     },
     brief: {
-      title: 'Brief',
-      description: 'Décrivez votre produit pour demander une proposition de formule.',
-      placeholder:
-        'Une huile visage légère, non parfumée, toucher sec, sans huiles essentielles, vendable en UE…',
-      generate: 'Générer',
-      generating: 'Génération…',
-      generateMessage: 'Propose une formule à partir de ce brief :\n\n{brief}',
+      title: 'Description',
+      description: 'Décrivez le caractère du produit, son objectif et son utilisation prévue.',
+      placeholder: 'Un parfum sec et fumé aux notes de résine verte, de café et de bois sombres…',
     },
     variants: {
       actions: 'Actions de la variante',
@@ -286,12 +298,11 @@ export const fr = {
     title: 'Lab Assistant',
     renameThread: 'Nom du fil',
     paidTitle: 'Lab Assistant est une fonction payante',
-    paidDescription:
-      'Passez en payant dans Réglages pour des propositions de formule, des arbitrages et des recherches réglementaires. Le carnet et l’éditeur restent gratuits.',
-    subtitle: 'Propose des changements seulement — rien n’est enregistré tant que vous n’acceptez pas.',
+    paidDescription: 'Passez en payant dans Réglages pour l’assistant administratif : produits enregistrés, informations et stock. La formulation se fait avec un assistant externe connecté.',
+    subtitle: 'Aide sur les produits, les informations enregistrées et le stock.',
     you: 'Vous',
     agent: 'Lab Assistant',
-    placeholder: 'Parlez du stock, d’une formule, ou d’un nouveau produit…',
+    placeholder: 'Parlez des produits, des informations enregistrées ou du stock…',
     send: 'Envoyer',
     thinking: 'Réflexion…',
     failed: 'Lab Assistant a échoué',

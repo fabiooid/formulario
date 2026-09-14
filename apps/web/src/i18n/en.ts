@@ -1,4 +1,20 @@
 export const en = {
+  connections: {
+    "title": "Connections",
+    "description": "Use an external assistant for formulation and review its proposals in Atelier.",
+    "setup": "Add this MCP server URL in your external assistant and choose OAuth authentication. Local development requires a supported tunnel or a reachable HTTPS deployment.",
+    "boundary": "The in-app assistant handles administration. Formula proposals remain pending until you accept them here.",
+    "authorize": "Connect {name}?",
+    "disclosure": "This assistant will be able to read product descriptions, formulas, versions and trial notes in the workspace you choose, search material evidence, and submit proposals. This information can enter the external model’s context. The client name is self-reported; check the return address.",
+    "redirect": "Return address",
+    "workspace": "Workspace",
+    "choose": "Choose a workspace",
+    "allow": "Allow connection",
+    "deny": "Deny",
+    "active": "Active connections",
+    "empty": "No active connections.",
+    "revoke": "Revoke"
+},
   appName: 'Atelier',
   common: {
     loading: "Loading…",
@@ -208,13 +224,9 @@ export const en = {
       regulatory: 'Regulatory',
     },
     brief: {
-      title: 'Brief',
-      description: 'Describe your product to request a formula proposal.',
-      placeholder:
-        'A light unscented face oil that feels dry, no essential oils, sellable in EU…',
-      generate: 'Generate',
-      generating: 'Generating…',
-      generateMessage: 'Propose a formula from this brief:\n\n{brief}',
+      title: 'Description',
+      description: 'Describe the product’s character, purpose and intended use.',
+      placeholder: 'A dry, smoky perfume with green resin, coffee and dark woods…',
     },
     variants: {
       actions: 'Variant actions',
@@ -282,12 +294,11 @@ export const en = {
     title: 'Lab Assistant',
     renameThread: 'Thread name',
     paidTitle: 'Lab Assistant is a paid feature',
-    paidDescription:
-      'Upgrade in Settings to get metered formula proposals, tradeoff explanations, and regulatory lookups. The notebook and manual editor stay free.',
-    subtitle: 'Proposes changes only — nothing is saved until you accept.',
+    paidDescription: 'Upgrade in Settings for the administrative assistant: find saved products, read records and manage inventory. Formulation happens in a connected external assistant.',
+    subtitle: 'Help with products, saved information and inventory.',
     you: 'You',
     agent: 'Lab Assistant',
-    placeholder: 'Ask about stock, a formula, or a new product…',
+    placeholder: 'Ask about products, saved information or inventory…',
     send: 'Send',
     thinking: 'Thinking…',
     failed: 'Lab Assistant failed',
@@ -429,7 +440,7 @@ export const en = {
     stock: 'Stock',
     loading: 'Loading…',
     emptyTitle: 'No ingredients yet',
-    emptyDescription: 'Add what you keep in house so formulas know what they can use.',
+    emptyDescription: 'Track ingredient quantities, prices and purchases.',
     emptyFilterTitle: 'No matching ingredients',
     emptyFilterDescription: 'Try another search or stock filter.',
     alreadyExists: 'This ingredient is already in your list.',

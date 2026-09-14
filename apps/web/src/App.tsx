@@ -9,6 +9,7 @@ import { LoginPage } from '@/pages/login'
 import { ProductWorkspacePage } from '@/pages/product-workspace'
 import { ProductsPage } from '@/pages/products'
 import { RegisterPage } from '@/pages/register'
+import { SettingsConnectionsPage } from '@/pages/settings/connections'
 import { SettingsAccountPage } from '@/pages/settings/account'
 import { SettingsAppearancePage } from '@/pages/settings/appearance'
 import { SettingsLanguagePage } from '@/pages/settings/language'
@@ -42,6 +43,7 @@ export function App() {
               <Route element={<RequireAuth />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/settings" element={<Navigate to="/settings/account" replace />} />
+                <Route path="/settings/connections" element={<SettingsConnectionsPage />} />
                 <Route path="/settings/account" element={<SettingsAccountPage />} />
                 <Route path="/settings/appearance" element={<SettingsAppearancePage />} />
                 <Route path="/settings/language" element={<SettingsLanguagePage />} />

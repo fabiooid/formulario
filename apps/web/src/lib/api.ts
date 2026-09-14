@@ -297,6 +297,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getConnections: () => request<{ endpoint: string; organizations: OrganizationSummary[]; grants: Array<{ id: string; clientName: string; organizationId: string; createdAt: number; expiresAt: number }> }>('/app/connections'),
+  getConnectionRequest: (id: string) => request<{ clientName: string; redirectUri: string; scope: string }>(`/app/connections/request/${encodeURIComponent(id)}`),
+  authorizeConnection: (input: { requestId: string; organizationId: string; allow: boolean }) => request<{ redirect: string }>('/app/connections/authorize', { method: 'POST', body: JSON.stringify(input) }),
+  revokeConnection: (id: string) => request<{ revoked: boolean }>(`/app/connections/${encodeURIComponent(id)}/revoke`, { method: 'POST' }),
   login: (email: string, password: string) =>
     request<{ user: AuthUser; token: string }>('/auth/login', {
       method: 'POST',

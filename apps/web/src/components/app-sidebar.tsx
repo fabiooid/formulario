@@ -7,6 +7,7 @@ import {
   FlaskConicalIcon,
   HomeIcon,
   LanguagesIcon,
+  PlugIcon,
   LayoutGridIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
@@ -280,6 +281,7 @@ export function AppSidebar() {
                 active={location.pathname === '/settings/organization'}
                 onNavigate={closeMobile}
               />
+              <SidebarNavLink to="/settings/connections" icon={PlugIcon} label={t('connections.title')} active={location.pathname === '/settings/connections'} onNavigate={closeMobile} />
             </nav>
           ) : (
             <nav className="flex flex-col gap-0.5">

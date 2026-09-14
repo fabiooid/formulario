@@ -304,6 +304,7 @@ describe('product duplicate, archive and delete', () => {
     })
     await setProductPinned(f.productId, 'owner', true)
     const copy = await duplicateProduct(f.productId, 'owner', 'Face oil (copy)')
+    if (!copy) throw new Error('Expected a duplicated product')
     expect(copy.id).not.toBe(f.productId)
     expect(copy).toMatchObject({
       name: 'Face oil (copy)',

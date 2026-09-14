@@ -24,15 +24,11 @@ The agent is a side pane you can open from any signed-in page (sparkle in the br
 
 ## How a formula gets drafted
 
-The Lab Assistant does not write formulas from memory. It fills a **skeleton** for the product format and every draft passes a **gate** before it becomes a card:
+The in-app Lab Assistant handles administration: saved records, empty products, inventory proposals and exact product copies. Formulation is handled by an external assistant connected through MCP. The description field is plain saved text.
 
-1. **Format** — the brief is read for a format: cream / lotion, serum, face oil, balm, alcohol perfume (EDP), oil perfume, solid perfume. The agent names the format it chose in its reply; say “make it a balm” to redirect.
-2. **Skeleton** (`packages/domain/src/formulation/skeletons.ts`) — the roles a real product of that format needs (emulsifier, chelator, preservative, pH adjuster, fixative…), the percent band each role takes, the phases, bench steps, and a worked starter split that already adds to 100.
-3. **Materials library** (`packages/domain/src/formulation/materials.ts`) — ~140 real materials with INCI, aliases, roles, usual band, ceiling, phase, allergen and origin flags, and process notes. This is knowledge, separate from your shelf.
-4. **Gate** (`packages/domain/src/formulation/check.ts`) — the draft is rejected and sent back to the agent when: rows do not add to 100, a required role is missing, a material is not in the library or on the shelf, a percent is over its ceiling, water is present without preservative / chelator / pH adjuster, a perfume has fewer than 6–8 aroma materials or a single “Fragrance” row, a seed rule bans or limits a material, or a vegan product has an animal-derived row. Softer issues travel as warnings on the accepted proposal.
-5. **Stock is a flag, not a filter.** The agent proposes the right material and tells you what is not on the shelf. A complete formula beats using only what is in stock.
+MCP exposes workspace-scoped product context, formula history, material search, evidence and pending formula proposals. No MCP tool accepts or commits a proposal. There is no mandatory skeleton and no inventory preference; structural checks enforce totals, row identity and locks. Seeded regulatory checks and calculations remain in Atelier. The experimental specialist remains development-only.
 
-The seeded briefs in `packages/domain/src/formulation/briefs.ts` are the fixed test set. Run them against the live agent with `npm run eval:briefs --workspace=apps/api` (see the script header for options). A small model (e.g. `gpt-4o-mini`) reaches the gate but rarely repairs a rejected perfume; `gpt-4.1` or an equivalent passes most briefs in one or two tries.
+See [MCP setup and the complete review loop](docs/mcp.md).
 
 ## Prerequisites
 
@@ -117,7 +113,7 @@ Uncommitted formula edits stay in the current browser tab across navigation and 
 ## Free vs paid (stub billing)
 
 - **Free:** notebook, formula editor, INCI list, seeded EU check, PIF draft with gaps
-- **Paid:** formulator agent (metered stub), extra markets label, export/version history (UI stubs)
+- **Paid:** administrative assistant (metered stub), extra markets label, export/version history (UI stubs)
 
 Toggle plan in **Settings** — no real billing in this POC.
 
@@ -132,4 +128,4 @@ Toggle plan in **Settings** — no real billing in this POC.
 
 The chat calls `assistantAgent`: it reads app data, proposes empty products and stock edits, and duplicates products through the same service as the UI. New products and stock edits retain their accept/reject cards; an explicitly requested exact copy executes immediately. Other UI actions are not yet exposed as assistant tools.
 
-`delegate_formulation` calls `formulatorAgent` with the brief, authenticated user and selected product/variant. The specialist reads fresh formula data and owns formulation proposals. Review mode exposes only read tools. A new product with a formula is one specialist proposal. Conversation memory belongs to the assistant; specialist calls do not share its thread. Both routes use the existing authenticated paid-plan gate and existing model/fallback settings. The brief eval continues to target the specialist independently.
+The specialist, delegation tool and formulation scorers are not registered in the production Mastra instance. Experimental agent files remain available to development evals. External assistants propose via `/mcp`, and acceptance continues in the formula workspace.
