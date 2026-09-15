@@ -1,4 +1,4 @@
-import { PRODUCT_CLAIMS, normalizeProductClaims, type ProductClaim } from '@atelier/domain'
+import { PRODUCT_CLAIMS, normalizeProductClaims, type ProductClaim } from '@formulario/domain'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useLanguage } from '@/i18n/language-provider'
 import type { MessageKey } from '@/i18n/catalogs'

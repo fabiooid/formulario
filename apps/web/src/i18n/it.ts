@@ -3,9 +3,9 @@ import type { Messages } from './en'
 export const it = {
   connections: {
     "title": "Connessioni",
-    "description": "Usa un assistente esterno per la formulazione e valuta le sue proposte in Atelier.",
+    "description": "Usa un assistente esterno per la formulazione e valuta le sue proposte in Formulario.",
     "setup": "Aggiungi questo URL del server MCP al tuo assistente esterno e scegli OAuth. In locale serve un tunnel compatibile o una distribuzione HTTPS raggiungibile.",
-    "boundary": "L’assistente integrato gestisce le attività amministrative. Le proposte restano in attesa finché non le accetti in Atelier.",
+    "boundary": "L’assistente integrato gestisce le attività amministrative. Le proposte restano in attesa finché non le accetti in Formulario.",
     "authorize": "Connettere {name}?",
     "disclosure": "Questo assistente potrà leggere descrizioni, formule, versioni e note delle prove nello spazio scelto, cercare fonti e inviare proposte. Queste informazioni possono entrare nel contesto del modello esterno. Il nome del client è autodichiarato: verifica l’indirizzo di ritorno.",
     "redirect": "Indirizzo di ritorno",
@@ -17,7 +17,7 @@ export const it = {
     "empty": "Nessuna connessione attiva.",
     "revoke": "Revoca"
 },
-  appName: 'Atelier',
+  appName: 'Formulario',
   common: {
     loading: "Caricamento…",
     saving: "Salvataggio…",
@@ -88,9 +88,7 @@ export const it = {
     natural: 'Naturale',
     organic: 'Biologico',
     hint: 'Scegli Nessun claim se il prodotto non rientra in queste categorie. I claim influenzano suggerimenti e avvisi — non sono un certificato.',
-    formulaTitle: 'Alcuni ingredienti escono dai claim scelti',
-    formulaBlockTitle: 'Questa formula rompe una regola vegana',
-    formulaDescription: 'Cambia la formula, o modifica i claim sotto la tabella.',
+    rowWarning: 'Avviso sui claim',
     hit: {
       animal_derived: '{inci} è di origine animale — non vegano.',
       synthetic: '{inci} è sintetico — non è un match naturale.',
@@ -111,7 +109,7 @@ export const it = {
     paid: 'a pagamento',
   },
   auth: {
-    signInTitle: 'Accedi ad Atelier',
+    signInTitle: 'Accedi a Formulario',
     registerTitle: 'Crea un account',
     signInDescription:
       'Il tuo taccuino di formule per skincare e profumo indipendenti. Demo: demo@local.test / demo',
@@ -288,10 +286,8 @@ export const it = {
     saving: 'Salvataggio…',
     inci: 'Ingrediente',
     percent: '%',
-    lock: 'Blocco',
-    purchaseCountOne: '1 ingrediente da acquistare',
-    purchaseCount: '{count} ingredienti da acquistare',
-    openInventory: 'Apri inventario',
+    lock: 'Blocca',
+    unlock: 'Sblocca',
   },
   agent: {
     title: 'Lab Assistant',

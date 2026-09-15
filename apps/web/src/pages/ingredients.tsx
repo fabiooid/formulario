@@ -43,7 +43,7 @@ import type {
   IngredientOriginType,
   IngredientStockStatus,
   TriStateFlag,
-} from '@atelier/domain'
+} from '@formulario/domain'
 
 const CATEGORIES: IngredientCategory[] = [
   'solvent',

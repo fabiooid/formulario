@@ -18,14 +18,14 @@ export const mastra = new Mastra({
     assistantAgent,
   },
   storage: new MastraCompositeStore({
-    id: 'atelier-storage',
+    id: 'formulario-storage',
     default: new LibSQLStore({
       id: 'mastra-storage',
       url: mastraDbUrl,
     }),
     domains: {
       observability: new DuckDBStore({
-        id: 'atelier-observability',
+        id: 'formulario-observability',
         path: observabilityDbPath,
       }).observability,
     },
@@ -33,7 +33,7 @@ export const mastra = new Mastra({
   observability: new Observability({
     configs: {
       default: {
-        serviceName: 'atelier',
+        serviceName: 'formulario',
         exporters: [new MastraStorageExporter()],
       },
     },

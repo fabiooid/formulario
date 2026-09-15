@@ -1,4 +1,4 @@
-# Atelier — cosmetics formula tracker
+# Formulario
 
 A local proof of concept for indie skincare and perfume founders. **The formula table is the source of truth.** Chat can propose changes; you accept or reject them. INCI, market checks, and PIF drafts always come from the committed formula.
 
@@ -26,7 +26,7 @@ The agent is a side pane you can open from any signed-in page (sparkle in the br
 
 The in-app Lab Assistant handles administration: saved records, empty products, inventory proposals and exact product copies. Formulation is handled by an external assistant connected through MCP. The description field is plain saved text.
 
-MCP exposes workspace-scoped product context, formula history, material search, evidence and pending formula proposals. No MCP tool accepts or commits a proposal. There is no mandatory skeleton and no inventory preference; structural checks enforce totals, row identity and locks. Seeded regulatory checks and calculations remain in Atelier. The experimental specialist remains development-only.
+MCP exposes workspace-scoped product context, formula history, material search, evidence and pending formula proposals. No MCP tool accepts or commits a proposal. There is no mandatory skeleton and no inventory preference; structural checks enforce totals, row identity and locks. Seeded regulatory checks and calculations remain in Formulario. The experimental specialist remains development-only.
 
 See [MCP setup and the complete review loop](docs/mcp.md).
 

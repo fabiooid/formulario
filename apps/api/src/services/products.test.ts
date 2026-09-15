@@ -12,7 +12,7 @@ const testDirectory = await vi.hoisted(async () => {
   const { mkdtempSync } = await import('node:fs')
   const { tmpdir } = await import('node:os')
   const { join } = await import('node:path')
-  return mkdtempSync(join(tmpdir(), 'atelier-products-test-'))
+  return mkdtempSync(join(tmpdir(), 'formulario-products-test-'))
 })
 
 vi.mock('../db/client.js', async () => {
@@ -42,6 +42,7 @@ import {
   resolvePatch,
   setProductArchived,
   setProductPinned,
+  updateFormulaRowLock,
 } from './products.js'
 
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url))
@@ -222,6 +223,72 @@ describe('formula write access', () => {
       ).toBeNull()
       expect((await getCurrentVersionForVariant(other.variantId))?.id).toBe(other.versionId)
     }
+  })
+})
+
+describe('formula row lock', () => {
+  it('updates the current version in place without creating a new version', async () => {
+    const f = await fixture()
+    const workspace = await updateFormulaRowLock(f.productId, 'owner', f.variantId, f.rows[0].id, true)
+    const current = await getCurrentVersionForVariant(f.variantId)
+    expect(current).toMatchObject({ id: f.versionId, versionNumber: 1 })
+    expect((await getFormulaRows(f.versionId))[0].locked).toBe(true)
+    expect(workspace.variants[0].rows[0].locked).toBe(true)
+  })
+
+  it('rejects a missing row, a variant from another product, and read-only access', async () => {
+    const f = await fixture()
+    const other = await fixture('outsider')
+    await expect(
+      updateFormulaRowLock(f.productId, 'owner', f.variantId, 'missing', true),
+    ).rejects.toMatchObject({ status: 404 })
+    await expect(
+      updateFormulaRowLock(f.productId, 'owner', other.variantId, other.rows[0].id, true),
+    ).rejects.toMatchObject({ status: 404 })
+    await expect(
+      updateFormulaRowLock(f.productId, 'viewer', f.variantId, f.rows[0].id, true),
+    ).rejects.toMatchObject({ status: 403 })
+    expect((await getFormulaRows(f.versionId))[0].locked).toBe(false)
+    expect((await getCurrentVersionForVariant(f.variantId))?.id).toBe(f.versionId)
+  })
+
+  it('enforces authentication and ownership at the HTTP boundary', async () => {
+    const f = await fixture()
+    const route = appRoutes.find((entry) => entry.path === '/app/products/:productId/formula/lock')!
+    if (!('handler' in route)) throw new Error('Lock route must have a handler')
+    const app = new Hono()
+    app.patch(route.path, route.handler as unknown as Handler)
+    async function request(userId: string | null, body: Record<string, unknown> = {}) {
+      const token = userId
+        ? await signAppToken({
+            id: userId,
+            email: `${userId}@test.local`,
+            plan: 'free',
+            activeOrganizationId: null,
+          })
+        : null
+      return app.request(`/app/products/${f.productId}/formula/lock`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          variantId: f.variantId,
+          rowId: f.rows[0].id,
+          locked: true,
+          ...body,
+        }),
+      })
+    }
+    expect((await request(null)).status).toBe(401)
+    expect((await request('outsider')).status).toBe(404)
+    expect((await request('viewer')).status).toBe(403)
+    const response = await request('owner')
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+    expect(payload.workspace.variants[0].rows[0].locked).toBe(true)
+    expect((await getCurrentVersionForVariant(f.variantId))?.versionNumber).toBe(1)
   })
 })
 

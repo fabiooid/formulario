@@ -18,9 +18,15 @@ import {
   type FormulaRow,
   type OlfactoryPyramid,
   type ProductSummary,
+  type Workspace,
 } from '@/lib/api'
 import { useFormulaDrafts } from '@/lib/use-formula-drafts'
-import type { FormulaDraft } from '@/lib/formula-drafts'
+import {
+  applyFormulaRowLock,
+  formulaContentEquals,
+  formulaLockChanges,
+  type FormulaDraft,
+} from '@/lib/formula-drafts'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import {
   Dialog,
@@ -31,7 +37,7 @@ import {
 } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth'
 import { useLanguage } from '@/i18n/language-provider'
-import type { ProductClaim } from '@atelier/domain'
+import type { ProductClaim } from '@formulario/domain'
 
 function hasCommittedRows(rows: FormulaRow[]) {
   return rows.some((row) => row.inci.trim())
@@ -72,12 +78,18 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
 
   function setRows(next: FormulaRow[]) {
     if (!selectedVariantId) return
-    if (
-      !saveMutation.isPending &&
-      baseVersionId === (selected?.version?.id ?? null) &&
-      JSON.stringify(next) === JSON.stringify(selected?.rows ?? [])
-    ) {
-      discard(selectedVariantId)
+    const committed = selected?.rows ?? []
+    const lockChanges = formulaLockChanges(committed, next)
+    for (const change of lockChanges) {
+      lockMutation.mutate({
+        variantId: selectedVariantId,
+        rowId: change.rowId,
+        locked: change.locked,
+      })
+    }
+    const versionMatches = baseVersionId === (selected?.version?.id ?? null)
+    if (!saveMutation.isPending && versionMatches && formulaContentEquals(next, committed)) {
+      if (draft) discard(selectedVariantId)
       return
     }
     edit(selectedVariantId, { rows: next, baseVersionId })
@@ -87,6 +99,41 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     setVariantId(selectedVariantId)
     return () => setVariantId(null)
   }, [selectedVariantId, setVariantId])
+
+  const lockMutation = useMutation({
+    mutationFn: (input: { variantId: string; rowId: string; locked: boolean }) =>
+      api.updateFormulaRowLock(id, input.variantId, input.rowId, input.locked),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: ['workspace', id] })
+      const previous = queryClient.getQueryData<Workspace>(['workspace', id])
+      queryClient.setQueryData(['workspace', id], (current: Workspace | undefined) =>
+        applyFormulaRowLock(current, input.variantId, input.rowId, input.locked),
+      )
+      return { previous }
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(['workspace', id], context.previous)
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData(['workspace', id], result.workspace)
+    },
+  })
+
+  useEffect(() => {
+    if (!selectedVariantId || !selected) return
+    const leftover = drafts[selectedVariantId]
+    if (!leftover) return
+    if (leftover.baseVersionId !== (selected.version?.id ?? null)) return
+    if (!formulaContentEquals(leftover.rows, selected.rows)) return
+    for (const change of formulaLockChanges(selected.rows, leftover.rows)) {
+      lockMutation.mutate({
+        variantId: selectedVariantId,
+        rowId: change.rowId,
+        locked: change.locked,
+      })
+    }
+    discard(selectedVariantId)
+  }, [selectedVariantId, selected, drafts, discard, lockMutation])
 
   const saveMutation = useMutation({
     mutationFn: (input: { variantId: string; draft: FormulaDraft }) =>
@@ -245,6 +292,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   const currentRowsCommitted = hasCommittedRows(rows)
   const actionError =
     saveMutation.error ??
+    lockMutation.error ??
     patchMutation.error ??
     setFinalMutation.error ??
     createVariantMutation.error ??
@@ -319,6 +367,9 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                 brief={data.product.brief}
                 saving={briefMutation.isPending}
                 onSave={(brief) => briefMutation.mutate(brief)}
+                claims={data.product.claims ?? []}
+                onSaveClaims={(claims) => claimsMutation.mutate(claims)}
+                claimsSaving={claimsMutation.isPending}
               />
               <Separator />
               {dirty ? (
@@ -361,8 +412,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                   setFinalSaving={writingFormula}
                   onMacerationSave={(input) => macerationMutation.mutate(input)}
                   macerationSaving={macerationMutation.isPending}
-                  onSaveClaims={(claims) => claimsMutation.mutate(claims)}
-                  claimsSaving={claimsMutation.isPending}
                   onSavePyramid={(pyramid) => pyramidMutation.mutate(pyramid)}
                   pyramidSaving={pyramidMutation.isPending}
                 />

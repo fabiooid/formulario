@@ -8,7 +8,7 @@ import {
   type IngredientOriginType,
   type IngredientStockStatus,
   type TriStateFlag,
-} from '@atelier/domain'
+} from '@formulario/domain'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { ingredients } from '../db/schema.js'

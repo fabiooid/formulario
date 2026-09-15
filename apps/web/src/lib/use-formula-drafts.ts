@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FormulaRowSchema } from '@atelier/domain'
+import { FormulaRowSchema } from '@formulario/domain'
 import { finishFormulaSave, type FormulaDraft, type FormulaDrafts } from './formula-drafts'
 
 function readDrafts(key: string): FormulaDrafts {

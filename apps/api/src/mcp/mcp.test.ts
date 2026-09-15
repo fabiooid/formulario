@@ -8,7 +8,7 @@ import * as schema from '../db/schema.js'
 const directory = await vi.hoisted(async () => {
   const { mkdtempSync } = await import('node:fs')
   const { tmpdir } = await import('node:os')
-  return mkdtempSync(`${tmpdir()}/atelier-mcp-`)
+  return mkdtempSync(`${tmpdir()}/formulario-mcp-`)
 })
 vi.mock('../db/client.js', async () => {
   const { createClient } = await import('@libsql/client')
@@ -92,7 +92,7 @@ describe('OAuth and MCP transport', () => {
     expect((await exchange(client.client_id, code)).status).toBe(400)
     expect((await jsonPost('/app/connections/authorize', { requestId, organizationId: 'org', allow: true }, appToken)).status).toBe(409)
   })
-  it('initializes, lists controlled tools, reads context, proposes and accepts in Atelier', async () => {
+  it('initializes, lists controlled tools, reads context, proposes and accepts in Formulario', async () => {
     const { tokens } = await authorized()
     expect((await rpc(tokens.access_token, 'initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'Test', version: '1' } })).status).toBe(200)
     const listed = await (await rpc(tokens.access_token, 'tools/list')).json()

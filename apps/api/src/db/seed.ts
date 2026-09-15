@@ -1,4 +1,4 @@
-import { SEED_RULES, RULES_VERSION } from '@atelier/domain'
+import { SEED_RULES, RULES_VERSION } from '@formulario/domain'
 import { eq } from 'drizzle-orm'
 import { db } from './client.js'
 import {

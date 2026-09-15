@@ -1,4 +1,4 @@
-# Atelier — agent notes
+# Formulario — agent notes
 
 The formula table is the source of truth. Chat proposes changes; the person accepts or rejects them. Match existing screens. Do not invent a new look. Read `DESIGN.md` before changing the web app.
 
@@ -14,7 +14,7 @@ The formula table is the source of truth. Chat proposes changes; the person acce
 
 ## Formula drafting
 
-MVP: the Lab Assistant is administrative only. Formulation runs in an external assistant through `apps/api/src/mcp/`. MCP connections are authenticated and pinned to an explicitly approved organization. External formulas become pending patches with an exact base version; only Atelier accepts them. Preserve structural validation, locks and stale-version protection. Do not filter or rank materials by inventory. The description field never starts an AI call.
+MVP: the Lab Assistant is administrative only. Formulation runs in an external assistant through `apps/api/src/mcp/`. MCP connections are authenticated and pinned to an explicitly approved organization. External formulas become pending patches with an exact base version; only Formulario accepts them. Preserve structural validation, locks and stale-version protection. Do not filter or rank materials by inventory. The description field never starts an AI call.
 
 The material library, evidence and experimental skeletons/gate remain in `packages/domain/src/formulation/` for reference and development evals. Do not re-enable the specialist or delegation in the production Mastra registration without an explicit product decision. See `docs/mcp.md` for setup and testing.
 

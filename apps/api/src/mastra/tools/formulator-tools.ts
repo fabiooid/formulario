@@ -19,8 +19,8 @@ import {
   type MaterialRole,
   type ProductClaim,
   type ProductType,
-} from '@atelier/domain'
-import type { Market } from '@atelier/domain'
+} from '@formulario/domain'
+import type { Market } from '@formulario/domain'
 import {
   computeChecks,
   createPatch,
@@ -473,7 +473,7 @@ export const searchIngredientRulesTool = createTool({
 export const getInventoryTool = createTool({
   id: 'get_inventory',
   description:
-    'List the atelier inventory: in-house ingredients, stock status, grams on hand, price, and claim flags. Use this for stock questions even when no product is open.',
+    'List the lab inventory: in-house ingredients, stock status, grams on hand, price, and claim flags. Use this for stock questions even when no product is open.',
   inputSchema: z.object({
     query: z.string().optional(),
   }),
@@ -503,7 +503,7 @@ export const getInventoryTool = createTool({
 export const getHomeTool = createTool({
   id: 'get_home',
   description:
-    'Get the atelier morning brief: shelf value, items to purchase, formulas that need attention, and formula cost coverage. Only use when the user asks how the atelier is doing, what needs attention, or a similar overview. Do not use for “what can we do” or how to work together.',
+    'Get the home overview: shelf value, items to purchase, formulas that need attention, and formula cost coverage. Only use when the user asks how the lab is doing, what needs attention, or a similar overview. Do not use for “what can we do” or how to work together.',
   inputSchema: z.object({}),
   execute: async (_input, context) => {
     const { userId } = getToolContext(context)

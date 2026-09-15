@@ -13,7 +13,7 @@ import { createMcpServer } from './tools.js'
 
 const hash = (value: string) => createHash('sha256').update(value).digest('base64url')
 const secret = () => randomBytes(32).toString('base64url')
-export const MCP_SCOPE = 'atelier:read atelier:propose'
+export const MCP_SCOPE = 'formulario:read formulario:propose'
 export function mcpConfig() {
   const origin = new URL(process.env.MCP_PUBLIC_URL ?? 'http://localhost:4111').origin
   const web = new URL(process.env.APP_PUBLIC_URL ?? 'http://localhost:5173').origin

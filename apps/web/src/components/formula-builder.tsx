@@ -1,12 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
-import { ChevronDownIcon, GripVerticalIcon, LockIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { GripVerticalIcon, LockIcon, LockOpenIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Table,
   TableBody,
@@ -15,17 +11,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { StockBadge } from '@/components/stock-badge'
 import type { FormulaRow } from '@/lib/api'
 import { api } from '@/lib/api'
 import {
-  collectPurchaseSuggestions,
   evaluateClaimHits,
   findInventoryMatch,
   formulaPercentTotal,
   isPercentBalanced,
+  normalizeInci,
+  type ClaimHit,
   type ProductClaim,
-} from '@atelier/domain'
+} from '@formulario/domain'
 import { useLanguage } from '@/i18n/language-provider'
 import type { MessageKey } from '@/i18n/catalogs'
 import { cn } from '@/lib/utils'
@@ -57,17 +60,19 @@ export function FormulaBuilder({
     queryFn: () => api.listIngredients(),
   })
   const inventory = inventoryData?.ingredients ?? []
-  const purchaseHints = collectPurchaseSuggestions(
-    rows.filter((row) => row.inci.trim()).map((row) => ({ inci: row.inci, productName: 'formula' })),
-    inventory,
-    { includeUnused: false },
-  )
   const claimHits = evaluateClaimHits({
     claims,
     rows: rows.filter((row) => row.inci.trim()),
     inventory,
   })
-  const hasClaimBlock = claimHits.some((hit) => hit.severity === 'block')
+  const claimHitsByInci = new Map<string, ClaimHit[]>()
+  for (const hit of claimHits) {
+    const key = normalizeInci(hit.inci)
+    if (!key) continue
+    const list = claimHitsByInci.get(key) ?? []
+    list.push(hit)
+    claimHitsByInci.set(key, list)
+  }
 
   function updateRow(id: string, patch: Partial<FormulaRow>) {
     onChange(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)))
@@ -106,7 +111,8 @@ export function FormulaBuilder({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <TooltipProvider delay={200}>
+      <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -129,48 +135,6 @@ export function FormulaBuilder({
         </div>
       </div>
 
-      {claimHits.length ? (
-        <Alert variant={hasClaimBlock ? 'destructive' : 'default'}>
-          <AlertTitle>
-            {hasClaimBlock ? t('claims.formulaBlockTitle') : t('claims.formulaTitle')}
-          </AlertTitle>
-          <AlertDescription>
-            <p>{t('claims.formulaDescription')}</p>
-            <ul className="mt-2 list-disc pl-4">
-              {claimHits.map((hit) => (
-                <li key={`${hit.inci}-${hit.claim}-${hit.reason}`}>
-                  {t(`claims.hit.${hit.reason}` as MessageKey, { inci: hit.inci })}
-                </li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {inventoryData && purchaseHints.length ? (
-        <Collapsible>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-            <CollapsibleTrigger className="group flex min-h-8 items-center gap-1.5 rounded-md text-left text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
-              <ChevronDownIcon className="size-3.5 shrink-0 transition-transform duration-200 group-aria-expanded:rotate-180 motion-reduce:transition-none" />
-              {t(purchaseHints.length === 1 ? 'formula.purchaseCountOne' : 'formula.purchaseCount', { count: purchaseHints.length })}
-            </CollapsibleTrigger>
-            <Link to="/ingredients" className="inline-flex min-h-8 items-center rounded-md font-medium text-foreground underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-              {t('formula.openInventory')}
-            </Link>
-          </div>
-          <CollapsibleContent>
-            <ul className="flex flex-col divide-y divide-border pt-1 text-sm">
-              {purchaseHints.map((hint) => (
-                <li key={hint.inci} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <span className="min-w-0 break-words">{hint.inci}</span>
-                  <StockBadge status={hint.reason} />
-                </li>
-              ))}
-            </ul>
-          </CollapsibleContent>
-        </Collapsible>
-      ) : null}
-
       <div className="min-w-0 overflow-x-auto rounded-lg border border-border bg-card">
         <Table className="min-w-[36rem] table-fixed">
           <TableHeader className="bg-muted/60">
@@ -184,14 +148,17 @@ export function FormulaBuilder({
               <TableHead className="w-28 border-r border-border text-right text-xs tracking-wide text-muted-foreground uppercase">
                 {t('formula.percent')}
               </TableHead>
-              <TableHead className="w-20 border-r border-border text-center text-xs tracking-wide text-muted-foreground uppercase">
-                {t('formula.lock')}
-              </TableHead>
+              <TableHead className="w-20 border-r border-border" />
               <TableHead className="w-12" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row, index) => (
+            {rows.map((row, index) => {
+              const rowHits = row.inci.trim()
+                ? (claimHitsByInci.get(normalizeInci(row.inci)) ?? [])
+                : []
+              const showWarning = rowHits.length > 0
+              return (
               <TableRow
                 key={row.id}
                 onDragOver={(event) => {
@@ -233,23 +200,35 @@ export function FormulaBuilder({
                   </div>
                 </TableCell>
                 <TableCell className="whitespace-normal border-r border-border p-0">
-                  <div className="flex h-12 items-center gap-2 pr-2">
-                    {row.locked ? (
-                      <LockIcon className="ml-3 size-3 shrink-0 text-muted-foreground" />
-                    ) : null}
-                    <Input
-                      className="h-12 min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 shadow-none focus-visible:bg-background focus-visible:ring-0 dark:bg-transparent"
-                      value={row.inci}
-                      list="inventory-incis"
-                      onChange={(e) => updateRow(row.id, { inci: e.target.value })}
-                      disabled={row.locked}
-                    />
-                    {row.inci.trim() ? (
-                      <StockBadge
-                        status={
-                          findInventoryMatch(row.inci, inventory)?.stockStatus ?? 'missing'
-                        }
+                  <div className="flex h-12 items-center gap-1 pr-2">
+                    <div
+                      className={cn(
+                        'flex min-w-0 items-center gap-1',
+                        showWarning ? 'shrink-0' : 'flex-1',
+                      )}
+                    >
+                      <Input
+                        className={cn(
+                          'h-12 min-w-0 rounded-none border-0 bg-transparent px-3 shadow-none focus-visible:bg-background focus-visible:ring-0 dark:bg-transparent',
+                          showWarning
+                            ? 'w-auto field-sizing-content flex-none pr-1'
+                            : 'flex-1',
+                        )}
+                        value={row.inci}
+                        list="inventory-incis"
+                        onChange={(e) => updateRow(row.id, { inci: e.target.value })}
+                        disabled={row.locked}
                       />
+                      {showWarning ? <ClaimRowWarning hits={rowHits} /> : null}
+                    </div>
+                    {row.inci.trim() ? (
+                      <div className="ml-auto shrink-0">
+                        <StockBadge
+                          status={
+                            findInventoryMatch(row.inci, inventory)?.stockStatus ?? 'missing'
+                          }
+                        />
+                      </div>
                     ) : null}
                   </div>
                 </TableCell>
@@ -263,11 +242,18 @@ export function FormulaBuilder({
                     disabled={row.locked}
                   />
                 </TableCell>
-                <TableCell className="border-r border-border text-center">
-                  <Switch
-                    checked={row.locked}
-                    onCheckedChange={(checked) => updateRow(row.id, { locked: checked })}
-                  />
+                <TableCell className="border-r border-border p-0 text-center">
+                  <div className="flex h-12 items-center justify-center">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-pressed={row.locked}
+                      aria-label={row.locked ? t('formula.unlock') : t('formula.lock')}
+                      onClick={() => updateRow(row.id, { locked: !row.locked })}
+                    >
+                      {row.locked ? <LockIcon /> : <LockOpenIcon />}
+                    </Button>
+                  </div>
                 </TableCell>
                 <TableCell className="text-center">
                   <Button
@@ -280,7 +266,8 @@ export function FormulaBuilder({
                   </Button>
                 </TableCell>
               </TableRow>
-            ))}
+              )
+            })}
           </TableBody>
         </Table>
         <datalist id="inventory-incis">
@@ -291,6 +278,37 @@ export function FormulaBuilder({
           ))}
         </datalist>
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
+  )
+}
+
+function ClaimRowWarning({ hits }: { hits: ClaimHit[] }) {
+  const { t } = useLanguage()
+  if (!hits.length) return null
+
+  const blocked = hits.some((hit) => hit.severity === 'block')
+  const messages = hits.map((hit) => t(`claims.hit.${hit.reason}` as MessageKey, { inci: hit.inci }))
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        aria-label={t('claims.rowWarning')}
+      >
+        <TriangleAlertIcon className={cn('size-3.5', blocked && 'text-destructive')} />
+      </TooltipTrigger>
+      <TooltipContent side="top" align="end" className="text-left">
+        {messages.length === 1 ? (
+          messages[0]
+        ) : (
+          <ul className="space-y-1">
+            {messages.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        )}
+      </TooltipContent>
+    </Tooltip>
   )
 }

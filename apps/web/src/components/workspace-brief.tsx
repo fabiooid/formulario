@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ChevronDownIcon } from 'lucide-react'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import type { ProductClaim } from '@formulario/domain'
+import { ClaimPicker } from '@/components/claim-picker'
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useLanguage } from '@/i18n/language-provider'
@@ -10,11 +12,17 @@ export function WorkspaceBrief({
   hasFormula,
   saving,
   onSave,
+  claims,
+  onSaveClaims,
+  claimsSaving,
 }: {
   brief: string
   hasFormula: boolean
   saving?: boolean
   onSave: (brief: string) => void
+  claims: ProductClaim[]
+  onSaveClaims: (claims: ProductClaim[]) => void
+  claimsSaving?: boolean
 }) {
   const { t } = useLanguage()
   const [value, setValue] = useState(brief)
@@ -62,6 +70,15 @@ export function WorkspaceBrief({
               onChange={(event) => setValue(event.target.value)}
               onBlur={commit}
             />
+          </Field>
+          <Field>
+            <FieldLabel>{t('products.claims')}</FieldLabel>
+            <ClaimPicker
+              value={claims}
+              onChange={onSaveClaims}
+              disabled={claimsSaving}
+            />
+            <FieldDescription>{t('claims.hint')}</FieldDescription>
           </Field>
         </FieldGroup>
       </CollapsibleContent>

@@ -16,7 +16,7 @@
     "eval:briefs": "tsx --env-file=../../.env scripts/eval-briefs.ts"
   },
   "dependencies": {
-    "@atelier/domain": "*",
+    "@formulario/domain": "*",
     "@hono/node-server": "^1.14.1",
     "@libsql/client": "^0.15.4",
     "@mastra/auth": "^1.0.0",

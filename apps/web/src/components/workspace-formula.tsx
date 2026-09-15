@@ -1,6 +1,4 @@
 import { CopyIcon, MoreHorizontalIcon, PlusIcon } from 'lucide-react'
-import type { ProductClaim } from '@atelier/domain'
-import { ClaimPicker } from '@/components/claim-picker'
 import { FormulaBuilder } from '@/components/formula-builder'
 import { InciPreview } from '@/components/inci-preview'
 import { MacerationCard } from '@/components/maceration-card'
@@ -12,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -50,8 +47,6 @@ export function WorkspaceFormula({
   setFinalSaving,
   onMacerationSave,
   macerationSaving,
-  onSaveClaims,
-  claimsSaving,
   onSavePyramid,
   pyramidSaving,
 }: {
@@ -79,8 +74,6 @@ export function WorkspaceFormula({
     macerationNotes?: string | null
   }) => void
   macerationSaving?: boolean
-  onSaveClaims: (claims: ProductClaim[]) => void
-  claimsSaving?: boolean
   onSavePyramid: (pyramid: OlfactoryPyramid) => void
   pyramidSaving?: boolean
 }) {
@@ -150,18 +143,6 @@ export function WorkspaceFormula({
           </div>
         ) : null}
       />
-
-      <FieldGroup>
-        <Field>
-          <FieldLabel>{t('products.claims')}</FieldLabel>
-          <ClaimPicker
-            value={product.claims ?? []}
-            onChange={onSaveClaims}
-            disabled={claimsSaving}
-          />
-          <FieldDescription>{t('claims.hint')}</FieldDescription>
-        </Field>
-      </FieldGroup>
 
       {pendingPatches.length > 0 ? (
         <div className="flex flex-col gap-4">

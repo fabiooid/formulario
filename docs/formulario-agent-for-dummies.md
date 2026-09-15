@@ -1,10 +1,10 @@
-# Atelier Agent for Dummies
+# Formulario Agent for Dummies
 
 **Current implementation, checked on 12 September 2026.** This describes the code now, not a promise that every model response follows the instructions perfectly. This documentation update checks the implementation; it does not establish quality improvements through live model evaluations.
 
 ## What have we actually built?
 
-Atelier now has **two agents behind one chat**. The **Atelier Assistant** is your point of contact: it reads saved information and handles administrative requests. The **Formulator Agent** is a specialist the assistant calls for formulation creation, revision, review, ingredient suitability, and related regulatory judgment. Reading back a saved amount does not need the specialist.
+Formulario now has **two agents behind one chat**. The **Formulario Assistant** is your point of contact: it reads saved information and handles administrative requests. The **Formulator Agent** is a specialist the assistant calls for formulation creation, revision, review, ingredient suitability, and related regulatory judgment. Reading back a saved amount does not need the specialist.
 
 Think of it as an assistant with a notebook, a small reference shelf, and a checklist. It can help develop a formula. It cannot smell a perfume, mix a batch, or prove that a product works.
 
@@ -141,7 +141,7 @@ The assistant uses this only when you request a copy, after resolving the source
 
 The assistant passes a complete brief, a mode of create, revise, or review, and any relevant product and variant IDs. The tool starts a specialist call with the authenticated user and selected product context, but without the assistant’s conversation memory. New-product requests clear the current screen context, and review mode exposes only reading and checking tools. The specialist’s text comes back to the assistant for the reply, while any allowed proposals are stored through the usual proposal tools. This handoff adds a model call; it does not itself validate chemistry.
 
-The data tools access local app data and curated records. They do not independently search the internet. The web research performed in our development conversation was done by the coding assistant, not by Atelier's Lab Assistant.
+The data tools access local app data and curated records. They do not independently search the internet. The web research performed in our development conversation was done by the coding assistant, not by Formulario's Lab Assistant.
 
 ## Are we still using templates?
 

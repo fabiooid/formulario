@@ -18,7 +18,7 @@ async function instructionsForScreen({
   if (typeof userId === 'string' && typeof productId === 'string' && productId) {
     const product = await getProductForUser(productId, userId)
     if (product) {
-      screen = `The person is looking at "${product.name}". Stay on that product unless they ask about another product, stock, or the whole atelier.`
+      screen = `The person is looking at "${product.name}". Stay on that product unless they ask about another product, stock, or the whole lab.`
     }
   }
   return `${INSTRUCTIONS}\nOn screen:\n- ${screen}`

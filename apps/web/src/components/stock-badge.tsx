@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { useLanguage } from '@/i18n/language-provider'
 import type { MessageKey } from '@/i18n/catalogs'
-import type { IngredientStockStatus } from '@atelier/domain'
+import type { IngredientStockStatus } from '@formulario/domain'
 
 export type StockDisplayStatus = IngredientStockStatus | 'missing'
 

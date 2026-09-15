@@ -276,7 +276,7 @@ export function AgentPane() {
       await api.streamAgent(
         {
           userId: user.id,
-          threadId: `atelier:v2:${user.activeOrganizationId ?? user.id}`,
+          threadId: `formulario:v2:${user.activeOrganizationId ?? user.id}`,
           message: userMessage,
           productId,
           variantId: variantId ?? undefined,

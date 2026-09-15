@@ -1,10 +1,10 @@
 ---
-description: Follow Atelier UI patterns when changing the web app
+description: Follow Formulario UI patterns when changing the web app
 globs: apps/web/**/*.{tsx,css}
 alwaysApply: false
 ---
 
-# Atelier UI
+# Formulario UI
 
 Read `DESIGN.md` before changing layout, styling, or components. Match existing screens. Do not invent a new look.
 

@@ -10,7 +10,7 @@ import {
   ProductClaimSchema,
   ProductTypeSchema,
   TriStateFlagSchema,
-} from '@atelier/domain'
+} from '@formulario/domain'
 import {
   authenticateUser,
   createUser,
@@ -40,6 +40,7 @@ import {
   updateProductBrief,
   updateProductClaims,
   updateProductName,
+  updateFormulaRowLock,
 } from '../../services/products.js'
 import {
   createOrganization,
@@ -409,7 +410,7 @@ export const appRoutes = [
           user.id,
           pyramid,
         )
-        if (!workspace) return c.json({ error: 'Perfume not found' }, 404)
+        if (!workspace) return c.json({ error: 'Product not found' }, 404)
         return c.json({ workspace })
       }),
   }),
@@ -438,6 +439,28 @@ export const appRoutes = [
           workspace: isFinal ? await getWorkspace(productId, user.id) : finalWorkspace,
           ...(derived ?? {}),
         })
+      }),
+  }),
+  registerApiRoute('/app/products/:productId/formula/lock', {
+    method: 'PATCH',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const body = z
+          .object({
+            variantId: z.string(),
+            rowId: z.string(),
+            locked: z.boolean(),
+          })
+          .parse(await c.req.json())
+        const workspace = await updateFormulaRowLock(
+          c.req.param('productId'),
+          user.id,
+          body.variantId,
+          body.rowId,
+          body.locked,
+        )
+        return c.json({ workspace })
       }),
   }),
   registerApiRoute('/app/products/:productId/variants', {

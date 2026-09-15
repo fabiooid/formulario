@@ -3,7 +3,7 @@ import type {
   IngredientOriginType,
   IngredientStockStatus,
   TriStateFlag,
-} from '@atelier/domain'
+} from '@formulario/domain'
 
 export const DEMO_INGREDIENTS: Array<{
   inci: string

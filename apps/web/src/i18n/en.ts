@@ -1,7 +1,7 @@
 export const en = {
   connections: {
     "title": "Connections",
-    "description": "Use an external assistant for formulation and review its proposals in Atelier.",
+    "description": "Use an external assistant for formulation and review its proposals in Formulario.",
     "setup": "Add this MCP server URL in your external assistant and choose OAuth authentication. Local development requires a supported tunnel or a reachable HTTPS deployment.",
     "boundary": "The in-app assistant handles administration. Formula proposals remain pending until you accept them here.",
     "authorize": "Connect {name}?",
@@ -15,7 +15,7 @@ export const en = {
     "empty": "No active connections.",
     "revoke": "Revoke"
 },
-  appName: 'Atelier',
+  appName: 'Formulario',
   common: {
     loading: "Loading…",
     saving: "Saving…",
@@ -86,9 +86,7 @@ export const en = {
     natural: 'Natural',
     organic: 'Organic',
     hint: 'Choose No claims when the product does not fit these categories. Claims shape suggestions and warnings — they are not a certificate.',
-    formulaTitle: 'Some ingredients sit outside your claims',
-    formulaBlockTitle: 'This formula breaks a vegan rule',
-    formulaDescription: 'Change the formula, or edit the claims under the table.',
+    rowWarning: 'Claim warning',
     hit: {
       animal_derived: '{inci} is animal-derived — not vegan.',
       synthetic: '{inci} is synthetic — not a natural match.',
@@ -109,7 +107,7 @@ export const en = {
     paid: 'paid',
   },
   auth: {
-    signInTitle: 'Sign in to Atelier',
+    signInTitle: 'Sign in to Formulario',
     registerTitle: 'Create account',
     signInDescription:
       'Your formula notebook for indie skincare and perfume. Demo: demo@local.test / demo',
@@ -286,9 +284,7 @@ export const en = {
     inci: 'Ingredient',
     percent: '%',
     lock: 'Lock',
-    purchaseCountOne: '1 ingredient to purchase',
-    purchaseCount: '{count} ingredients to purchase',
-    openInventory: 'Open inventory',
+    unlock: 'Unlock',
   },
   agent: {
     title: 'Lab Assistant',

@@ -18,7 +18,7 @@ import {
   inferFormat,
   normalizeInci,
   type FormulaDraftRow,
-} from '@atelier/domain'
+} from '@formulario/domain'
 import { mastra } from '../src/mastra/index.js'
 import { listIngredients } from '../src/services/ingredients.js'
 import { loadRules } from '../src/services/products.js'

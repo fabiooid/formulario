@@ -6,7 +6,7 @@ import type {
   ProductStage,
   PurchaseSuggestion,
   TriStateFlag,
-} from '@atelier/domain'
+} from '@formulario/domain'
 
 export type Plan = 'free' | 'paid'
 export type { ProductStage, ProductClaim, TriStateFlag, IngredientOriginType }
@@ -252,7 +252,7 @@ export interface ProductProposalPayload {
   }>
 }
 
-const TOKEN_KEY = 'atelier_token'
+const TOKEN_KEY = 'formulario_token'
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
@@ -417,6 +417,11 @@ export const api = {
       `/app/products/${productId}/formula`,
       { method: 'PUT', body: JSON.stringify({ variantId, rows, expectedVersionId }) },
     ),
+  updateFormulaRowLock: (productId: string, variantId: string, rowId: string, locked: boolean) =>
+    request<{ workspace: Workspace }>(`/app/products/${productId}/formula/lock`, {
+      method: 'PATCH',
+      body: JSON.stringify({ variantId, rowId, locked }),
+    }),
   createVariant: (
     productId: string,
     input: { label?: string; copyFromVariantId?: string },

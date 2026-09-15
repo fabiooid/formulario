@@ -6,7 +6,7 @@ import {
   type AgentProposalKind,
   type AgentProposalStatus,
   type IngredientInput,
-} from '@atelier/domain'
+} from '@formulario/domain'
 import { and, desc, eq } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { agentProposals } from '../db/schema.js'

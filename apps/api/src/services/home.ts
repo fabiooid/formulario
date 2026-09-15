@@ -7,7 +7,7 @@ import {
   isPercentBalanced,
   runRegulatoryChecks,
   type ProductClaim,
-} from '@atelier/domain'
+} from '@formulario/domain'
 import {
   getCurrentVersionForVariant,
   getFormulaRows,

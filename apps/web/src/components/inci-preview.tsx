@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { generateInciList } from '@atelier/domain'
+import { generateInciList } from '@formulario/domain'
 import { EmptyState } from '@/components/empty-state'
 import type { FormulaRow } from '@/lib/api'
 import { useLanguage } from '@/i18n/language-provider'

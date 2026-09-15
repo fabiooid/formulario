@@ -3,9 +3,9 @@ import type { Messages } from './en'
 export const fr = {
   connections: {
     "title": "Connexions",
-    "description": "Utilisez un assistant externe pour la formulation et examinez ses propositions dans Atelier.",
+    "description": "Utilisez un assistant externe pour la formulation et examinez ses propositions dans Formulario.",
     "setup": "Ajoutez cette URL de serveur MCP à votre assistant externe et choisissez OAuth. En local, utilisez un tunnel compatible ou un déploiement HTTPS accessible.",
-    "boundary": "L’assistant intégré gère les tâches administratives. Vous acceptez les propositions de formule dans Atelier.",
+    "boundary": "L’assistant intégré gère les tâches administratives. Vous acceptez les propositions de formule dans Formulario.",
     "authorize": "Connecter {name} ?",
     "disclosure": "Cet assistant pourra lire les descriptions, formules, versions et notes d’essai de l’espace choisi, consulter les sources et soumettre des propositions. Ces informations peuvent entrer dans le contexte du modèle externe. Le nom du client est autodéclaré : vérifiez l’adresse de retour.",
     "redirect": "Adresse de retour",
@@ -17,7 +17,7 @@ export const fr = {
     "empty": "Aucune connexion active.",
     "revoke": "Révoquer"
 },
-  appName: 'Atelier',
+  appName: 'Formulario',
   common: {
     loading: "Chargement…",
     saving: "Enregistrement…",
@@ -88,9 +88,7 @@ export const fr = {
     natural: 'Naturel',
     organic: 'Bio',
     hint: 'Choisissez Sans allégation si le produit ne rentre pas dans ces catégories. Les allégations orientent les suggestions et les alertes — ce n’est pas un certificat.',
-    formulaTitle: 'Certains ingrédients sortent de vos allégations',
-    formulaBlockTitle: 'Cette formule casse une règle végane',
-    formulaDescription: 'Changez la formule, ou modifiez les allégations sous le tableau.',
+    rowWarning: 'Alerte d’allégation',
     hit: {
       animal_derived: '{inci} est d’origine animale — pas végan.',
       synthetic: '{inci} est synthétique — pas un match naturel.',
@@ -111,7 +109,7 @@ export const fr = {
     paid: 'payant',
   },
   auth: {
-    signInTitle: 'Connexion à Atelier',
+    signInTitle: 'Connexion à Formulario',
     registerTitle: 'Créer un compte',
     signInDescription:
       'Votre carnet de formules pour le soin et le parfum indépendants. Démo : demo@local.test / demo',
@@ -289,10 +287,8 @@ export const fr = {
     saving: 'Enregistrement…',
     inci: 'Ingrédient',
     percent: '%',
-    lock: 'Verrou',
-    purchaseCountOne: '1 ingrédient à acheter',
-    purchaseCount: '{count} ingrédients à acheter',
-    openInventory: 'Ouvrir l’inventaire',
+    lock: 'Verrouiller',
+    unlock: 'Déverrouiller',
   },
   agent: {
     title: 'Lab Assistant',

@@ -14,7 +14,7 @@ import {
   type ProductClaim,
   type ProductType,
   type ProductVariant,
-} from '@atelier/domain'
+} from '@formulario/domain'
 import { and, desc, eq, inArray, ne } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { getActiveOrganizationId, getMembership } from './organizations.js'
@@ -651,6 +651,43 @@ export async function commitNewVersion(
   return db.transaction((tx) =>
     commitVersion(tx, productId, variantId, userId, rows, expectedVersionId),
   )
+}
+
+// Lock is a row guard for agent patches, not a composition change. It updates the
+// current version in place so it never creates a new formula version or a draft.
+export async function updateFormulaRowLock(
+  productId: string,
+  userId: string,
+  variantId: string,
+  rowId: string,
+  locked: boolean,
+) {
+  await requireWritableProduct(db, productId, userId)
+  const [variant] = await db
+    .select()
+    .from(productVariants)
+    .where(and(eq(productVariants.id, variantId), eq(productVariants.productId, productId)))
+    .limit(1)
+  if (!variant) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
+  const current = await getCurrentVersionForVariant(variantId)
+  if (!current) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
+  const [row] = await db
+    .select()
+    .from(formulaRows)
+    .where(and(eq(formulaRows.versionId, current.id), eq(formulaRows.id, rowId)))
+    .limit(1)
+  if (!row) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
+  await db
+    .update(formulaRows)
+    .set({ locked })
+    .where(and(eq(formulaRows.versionId, current.id), eq(formulaRows.id, rowId)))
+  await db
+    .update(products)
+    .set({ updatedAt: new Date().toISOString() })
+    .where(eq(products.id, productId))
+  const workspace = await getWorkspace(productId, userId)
+  if (!workspace) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
+  return workspace
 }
 
 export async function createVariant(

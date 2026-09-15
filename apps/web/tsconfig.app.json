@@ -23,7 +23,7 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@atelier/domain": ["../../packages/domain/src/index.ts"]
+      "@formulario/domain": ["../../packages/domain/src/index.ts"]
     }
   },
   "include": ["src"]
