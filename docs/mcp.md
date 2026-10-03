@@ -41,7 +41,7 @@ Seeded regulatory calculations and evidence remain useful but incomplete. Trial 
 
 `npm test` includes an isolated SQLite OAuth/MCP integration test: initialize → list tools → read product → submit pending proposal → accept via Formulario's service. It also checks PKCE failure, code replay, unauthenticated calls, host/origin rejection, token rotation/revocation, workspace isolation, viewer restrictions, totals, row IDs, locks and stale acceptance. No test transmits workspace data to a model or incurs model API charges.
 
-The former specialist remains a development tool. It is not registered in the running application, and the in-app assistant cannot delegate to it.
+The former specialist remains a development tool. It is not registered in the running application, and the in-app assistant cannot delegate to it. See [the agent guide](agent-guide.md) for the current assistant and MCP tool lists.
 
 ## Local build caveat
 
