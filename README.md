@@ -34,6 +34,10 @@ Then open [http://localhost:5173](http://localhost:5173) and sign in with:
 
 The demo starts on the free plan. In Settings you can switch to paid to try the assistant. An API key in `.env` is only needed if you want that chat to talk to a model.
 
+The sample perfume includes Butylphenyl Methylpropional, a name on the EU banned list. Ban checks use the European Commission CosIng Annex II export. A name that is not on that list is not an approval.
+
+To refresh the official files, run `npm run rules:refresh`. It downloads the Commission list and replaces it only when the new file still matches the expected export. It also saves Singapore's current ASEAN annex PDF, without turning that PDF into bans. Run it once a day in production. If either download fails, the list already in use stays put and the command exits with an error.
+
 ## A note on claims
 
 INCI lists, market checks, and PIF drafts always come from the formula you committed — not from chat. Unknown ingredients stay unknown. Official references (CosIng, EU rules, IFRA, ASEAN) are linked in the app, not scraped.

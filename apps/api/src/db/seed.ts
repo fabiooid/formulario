@@ -1,17 +1,17 @@
-import { SEED_RULES, RULES_VERSION } from '@formulario/domain'
+import { readFileSync } from 'node:fs'
 import { eq } from 'drizzle-orm'
 import { db } from './client.js'
 import {
   chatThreads,
   formulaRows,
   formulaVersions,
-  ingredientRules,
   productVariants,
   products,
   users,
 } from './schema.js'
 import { hashPassword } from '../lib/auth.js'
 import { ensurePersonalOrganization } from '../services/organizations.js'
+import { listDateFromVersion, loadedEuVersion, prepareEuList, replaceEuBanRules } from './official-lists.js'
 import { refreshDerived, setSelectedFinalVariant } from '../services/products.js'
 import { seedDemoIngredients } from '../services/ingredients.js'
 
@@ -19,31 +19,24 @@ function now() {
   return new Date().toISOString()
 }
 
-// Re-running the seed refreshes the rules table in place, so rule text and links stay current.
+function officialBanRules() {
+  const csv = readFileSync(new URL('../../../../packages/domain/data/eu-annex-ii.csv', import.meta.url), 'utf8')
+  return prepareEuList(csv)
+}
+
+// Loads the bundled official EU list, unless the daily refresh already loaded a newer one.
 async function seedRules() {
-  for (const rule of SEED_RULES) {
-    const update = {
-      version: rule.version,
-      market: rule.market,
-      instrument: rule.instrument,
-      substance: rule.substance,
-      inciNames: JSON.stringify(rule.inciNames),
-      casNumbers: rule.casNumbers ? JSON.stringify(rule.casNumbers) : null,
-      maxPercent: rule.maxPercent ?? null,
-      labelThresholdPercent: rule.labelThresholdPercent ?? null,
-      effect: rule.effect,
-      citationUrl: rule.citationUrl,
-      message: rule.message,
-      productTypes: rule.productTypes ? JSON.stringify(rule.productTypes) : null,
-      leaveOnOnly: rule.leaveOnOnly ?? null,
-      ifraCategory: rule.ifraCategory ?? null,
-      preferredInci: rule.preferredInci ?? null,
-    }
-    await db
-      .insert(ingredientRules)
-      .values({ id: rule.id, ...update })
-      .onConflictDoUpdate({ target: ingredientRules.id, set: update })
+  const list = officialBanRules()
+  const loaded = await loadedEuVersion()
+  const loadedDate = listDateFromVersion(loaded)
+  if (loaded === list.version || (loadedDate && loadedDate > list.listUpdatedOn)) {
+    console.log(`EU Annex II already loaded (${loaded}). Bundled copy not applied.`)
+    return
   }
+  const count = await replaceEuBanRules(list)
+  console.log(
+    `Loaded ${count} EU Annex II bans from CosIng (list updated ${list.listUpdatedOn}, ${list.entryCount} entries in the file).`,
+  )
 }
 
 async function seedDemoUser() {
@@ -160,11 +153,15 @@ async function seedProductWithVariants(
 }
 
 async function main() {
-  console.log(`Seeding rules ${RULES_VERSION}...`)
+  console.log('Loading the official EU banned list...')
   await seedRules()
   const { userId, existed } = await seedDemoUser()
   if (existed) {
-    console.log('Demo user already exists — rules refreshed, demo products left untouched.')
+    const saved = await db.select({ id: products.id, userId: products.userId }).from(products)
+    for (const product of saved) {
+      await refreshDerived(product.id, product.userId)
+    }
+    console.log('Demo user already exists — official bans reloaded and saved checks refreshed.')
     return
   }
   const personal = await ensurePersonalOrganization(userId)
@@ -216,7 +213,7 @@ async function main() {
     id: 'prod-perfume',
     name: 'No. 3 Oil Perfume',
     type: 'perfume',
-    brief: 'Oil-based EDP-style perfume. IFRA + EU allergen labelling.',
+    brief: 'Oil-based perfume. Includes an ingredient named on the EU banned list.',
     variants: [
       {
         label: 'Variant 1 — softer',

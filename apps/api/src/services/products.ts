@@ -273,6 +273,10 @@ export function ruleFromDb(rule: typeof ingredientRules.$inferSelect): Ingredien
 
 let cachedRules: IngredientRule[] | null = null
 
+export function clearRulesCache() {
+  cachedRules = null
+}
+
 export async function loadRules(): Promise<IngredientRule[]> {
   if (cachedRules) return cachedRules
   const rows = await db.select().from(ingredientRules)

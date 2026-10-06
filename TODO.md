@@ -10,9 +10,11 @@ These are intentionally out of scope for the POC. Track as GitHub-style issues f
 
 ## Regulatory data
 
-- [ ] **CosIng import pipeline** — versioned ingest of EU CosIng annexes with diff alerts
-- [ ] **Live regulatory watch** — scheduled re-checks when seed/rules version changes
-- [ ] **UK, US/MoCRA, HK market packs** — expand beyond seeded EU/ASEAN
+- [x] **EU Annex II bans** — loaded from the CosIng export; `npm run rules:refresh` replaces it when the Commission list changes
+- [ ] **Schedule the refresh** — run `npm run rules:refresh` once a day on the production host, and alert when it exits with an error
+- [ ] **ASEAN bans** — the official PDF is saved daily; read Annex II from it only after its table layout is checked
+- [ ] **EU limits (Annex III–VI)** — dose limits and conditions from the same CosIng exports, shown separately from bans
+- [ ] **UK, US/MoCRA, HK market packs** — each only from that country's own official list
 - [ ] **IFRA category picker** — product-type → IFRA category mapping in UI
 - [ ] **Allergen calculator** — aggregate fragrance allergens from compound rows
 

@@ -38,7 +38,7 @@ export function generatePifDraft(input: {
     .map((check) => {
       const hitLines =
         check.hits.length === 0
-          ? '_No seeded hits._'
+          ? '_No name or CAS number from this formula was found on the loaded official list. That is not an approval._'
           : check.hits
               .map(
                 (hit) =>
@@ -98,7 +98,7 @@ export function generatePifDraft(input: {
     },
     {
       id: 'regulatory',
-      title: 'Regulatory annex (seeded checks)',
+      title: 'Banned ingredients (official list)',
       content: regulatoryAnnex,
       isGap: false,
     },

@@ -4,6 +4,7 @@ dist
 .env.local
 *.db
 *.db-journal
+apps/api/data/official/
 *.duckdb
 *.duckdb.wal
 .mastra

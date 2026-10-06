@@ -78,7 +78,7 @@ export async function submitFormula(principal: McpPrincipal, raw: unknown) {
     await tx.insert(formulaPatches).values(value)
     return value
   })
-  return { patchId: patch.id, status: patch.status, totalPercent: total, seededChecks: checks, reviewPath: `/products/${input.productId}`, instruction: 'Review and accept in Formulario. Submission does not modify the formula. Seeded checks are incomplete and are not safety or regulatory certification.' }
+  return { patchId: patch.id, status: patch.status, totalPercent: total, checks, reviewPath: `/products/${input.productId}`, instruction: 'Review and accept in Formulario. Submission does not modify the formula. EU bans are matched against the Commission Annex II list. A missing name is not an approval.' }
 }
 
 async function runMcp<T>(context: unknown, run: (principal: McpPrincipal) => Promise<T>) {

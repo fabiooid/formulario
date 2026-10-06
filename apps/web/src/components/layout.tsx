@@ -165,7 +165,7 @@ export function StatusBadge({ status }: { status: string }) {
       ? 'destructive'
       : status === 'restricted'
         ? 'secondary'
-        : status === 'unknown'
+        : status === 'unknown' || status === 'not_listed'
           ? 'outline'
           : 'secondary'
   const key = `status.${status}` as MessageKey

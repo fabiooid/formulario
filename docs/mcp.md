@@ -37,7 +37,7 @@ Account and administrator controls vary. This repository does not provision a pu
 5. `submit_formula_proposal` takes a complete set of rows with percentages by weight totaling 100, a rationale, product/variant IDs and the exact `baseVersionId`. Preserve existing row IDs for retained rows; omit IDs on additions. Include dilution basis and uncertainties in notes/summary. It checks positive finite percentages, totals, row IDs, workspace write access and locks. It does not impose a skeleton or pretend to certify safety.
 6. Open the product workspace (which refreshes every ten seconds while visible), inspect the existing pending-patch preview, and accept or reject. Local unsaved drafts are preserved and must be resolved before accepting. Acceptance checks the base version again atomically. If another change was committed, ask for a fresh proposal.
 
-Seeded regulatory calculations and evidence remain useful but incomplete. Trial notes currently mean the existing variant maceration notes; there is no new independent trial-record model in this MVP. Initial product creation happens in Formulario or through its administrative assistant.
+EU ban checks use the Commission CosIng Annex II export. A missing name is not an approval. Evidence remains incomplete. Trial notes currently mean the existing variant maceration notes; there is no new independent trial-record model in this MVP. Initial product creation happens in Formulario or through its administrative assistant.
 
 ## Verification
 

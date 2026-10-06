@@ -431,7 +431,7 @@ export const getMaterialEvidenceTool = createTool({
 
 export const runRegulatoryCheckTool = createTool({
   id: 'run_regulatory_check',
-  description: 'Run seeded regulatory checks against a committed formula.',
+  description: 'Check a committed formula against the loaded official EU banned-ingredient list. A missing name is not an approval.',
   inputSchema: z.object({
     productId: z.string().optional(),
     name: z.string().optional(),

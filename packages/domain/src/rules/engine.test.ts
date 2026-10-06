@@ -1,119 +1,82 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { runRegulatoryChecks, searchIngredientRules } from './engine'
-import { SEED_RULES } from './seed-rules'
+import { NO_OFFICIAL_LIST, runRegulatoryChecks, searchIngredientRules } from './engine.ts'
+import { parseEuAnnexII } from './eu-annex-ii.ts'
+import type { IngredientRule } from '../types.ts'
 
-describe('regulatory engine', () => {
-  it('flags EU ban for Lilial', () => {
+const annex = parseEuAnnexII(
+  readFileSync(new URL('../../data/eu-annex-ii.csv', import.meta.url), 'utf8'),
+)
+
+const sampleBan: IngredientRule = {
+  id: 'eu-annex-ii-sample',
+  version: 'cosing-annex-ii-2026-09-29',
+  market: 'EU',
+  instrument: 'EU Annex II',
+  substance: 'Sample banned substance',
+  inciNames: ['Butylphenyl Methylpropional'],
+  casNumbers: ['80-54-6'],
+  effect: 'cannot_sell',
+  citationUrl: 'https://ec.europa.eu/growth/tools-databases/cosing/reference/annexes/list/II',
+  message: 'On the EU banned list.',
+}
+
+describe('official ban checks', () => {
+  it('reads the Commission Annex II export and flags a listed name', () => {
+    expect(annex.listUpdatedOn).toBe('2026-09-29')
+    expect(annex.entryCount).toBeGreaterThan(1000)
+    expect(annex.rules.some((rule) => rule.inciNames.includes('BUTYLPHENYL METHYLPROPIONAL'))).toBe(true)
+    expect(new Set(annex.rules.map((rule) => rule.id)).size).toBe(annex.rules.length)
+
     const results = runRegulatoryChecks({
-      rows: [{ inci: 'Butylphenyl Methylpropional', percent: 0.01, phase: 'Fragrance' }],
+      rows: [{ inci: 'Butylphenyl Methylpropional', percent: 0.02, phase: 'Fragrance' }],
       markets: ['EU'],
       productType: 'perfume',
-      rules: SEED_RULES,
+      rules: annex.rules,
     })
 
     expect(results[0]?.status).toBe('banned')
-    expect(results[0]?.hits[0]?.effect).toBe('cannot_sell')
+    expect(results[0]?.hits[0]?.instrument).toBe('EU Annex II')
+    expect(results[0]?.hits[0]?.citationUrl).toContain('cosing')
   })
 
-  it('flags phenoxyethanol above 1%', () => {
+  it('matches a CAS number printed on the official row', () => {
     const results = runRegulatoryChecks({
-      rows: [{ inci: 'Phenoxyethanol', percent: 1.5, phase: 'Water' }],
-      markets: ['EU'],
-      productType: 'skincare',
-      rules: SEED_RULES,
-    })
-
-    expect(results[0]?.status).toBe('restricted')
-    expect(results[0]?.hits.some((h) => h.effect === 'reduce_percent')).toBe(true)
-  })
-
-  it('flags linalool allergen relabel threshold', () => {
-    const results = runRegulatoryChecks({
-      rows: [{ inci: 'Linalool', percent: 0.05, phase: 'Fragrance' }],
+      rows: [{ inci: 'Trade name only', cas: '80-54-6', percent: 0.02, phase: 'Fragrance' }],
       markets: ['EU'],
       productType: 'perfume',
-      rules: SEED_RULES,
+      rules: [sampleBan],
     })
 
-    expect(results[0]?.hits.some((h) => h.effect === 'relabel')).toBe(true)
+    expect(results[0]?.status).toBe('banned')
   })
 
-  it('marks unknown INCI not in seed', () => {
+  it('does not call an unmatched name allowed', () => {
     const results = runRegulatoryChecks({
-      rows: [{ inci: 'MadeUpine', percent: 5, phase: 'Oil' }],
+      rows: [{ inci: 'Glycerin', percent: 5, phase: 'Water' }],
       markets: ['EU'],
       productType: 'skincare',
-      rules: SEED_RULES,
+      rules: [sampleBan],
     })
 
-    expect(results[0]?.status).toBe('unknown')
+    expect(results[0]?.status).toBe('not_listed')
+    expect(results[0]?.hits).toEqual([])
   })
 
-  it('shows ASEAN vs EU difference for Lilial', () => {
-    const eu = runRegulatoryChecks({
-      rows: [{ inci: 'Lilial', percent: 0.05, phase: 'Fragrance' }],
-      markets: ['EU'],
-      productType: 'perfume',
-      rules: SEED_RULES,
-    })
-    const asean = runRegulatoryChecks({
-      rows: [{ inci: 'Lilial', percent: 0.15, phase: 'Fragrance' }],
+  it('says a country with no loaded list was not checked', () => {
+    const results = runRegulatoryChecks({
+      rows: [{ inci: 'Glycerin', percent: 5, phase: 'Water' }],
       markets: ['ASEAN'],
-      productType: 'perfume',
-      rules: SEED_RULES,
-    })
-
-    expect(eu[0]?.status).toBe('banned')
-    expect(asean[0]?.status).toBe('restricted')
-  })
-
-  it('checks limits against the total of an ingredient split across rows', () => {
-    const results = runRegulatoryChecks({
-      rows: [
-        { inci: 'Phenoxyethanol', percent: 0.6, phase: 'Water' },
-        { inci: 'phenoxyethanol', percent: 0.6, phase: 'Cool down' },
-      ],
-      markets: ['EU'],
       productType: 'skincare',
-      rules: SEED_RULES,
-    })
-
-    expect(results[0]?.status).toBe('restricted')
-    expect(results[0]?.hits.filter((h) => h.effect === 'reduce_percent')).toHaveLength(1)
-  })
-
-  it('does not let an unknown ingredient hide a real restriction', () => {
-    const results = runRegulatoryChecks({
-      rows: [
-        { inci: 'Phenoxyethanol', percent: 1.5, phase: 'Water' },
-        { inci: 'MadeUpine', percent: 5, phase: 'Oil' },
-      ],
-      markets: ['EU'],
-      productType: 'skincare',
-      rules: SEED_RULES,
-    })
-
-    expect(results[0]?.status).toBe('restricted')
-  })
-
-  it('does not treat ingredients that merely contain "aqua" as water', () => {
-    const results = runRegulatoryChecks({
-      rows: [
-        { inci: 'Aqua', percent: 90, phase: 'Water' },
-        { inci: 'Aquaxyl', percent: 3, phase: 'Water' },
-      ],
-      markets: ['EU'],
-      productType: 'skincare',
-      rules: SEED_RULES,
+      rules: [sampleBan],
     })
 
     expect(results[0]?.status).toBe('unknown')
-    expect(results[0]?.hits.map((h) => h.inci)).toEqual(['Aquaxyl'])
+    expect(results[0]?.hits[0]?.instrument).toBe(NO_OFFICIAL_LIST)
   })
 
-  it('searches ingredient rules by INCI', () => {
-    const hits = searchIngredientRules('phenoxy', SEED_RULES, 'EU')
-    expect(hits.length).toBeGreaterThan(0)
-    expect(hits[0]?.substance).toBe('Phenoxyethanol')
+  it('searches the loaded official names', () => {
+    const hits = searchIngredientRules('butylphenyl', annex.rules, 'EU')
+    expect(hits.some((rule) => rule.id === 'eu-annex-ii-1666')).toBe(true)
   })
 })

@@ -157,7 +157,7 @@ export function buildFormulationGuide(input: {
       ? ['This template currently requires preservative, chelator and pH-adjuster roles. This is a validator constraint, not proof that the system is appropriate; assess the specific product.']
       : ['Assess preservation and oxidation for the actual system. Anhydrous templates currently reject water; report conflicts with the intended format rather than silently changing it.']),
     ...(skeleton.productType === 'perfume'
-      ? ['List aroma materials one per row — never a single "Fragrance" or "Parfum" row.', 'Only seeded restrictions are checked. IFRA and allergen coverage is incomplete; missing data remains unknown.']
+      ? ['List aroma materials one per row — never a single "Fragrance" or "Parfum" row.', 'The app checks EU Annex II bans from the Commission list. It does not check IFRA limits or hidden allergens.']
       : []),
     'Respect the product claims (vegan, natural, organic).',
     'Stock is a flag for purchasing only. Never prefer, rank or substitute materials because they are in stock. Choose materials for the brief, then say what needs ordering.',

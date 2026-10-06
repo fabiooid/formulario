@@ -51,8 +51,8 @@ Light mode is warm paper with cool ink. Dark mode inverts it: near-neutral charc
 |---|---|
 | banned | `destructive` |
 | restricted | `secondary` |
-| unknown | `outline` |
-| sellable | `secondary` |
+| not on the banned list | `outline` |
+| not checked | `outline` |
 
 **Warning:** a formula that does not add up to ~100% uses amber text (`text-amber-600`). That is the only allowed raw color. Do not spread amber elsewhere — if we need a real warning token later, add it in CSS first.
 

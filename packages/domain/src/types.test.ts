@@ -38,6 +38,18 @@ describe('generateInciList', () => {
     expect(list).toBe('Aqua, Glycerin, Linalool, Parfum, CI 77891')
   })
 
+  it('keeps an ingredient at exactly 1% in the ordered part of the list', () => {
+    const list = generateInciList([
+      { inci: 'Aqua', percent: 97.6 },
+      { inci: 'Tocopherol', percent: 0.4 },
+      { inci: 'Phenoxyethanol', percent: 1 },
+      { inci: 'Glycerin', percent: 1 },
+    ])
+
+    expect(list.indexOf('Phenoxyethanol')).toBeLessThan(list.indexOf('Tocopherol'))
+    expect(list.indexOf('Glycerin')).toBeLessThan(list.indexOf('Tocopherol'))
+  })
+
   it('skips empty rows', () => {
     expect(generateInciList([{ inci: '', percent: 10 }, { inci: 'Aqua', percent: 90 }])).toBe('Aqua')
   })

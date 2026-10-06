@@ -1,5 +1,10 @@
 import type { IngredientRule } from '../types.ts'
 
+/**
+ * Hand-written examples for the experimental formula checker only.
+ * Do not seed these, and do not show them as the product's regulatory check.
+ * Country bans come from the CosIng Annex II export in `eu-annex-ii.ts`.
+ */
 export const RULES_VERSION = '2026-01-seed'
 
 export const SEED_RULES: IngredientRule[] = [

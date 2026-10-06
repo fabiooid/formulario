@@ -14,6 +14,7 @@ export const RegulatoryStatusSchema = z.enum([
   'restricted',
   'banned',
   'unknown',
+  'not_listed',
 ])
 export type RegulatoryStatus = z.infer<typeof RegulatoryStatusSchema>
 
@@ -417,7 +418,7 @@ export function aggregateRowsByInci<T extends Pick<FormulaRow, 'inci' | 'percent
 
 /**
  * EU-style INCI list (Reg. 1223/2009 art. 19):
- * ingredients above 1% in descending order, then those at 1% or below
+ * ingredients at 1% or more in descending order, then those under 1%
  * (any order is allowed — we keep descending so the list is stable), colourants last.
  * Duplicate INCI names are merged first. Wording (e.g. Fragrance → Parfum) is not rewritten
  * here; the regulatory check flags it so the person can fix the formula row.
@@ -427,9 +428,9 @@ export function generateInciList(rows: Pick<FormulaRow, 'inci' | 'percent'>[]): 
   const merged = aggregateRowsByInci(rows)
   const colorants = merged.filter((row) => isColorantInci(row.inci)).sort(byPercentDesc)
   const others = merged.filter((row) => !isColorantInci(row.inci))
-  const aboveOnePercent = others.filter((row) => row.percent > 1).sort(byPercentDesc)
-  const oneOrBelow = others.filter((row) => row.percent <= 1).sort(byPercentDesc)
-  return [...aboveOnePercent, ...oneOrBelow, ...colorants].map((row) => row.inci).join(', ')
+  const onePercentOrMore = others.filter((row) => row.percent >= 1).sort(byPercentDesc)
+  const underOnePercent = others.filter((row) => row.percent < 1).sort(byPercentDesc)
+  return [...onePercentOrMore, ...underOnePercent, ...colorants].map((row) => row.inci).join(', ')
 }
 
 export function hasWaterPhase(rows: Pick<FormulaRow, 'inci' | 'phase'>[]): boolean {

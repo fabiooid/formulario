@@ -8,40 +8,52 @@ import type {
   RegulatoryHit,
   RegulatoryStatus,
 } from '../types.ts'
-import { COSING_URL, aggregateRowsByInci, isWaterInci, normalizeInci } from '../types.ts'
+import { aggregateRowsByInci, normalizeInci } from '../types.ts'
 
 export interface CheckInput {
-  rows: Pick<FormulaRow, 'inci' | 'percent' | 'phase'>[]
+  rows: Array<Pick<FormulaRow, 'inci' | 'percent' | 'phase'> & { cas?: string | null }>
   markets: Market[]
   productType: ProductType
   rules: IngredientRule[]
 }
 
+/** Instrument name on the note returned for a country with no official list loaded. */
+export const NO_OFFICIAL_LIST = 'No official list'
+
+const NO_LIST_CITATION = 'https://single-market-economy.ec.europa.eu/sectors/cosmetics/cosmetic-ingredient-database_en'
+
+function nameKey(value: string) {
+  return normalizeInci(value).replace(/\s+/g, ' ')
+}
+
+function casKey(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, '')
+}
+
 function findMatchingRules(
-  inci: string,
+  row: { inci: string; cas?: string | null },
   market: Market,
   productType: ProductType,
   rules: IngredientRule[],
 ): IngredientRule[] {
-  const normalized = normalizeInci(inci)
+  const normalized = nameKey(row.inci)
+  const cas = row.cas ? casKey(row.cas) : ''
   return rules.filter((rule) => {
     if (rule.market !== market) return false
     // `leaveOnOnly` needs no check yet: skincare, perfume and hybrid are all leave-on products.
     // Revisit when a rinse-off product type is added.
     if (rule.productTypes && !rule.productTypes.includes(productType)) return false
-    return rule.inciNames.some((name) => normalizeInci(name) === normalized)
+    const nameMatch = rule.inciNames.some((name) => nameKey(name) === normalized)
+    const casMatch = Boolean(cas && rule.casNumbers?.some((number) => casKey(number) === cas))
+    return nameMatch || casMatch
   })
 }
 
-/**
- * Worst finding wins: a ban, then any actionable limit / labelling hit, then "we don't know",
- * then sellable. An unseeded ingredient must never hide a real restriction on another row.
- */
-function statusFromRuleHits(hits: RegulatoryHit[], hasUnknown: boolean): RegulatoryStatus {
+/** A ban wins, then any other hit on the loaded list. No match is "not on this list", never "allowed". */
+function statusFromRuleHits(hits: RegulatoryHit[]): RegulatoryStatus {
   if (hits.some((hit) => hit.effect === 'cannot_sell')) return 'banned'
   if (hits.length > 0) return 'restricted'
-  if (hasUnknown) return 'unknown'
-  return 'sellable'
+  return 'not_listed'
 }
 
 export function evaluateIngredient(
@@ -51,7 +63,7 @@ export function evaluateIngredient(
   rules: IngredientRule[],
 ): RegulatoryHit[] {
   const hits: RegulatoryHit[] = []
-  const matched = findMatchingRules(row.inci, market, productType, rules)
+  const matched = findMatchingRules(row, market, productType, rules)
 
   if (matched.length === 0) {
     return hits
@@ -124,35 +136,34 @@ export function runRegulatoryChecks(input: CheckInput): RegulatoryCheckResult[] 
   const rows = aggregateRowsByInci(input.rows)
 
   return markets.map((market) => {
-    const ruleHits: RegulatoryHit[] = []
-
-    for (const row of rows) {
-      ruleHits.push(...evaluateIngredient(row, market, productType, rules))
+    const marketRules = rules.filter((rule) => rule.market === market)
+    if (marketRules.length === 0) {
+      return {
+        market,
+        status: 'unknown' as const,
+        hits: [
+          {
+            market,
+            instrument: NO_OFFICIAL_LIST,
+            substance: market,
+            inci: '',
+            effect: 'relabel' as const,
+            citationUrl: NO_LIST_CITATION,
+            message: `No official banned-ingredient list is loaded for ${market}. This is not a check for that country.`,
+          },
+        ],
+      }
     }
 
-    const unknownHits: RegulatoryHit[] = rows
-      .filter((row) => {
-        const hasRule = rules.some(
-          (rule) =>
-            rule.market === market &&
-            rule.inciNames.some((name) => normalizeInci(name) === normalizeInci(row.inci)),
-        )
-        return !hasRule && !isWaterInci(row.inci) && row.percent > 0
-      })
-      .map((row) => ({
-        market,
-        instrument: 'Seed rules (unknown)',
-        substance: row.inci,
-        inci: row.inci,
-        effect: 'relabel' as const,
-        citationUrl: COSING_URL,
-        message: `No seeded rule for "${row.inci}". Status marked unknown — live feeds cover more markets and substances.`,
-      }))
+    const ruleHits: RegulatoryHit[] = []
+    for (const row of rows) {
+      ruleHits.push(...evaluateIngredient(row, market, productType, marketRules))
+    }
 
     return {
       market,
-      status: statusFromRuleHits(ruleHits, unknownHits.length > 0),
-      hits: [...ruleHits, ...unknownHits],
+      status: statusFromRuleHits(ruleHits),
+      hits: ruleHits,
     }
   })
 }

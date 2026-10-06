@@ -1,4 +1,5 @@
 import { ChevronDownIcon } from 'lucide-react'
+import { NO_OFFICIAL_LIST } from '@formulario/domain'
 import { InciPreview } from '@/components/inci-preview'
 import { StatusBadge } from '@/components/layout'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +37,7 @@ export function WorkspaceRegulatory({
           <TabsTrigger value="refs">{t('workspace.tabRefs')}</TabsTrigger>
         </TabsList>
         <TabsContent value="markets" className="pt-4">
+          <p className="mb-4 max-w-2xl text-sm text-muted-foreground">{t('workspace.banSource')}</p>
           <div className="flex flex-col">
             {checks.map((check, index) => (
               <div key={check.market}>
@@ -98,19 +100,13 @@ function FindingSource({ hit }: { hit: RegulatoryHit }) {
 
 function MarketFindings({ hits }: { hits: RegulatoryHit[] }) {
   const { t } = useLanguage()
-  // The current API encodes unknown coverage as a relabel hit with this instrument.
-  // Do not group genuine labelling requirements with unknown coverage.
-  const unknown = hits.filter((hit) => hit.instrument === 'Seed rules (unknown)')
-  const findings = hits.filter((hit) => hit.instrument !== 'Seed rules (unknown)')
+  const notes = hits.filter((hit) => hit.instrument === NO_OFFICIAL_LIST)
+  const findings = hits.filter((hit) => hit.instrument !== NO_OFFICIAL_LIST && hit.inci.trim())
     .sort((a, b) => {
       const rank = (hit: RegulatoryHit) => hit.effect === 'cannot_sell' ? 0 : hit.effect === 'reduce_percent' ? 1 : 2
       return rank(a) - rank(b)
     })
-  const sources = unknown.filter((hit, index) =>
-    unknown.findIndex((other) => other.citationUrl === hit.citationUrl && other.instrument === hit.instrument) === index,
-  )
-
-  if (!hits.length) return <p className="text-sm text-muted-foreground">{t('workspace.noHits')}</p>
+  if (!findings.length && !notes.length) return <p className="text-sm text-muted-foreground">{t('workspace.noHits')}</p>
 
   return (
     <div className="flex flex-col divide-y divide-border">
@@ -143,24 +139,9 @@ function MarketFindings({ hits }: { hits: RegulatoryHit[] }) {
           </div>
         )
       })}
-      {unknown.length ? (
-        <Collapsible className="py-3">
-          <CollapsibleTrigger className={detailTriggerClass}>
-            <ChevronDownIcon className={chevronClass} />
-            {t(unknown.length === 1 ? 'workspace.findings.unknownOne' : 'workspace.findings.unknownMany', { count: unknown.length })}
-            <StatusBadge status="unknown" />
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="flex flex-col items-start gap-2 pt-2">
-              <p className="text-sm text-muted-foreground">{t('workspace.findings.unknownDescription')}</p>
-              <ul className="flex flex-col gap-1 font-mono text-sm">
-                {unknown.map((hit, index) => <li key={index} className="break-words">{hit.inci}</li>)}
-              </ul>
-              {sources.map((hit, index) => <FindingSource key={index} hit={hit} />)}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      ) : null}
+      {notes.map((hit, index) => (
+        <p key={index} className="py-3 text-sm text-muted-foreground">{hit.message}</p>
+      ))}
     </div>
   )
 }

@@ -9,7 +9,7 @@ import type {
 } from '../types.ts'
 import { formulaPercentTotal, isWaterInci, normalizeInci } from '../types.ts'
 import { evaluateClaimHits } from '../claims/engine.ts'
-import { runRegulatoryChecks } from '../rules/engine.ts'
+import { NO_OFFICIAL_LIST, runRegulatoryChecks } from '../rules/engine.ts'
 import { MATERIAL_ROLE_LABELS, findMaterial, findOnShelf, type Material, type MaterialRole } from './materials.ts'
 import { getSkeleton, type FormulationFormat, type Skeleton } from './skeletons.ts'
 
@@ -375,7 +375,7 @@ export function checkFormulaDraft(input: CheckDraftInput): DraftReport {
     })
     for (const check of checks) {
       for (const hit of check.hits) {
-        if (hit.instrument.startsWith('Seed rules (unknown)')) continue
+        if (hit.instrument === NO_OFFICIAL_LIST) continue
         const blocking = hit.effect === 'cannot_sell' || hit.effect === 'reduce_percent'
         const action =
           hit.effect === 'cannot_sell'

@@ -18,6 +18,10 @@ MVP: the Lab Assistant is administrative only. Formulation runs in an external a
 
 The material library, evidence and experimental skeletons/gate remain in `packages/domain/src/formulation/` for reference and development evals. Do not re-enable the specialist or delegation in the production Mastra registration without an explicit product decision. See `docs/mcp.md` for setup and testing.
 
+Country bans shown in the app come only from the official CosIng Annex II file at `packages/domain/data/eu-annex-ii.csv`. Do not seed or display `seed-rules.ts`. A missing name is not an approval. Other countries stay unchecked until their own official list is loaded.
+
+`npm run rules:refresh` downloads that Commission file and Singapore's current ASEAN annex PDF. The EU list replaces the one in use only after the new file parses, inside one database transaction. The ASEAN PDF is stored and is not turned into bans.
+
 Demo login: `demo@local.test` / `demo`. Toggle free/paid in Settings.
 
 ## Cursor Cloud specific instructions
