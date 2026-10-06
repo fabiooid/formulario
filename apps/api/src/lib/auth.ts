@@ -45,12 +45,7 @@ export async function authenticateUser(email: string, password: string): Promise
   if (!user) return null
   const valid = await verifyPassword(password, user.passwordHash)
   if (!valid) return null
-  return {
-    id: user.id,
-    email: user.email,
-    plan: user.plan as 'free' | 'paid',
-    activeOrganizationId: user.activeOrganizationId ?? null,
-  }
+  return toAuthUser(user)
 }
 
 export async function signAppToken(user: AuthUser): Promise<string> {
@@ -61,19 +56,31 @@ export async function signAppToken(user: AuthUser): Promise<string> {
     .sign(secret)
 }
 
+async function toAuthUser(user: typeof users.$inferSelect): Promise<AuthUser> {
+  if (user.activeOrganizationId) {
+    return {
+      id: user.id,
+      email: user.email,
+      plan: user.plan as 'free' | 'paid',
+      activeOrganizationId: user.activeOrganizationId,
+    }
+  }
+  const personal = await ensurePersonalOrganization(user.id)
+  return {
+    id: user.id,
+    email: user.email,
+    plan: user.plan as 'free' | 'paid',
+    activeOrganizationId: personal.id,
+  }
+}
+
 export async function verifyAppToken(token: string): Promise<AuthUser | null> {
   try {
     const { payload } = await jwtVerify(token, secret)
     if (!payload.sub || typeof payload.email !== 'string') return null
     const [user] = await db.select().from(users).where(eq(users.id, payload.sub)).limit(1)
     if (!user) return null
-    const personal = await ensurePersonalOrganization(user.id)
-    return {
-      id: user.id,
-      email: user.email,
-      plan: user.plan as 'free' | 'paid',
-      activeOrganizationId: user.activeOrganizationId ?? personal.id,
-    }
+    return toAuthUser(user)
   } catch {
     return null
   }
@@ -82,13 +89,7 @@ export async function verifyAppToken(token: string): Promise<AuthUser | null> {
 export async function getUserById(id: string): Promise<AuthUser | null> {
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1)
   if (!user) return null
-  const personal = await ensurePersonalOrganization(user.id)
-  return {
-    id: user.id,
-    email: user.email,
-    plan: user.plan as 'free' | 'paid',
-    activeOrganizationId: user.activeOrganizationId ?? personal.id,
-  }
+  return toAuthUser(user)
 }
 
 export async function updateUserPlan(userId: string, plan: 'free' | 'paid') {

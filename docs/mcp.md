@@ -9,7 +9,9 @@ Formulario owns descriptions, formulas, versions, calculations, evidence and tri
 3. Set `MCP_PUBLIC_URL=http://localhost:4111` and `APP_PUBLIC_URL=http://localhost:5173` in `.env`.
 4. `npm run dev`. Settings → Connections displays the endpoint and active grants.
 
-The endpoint is **`/mcp`**, using the official TypeScript SDK's stateless Streamable HTTP transport. No model API key is required for MCP; reasoning runs in the external client. The administrative assistant still uses the configured model key.
+The endpoint is **`/mcp`**. Tools are a Mastra MCP server named `formulario`. Login, workspace choice and revoke stay in Formulario → Settings → Connections. No model API key is required for MCP; reasoning runs in the external client. The administrative assistant still uses the configured model key.
+
+Mastra Studio can list this server when `MASTRA_STUDIO=1`. That flag also opens extra Mastra APIs, so keep it off in production. External assistants should use **`/mcp`** with OAuth, not Studio’s `/api/mcp/...` routes.
 
 ## Connect a remote assistant
 

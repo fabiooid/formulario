@@ -236,13 +236,14 @@ export function AgentPane() {
         return
       }
       if (result.product) {
-        const href = `/products/${result.product.id}`
+        const product = result.product
+        const href = `/products/${product.id}`
         setMessages((prev) => [
           ...prev,
           {
             id: crypto.randomUUID(),
             role: 'system',
-            content: t('agent.productCreated', { name: result.product!.name }),
+            content: t('agent.productCreated', { name: product.name }),
             href,
             hrefLabel: t('agent.openProduct'),
           },

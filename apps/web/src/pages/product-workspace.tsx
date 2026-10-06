@@ -64,7 +64,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['workspace', id],
     queryFn: () => api.getWorkspace(id!),
-    refetchInterval: 10_000,
     enabled: !!user && !!id,
   })
 

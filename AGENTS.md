@@ -8,13 +8,13 @@ The formula table is the source of truth. Chat proposes changes; the person acce
 - Env file: copy `.env.example` to `.env` if it is missing
 - Database: `npm run db:setup` (migrate + seed demo data)
 - Dev: `npm run dev` (web http://localhost:5173, API http://localhost:4111)
-- The MVP exposes only the authenticated assistant stream under `/api`. Mastra Studio/editor and generic framework APIs are disabled. Run evals from the CLI.
+- The MVP exposes only the authenticated assistant stream under `/api`. Mastra Studio/editor and generic framework APIs are disabled. Run evals from the CLI. Local Studio listing of the Formulario MCP needs `MASTRA_STUDIO=1`; do not use that flag in production.
 - Tests: `npm test`
 - Live formula eval: `npm run eval:briefs --workspace=apps/api` (needs a model key; see script header for `VERBOSE`, `KEEP`, `PAUSE_MS`)
 
 ## Formula drafting
 
-MVP: the Lab Assistant is administrative only. Formulation runs in an external assistant through `apps/api/src/mcp/`. MCP connections are authenticated and pinned to an explicitly approved organization. External formulas become pending patches with an exact base version; only Formulario accepts them. Preserve structural validation, locks and stale-version protection. Do not filter or rank materials by inventory. The description field never starts an AI call.
+MVP: the Lab Assistant is administrative only. Formulation runs in an external assistant through `apps/api/src/mcp/`. That MCP is registered with Mastra as `formulario` so Studio can list it. MCP connections are authenticated and pinned to an explicitly approved organization. External formulas become pending patches with an exact base version; only Formulario accepts them. Preserve structural validation, locks and stale-version protection. Do not filter or rank materials by inventory. The description field never starts an AI call.
 
 The material library, evidence and experimental skeletons/gate remain in `packages/domain/src/formulation/` for reference and development evals. Do not re-enable the specialist or delegation in the production Mastra registration without an explicit product decision. See `docs/mcp.md` for setup and testing.
 

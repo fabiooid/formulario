@@ -8,13 +8,7 @@ import {
   runRegulatoryChecks,
   type ProductClaim,
 } from '@formulario/domain'
-import {
-  getCurrentVersionForVariant,
-  getFormulaRows,
-  listProducts,
-  listVariants,
-  loadRules,
-} from './products.js'
+import { listProductFormulas, loadRules } from './products.js'
 import { listIngredients } from './ingredients.js'
 
 export type HomeAttentionKind =
@@ -70,7 +64,7 @@ function pickCostVariant<T extends { variant: { isSelectedFinal: boolean }; rows
 }
 
 export async function getHomeDashboard(userId: string) {
-  const products = await listProducts(userId)
+  const catalog = await listProductFormulas(userId)
   const inventory = await listIngredients(userId)
   const rules = await loadRules()
 
@@ -86,16 +80,10 @@ export async function getHomeDashboard(userId: string) {
     attention.push(item)
   }
 
-  for (const product of products) {
+  for (const { product, variants } of catalog) {
     const href = `/products/${product.id}`
-    const variants = await listVariants(product.id)
-    const workspaces = []
 
-    for (const variant of variants) {
-      const version = await getCurrentVersionForVariant(variant.id)
-      const rows = version ? await getFormulaRows(version.id) : []
-      workspaces.push({ variant, rows })
-
+    for (const { variant, rows } of variants) {
       for (const row of rows) {
         if (row.inci.trim()) usedIngredients.push({ inci: row.inci, productName: product.name })
       }
@@ -177,7 +165,7 @@ export async function getHomeDashboard(userId: string) {
       }
     }
 
-    const picked = pickCostVariant(workspaces)
+    const picked = pickCostVariant(variants)
     if (picked) {
       const cost = computeFormulaCostPerKg(picked.rows, inventory)
       formulaCosts.push({

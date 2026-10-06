@@ -12,7 +12,6 @@ import {
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   SunMoonIcon,
-  TriangleIcon,
   UserIcon,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -21,6 +20,7 @@ import { useLanguage } from '@/i18n/language-provider'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
+import { AppBrandMark } from '@/components/app-brand-mark'
 import { useSidebar, SidebarReveal } from '@/components/sidebar-provider'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { CreateOrganizationDialog } from '@/components/create-organization-dialog'
@@ -173,9 +173,7 @@ export function AppSidebar() {
                 title={t('appName')}
                 className="flex min-w-0 items-center gap-2.5 text-foreground transition-opacity hover:opacity-80 md:hidden"
               >
-                <span className="flex size-7 shrink-0 items-center justify-center">
-                  <TriangleIcon className="size-4 fill-current" />
-                </span>
+                <AppBrandMark />
                 <span className="truncate text-sm font-semibold tracking-normal">{t('appName')}</span>
               </Link>
               {collapsed ? (
@@ -187,7 +185,7 @@ export function AppSidebar() {
                     aria-label={t('appName')}
                     className="flex size-7 items-center justify-center text-foreground group-hover/nav:opacity-0 group-focus-within/mark:opacity-0"
                   >
-                    <TriangleIcon className="size-4 fill-current" />
+                    <AppBrandMark />
                   </Link>
                   <button
                     type="button"
@@ -207,7 +205,7 @@ export function AppSidebar() {
                   aria-label={t('appName')}
                   className="hidden size-7 shrink-0 items-center justify-center text-foreground md:flex"
                 >
-                  <TriangleIcon className="size-4 fill-current" />
+                  <AppBrandMark />
                 </Link>
               )}
               <SidebarReveal>

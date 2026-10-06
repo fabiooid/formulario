@@ -86,6 +86,113 @@ function pyramidFromDb(value: string | null): OlfactoryPyramid | null {
   return parseJson<OlfactoryPyramid | null>(value, null)
 }
 
+function productFromRow(product: typeof products.$inferSelect) {
+  return {
+    ...product,
+    markets: parseJson<Market[]>(product.markets, ['EU']),
+    claims: normalizeProductClaims(parseJson<string[]>(product.claims, [])),
+    olfactoryPyramid: pyramidFromDb(product.olfactoryPyramid),
+    type: product.type as ProductType,
+  }
+}
+
+type CurrentVariantFormula = {
+  variant: ProductVariant
+  version: { id: string; versionNumber: number; label: string | null } | null
+  rows: FormulaRow[]
+}
+
+function stageFromVariants(variants: CurrentVariantFormula[]) {
+  return computeProductStage({
+    variants: variants.map((item) => ({
+      rows: item.rows,
+      isSelectedFinal: item.variant.isSelectedFinal,
+    })),
+  })
+}
+
+async function loadCurrentVariantFormulas(productIds: string[]) {
+  const byProduct = new Map<string, CurrentVariantFormula[]>()
+  for (const id of productIds) byProduct.set(id, [])
+  if (productIds.length === 0) return byProduct
+
+  const variantRows = await db
+    .select()
+    .from(productVariants)
+    .where(inArray(productVariants.productId, productIds))
+
+  const variantIds = variantRows.map((row) => row.id)
+  const versionRows =
+    variantIds.length === 0
+      ? []
+      : await db
+          .select()
+          .from(formulaVersions)
+          .where(and(inArray(formulaVersions.variantId, variantIds), eq(formulaVersions.isCurrent, true)))
+
+  const versionByVariantId = new Map<string, (typeof versionRows)[number]>()
+  for (const version of versionRows) {
+    if (version.variantId) versionByVariantId.set(version.variantId, version)
+  }
+
+  const versionIds = [...versionByVariantId.values()].map((version) => version.id)
+  const formulaRowRows =
+    versionIds.length === 0
+      ? []
+      : await db.select().from(formulaRows).where(inArray(formulaRows.versionId, versionIds))
+
+  const rowsByVersionId = new Map<string, FormulaRow[]>()
+  for (const row of formulaRowRows) {
+    const list = rowsByVersionId.get(row.versionId) ?? []
+    list.push(rowFromDb(row))
+    rowsByVersionId.set(row.versionId, list)
+  }
+  for (const list of rowsByVersionId.values()) {
+    list.sort((a, b) => a.sortOrder - b.sortOrder)
+  }
+
+  const variants = variantRows
+    .map(variantFromDb)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))
+
+  for (const variant of variants) {
+    const version = versionByVariantId.get(variant.id) ?? null
+    byProduct.get(variant.productId)?.push({
+      variant,
+      version: version
+        ? { id: version.id, versionNumber: version.versionNumber, label: version.label }
+        : null,
+      rows: version ? (rowsByVersionId.get(version.id) ?? []) : [],
+    })
+  }
+
+  return byProduct
+}
+
+export async function listProductFormulas(userId: string, options?: { archived?: boolean }) {
+  const organizationId = await getActiveOrganizationId(userId)
+  const scope = organizationId ? eq(products.organizationId, organizationId) : eq(products.userId, userId)
+  const rows = await db
+    .select()
+    .from(products)
+    .where(
+      and(scope, options?.archived ? eq(products.status, 'archived') : ne(products.status, 'archived')),
+    )
+    .orderBy(desc(products.updatedAt))
+
+  const formulas = await loadCurrentVariantFormulas(rows.map((row) => row.id))
+  return rows.map((row) => {
+    const variants = formulas.get(row.id) ?? []
+    return {
+      product: {
+        ...productFromRow(row),
+        stage: stageFromVariants(variants),
+      },
+      variants,
+    }
+  })
+}
+
 export function rowFromDb(row: typeof formulaRows.$inferSelect): FormulaRow {
   return {
     id: row.id,
@@ -182,13 +289,7 @@ export async function getProductForUser(productId: string, userId: string) {
   } else if (product.userId !== userId) {
     return null
   }
-  return {
-    ...product,
-    markets: parseJson<Market[]>(product.markets, ['EU']),
-    claims: normalizeProductClaims(parseJson<string[]>(product.claims, [])),
-    olfactoryPyramid: pyramidFromDb(product.olfactoryPyramid),
-    type: product.type as ProductType,
-  }
+  return productFromRow(product)
 }
 
 export async function listVariants(productId: string) {
@@ -219,36 +320,7 @@ export async function getSelectedFinalVariant(productId: string) {
 }
 
 export async function listProducts(userId: string, options?: { archived?: boolean }) {
-  const organizationId = await getActiveOrganizationId(userId)
-  const scope = organizationId ? eq(products.organizationId, organizationId) : eq(products.userId, userId)
-  const rows = await db
-    .select()
-    .from(products)
-    .where(
-      and(scope, options?.archived ? eq(products.status, 'archived') : ne(products.status, 'archived')),
-    )
-    .orderBy(desc(products.updatedAt))
-
-  const result = []
-  for (const product of rows) {
-    const variants = await listVariants(product.id)
-    const variantWorkspaces = await Promise.all(
-      variants.map(async (variant) => {
-        const version = await getCurrentVersionForVariant(variant.id)
-        const rowsForVariant = version ? await getFormulaRows(version.id) : []
-        return { rows: rowsForVariant, isSelectedFinal: variant.isSelectedFinal }
-      }),
-    )
-    result.push({
-      ...product,
-      markets: parseJson<Market[]>(product.markets, ['EU']),
-      claims: normalizeProductClaims(parseJson<string[]>(product.claims, [])),
-      olfactoryPyramid: pyramidFromDb(product.olfactoryPyramid),
-      type: product.type as ProductType,
-      stage: computeProductStage({ variants: variantWorkspaces }),
-    })
-  }
-  return result
+  return (await listProductFormulas(userId, options)).map((item) => item.product)
 }
 
 export async function getCurrentVersionForVariant(
@@ -446,17 +518,7 @@ export async function duplicateProduct(productId: string, userId: string, name?:
   const source = await getProductForUser(productId, userId)
   if (!source) return null
 
-  const variants = await listVariants(productId)
-  const copiedVariants = await Promise.all(
-    variants.map(async (variant) => {
-      const version = await getCurrentVersionForVariant(variant.id)
-      const rows = version ? await getFormulaRows(version.id) : []
-      return {
-        variant,
-        rows: rows.map((row) => ({ ...row, id: crypto.randomUUID() })),
-      }
-    }),
-  )
+  const copiedVariants = (await loadCurrentVariantFormulas([productId])).get(productId) ?? []
 
   const newId = crypto.randomUUID()
   const now = new Date().toISOString()
@@ -479,12 +541,19 @@ export async function duplicateProduct(productId: string, userId: string, name?:
     })
 
     for (const { variant, rows } of copiedVariants) {
-      await createVariantWithVersion(newId, variant.label, variant.sortOrder, rows, tx, {
-        isSelectedFinal: variant.isSelectedFinal,
-        macerationStartedAt: variant.macerationStartedAt,
-        macerationTargetAt: variant.macerationTargetAt,
-        macerationNotes: variant.macerationNotes,
-      })
+      await createVariantWithVersion(
+        newId,
+        variant.label,
+        variant.sortOrder,
+        rows.map((row) => ({ ...row, id: crypto.randomUUID() })),
+        tx,
+        {
+          isSelectedFinal: variant.isSelectedFinal,
+          macerationStartedAt: variant.macerationStartedAt,
+          macerationTargetAt: variant.macerationTargetAt,
+          macerationNotes: variant.macerationNotes,
+        },
+      )
     }
 
     await tx.insert(chatThreads).values({
@@ -966,22 +1035,8 @@ export async function getWorkspace(productId: string, userId: string) {
   const product = await getProductForUser(productId, userId)
   if (!product) return null
 
-  const variantsList = await listVariants(productId)
-  const variants = await Promise.all(
-    variantsList.map(async (variant) => {
-      const version = await getCurrentVersionForVariant(variant.id)
-      const rows = version ? await getFormulaRows(version.id) : []
-      return {
-        variant,
-        version: version
-          ? { id: version.id, versionNumber: version.versionNumber, label: version.label }
-          : null,
-        rows,
-      }
-    }),
-  )
-
-  const selectedFinalVariantId = variantsList.find((v) => v.isSelectedFinal)?.id ?? null
+  const variants = (await loadCurrentVariantFormulas([productId])).get(productId) ?? []
+  const selectedFinalVariantId = variants.find((item) => item.variant.isSelectedFinal)?.variant.id ?? null
 
   const [pifRows, checks, thread] = await Promise.all([
     db.select().from(pifDocuments).where(eq(pifDocuments.productId, productId)).limit(1),
@@ -990,17 +1045,12 @@ export async function getWorkspace(productId: string, userId: string) {
   ])
   const [pif] = pifRows
 
-  const activeVariantId = selectedFinalVariantId ?? variantsList[0]?.id ?? null
+  const activeVariantId = selectedFinalVariantId ?? variants[0]?.variant.id ?? null
   const patches = await listPatches(productId)
 
   return {
     product,
-    stage: computeProductStage({
-      variants: variants.map((v) => ({
-        rows: v.rows,
-        isSelectedFinal: v.variant.isSelectedFinal,
-      })),
-    }),
+    stage: stageFromVariants(variants),
     variants,
     selectedFinalVariantId,
     activeVariantId,

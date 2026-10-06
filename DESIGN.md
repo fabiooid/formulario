@@ -318,7 +318,7 @@ Sonner, themed with popover colors. Use for short confirmations later; do not to
 
 ## Sidebar & navigation
 
-- Logo: simple triangle mark, product name beside it. Icon only — no fill, border, or card. Do not put the resting logo inside a button-like card.
+- Logo: simple Lucide pipette mark, product name beside it. Reuse `AppBrandMark`. Icon only — no fill, border, or card. Do not put the resting logo inside a button-like card. Ingredients keep the flask so the two stay distinct.
 - Active item: muted fill with a short violet edge marker
 - Inactive: `text-muted-foreground`, hover to foreground on a light accent fill
 - Pinned products under a tiny muted heading (“Pinned”). Hide the block if nothing is pinned, and while in Settings.

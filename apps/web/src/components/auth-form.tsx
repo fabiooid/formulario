@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { PreferenceControls } from '@/components/preference-controls'
 import { useAuth } from '@/lib/auth'
 import { useLanguage } from '@/i18n/language-provider'
-import { TriangleIcon } from 'lucide-react'
+import { AppBrandMark } from '@/components/app-brand-mark'
 
 export function AuthForm({
   mode,
@@ -45,9 +45,7 @@ export function AuthForm({
     <div className="app-grid relative flex min-h-dvh flex-col">
       <header className="flex items-center justify-between px-4 py-4 sm:px-8">
         <div className="flex items-center gap-2.5">
-          <span className="flex size-7 items-center justify-center">
-            <TriangleIcon className="size-4 fill-current" />
-          </span>
+          <AppBrandMark />
           <span className="text-sm font-semibold tracking-normal">{t('appName')}</span>
         </div>
         <PreferenceControls />

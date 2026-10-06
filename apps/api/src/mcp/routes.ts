@@ -2,14 +2,13 @@ import { createHash, randomBytes } from 'node:crypto'
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { registerApiRoute } from '@mastra/core/server'
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db/client.js'
 import { mcpClients, mcpRequests, mcpGrants } from '../db/schema.js'
 import { verifyAppToken } from '../lib/auth.js'
 import { getMembership, listOrganizations } from '../services/organizations.js'
-import { createMcpServer } from './tools.js'
+import { handleMcpHttp, mcpPrincipalStore } from './tools.js'
 
 const hash = (value: string) => createHash('sha256').update(value).digest('base64url')
 const secret = () => randomBytes(32).toString('base64url')
@@ -147,10 +146,8 @@ mcpApp.all('/mcp', async c => {
     c.header('WWW-Authenticate', `Bearer resource_metadata="${mcpConfig().origin}/.well-known/oauth-protected-resource", scope="${MCP_SCOPE}"`)
     return c.json({ error: 'Unauthorized' }, 401)
   }
-  const server = createMcpServer({ userId: grant.userId, organizationId: grant.organizationId })
-  const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true })
-  await server.connect(transport)
-  try { return await transport.handleRequest(c.req.raw) } finally { await server.close() }
+  const principal = { userId: grant.userId, organizationId: grant.organizationId }
+  return mcpPrincipalStore.run(principal, () => handleMcpHttp(c.req.raw, principal, bearer!.slice(7), MCP_SCOPE.split(' ')))
 })
 
 export const mcpRoutes = [

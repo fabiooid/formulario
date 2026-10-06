@@ -25,7 +25,7 @@ vi.mock('../db/client.js', async () => {
 
 import { db, libsql } from '../db/client.js'
 import { appRoutes } from '../mastra/routes/app-routes.js'
-import { signAppToken } from '../lib/auth.js'
+import { signAppToken, verifyAppToken } from '../lib/auth.js'
 import {
   commitNewVersion,
   createPatch,
@@ -102,6 +102,23 @@ async function fixture(userId = 'owner') {
     rows: variant.rows,
   }
 }
+
+describe('app token identity', () => {
+  it('does not create a personal org when the user already has one', async () => {
+    const before = await db.select().from(schema.organizations)
+    const token = await signAppToken({
+      id: 'owner',
+      email: 'owner@test.local',
+      plan: 'free',
+      activeOrganizationId: 'org',
+    })
+    await expect(verifyAppToken(token)).resolves.toMatchObject({
+      id: 'owner',
+      activeOrganizationId: 'org',
+    })
+    expect(await db.select().from(schema.organizations)).toHaveLength(before.length)
+  })
+})
 
 describe('formula version persistence', () => {
   it('saves the same row IDs repeatedly while preserving every earlier version', async () => {
@@ -389,6 +406,32 @@ describe('product duplicate, archive and delete', () => {
     expect(duplicated.variants[0].rows).toMatchObject([{ inci: 'Squalane', percent: 100 }])
     expect(duplicated.variants[0].rows[0].id).not.toBe(source.variants[0].rows[0].id)
     expect(await getProductForUser(f.productId, 'owner')).toMatchObject({ name: 'Face oil' })
+  })
+
+  it('keeps each product formula when listing many products', async () => {
+    const oil = await createProduct({
+      userId: 'owner',
+      name: 'Squalane oil',
+      type: 'skincare',
+      markets: ['EU'],
+      brief: 'Oil',
+      formula: [{ inci: 'Squalane', percent: 100, phase: 'A', function: 'emollient' }],
+    })
+    const cream = await createProduct({
+      userId: 'owner',
+      name: 'Glycerin cream',
+      type: 'skincare',
+      markets: ['EU'],
+      brief: 'Cream',
+      formula: [{ inci: 'Glycerin', percent: 100, phase: 'A', function: 'humectant' }],
+    })
+    const listed = await listProducts('owner')
+    expect(listed.find((item) => item.id === oil.id)?.stage).toBe('formula')
+    expect(listed.find((item) => item.id === cream.id)?.stage).toBe('formula')
+    const oilWorkspace = (await getWorkspace(oil.id, 'owner'))!
+    const creamWorkspace = (await getWorkspace(cream.id, 'owner'))!
+    expect(oilWorkspace.variants[0].rows.map((row) => row.inci)).toEqual(['Squalane'])
+    expect(creamWorkspace.variants[0].rows.map((row) => row.inci)).toEqual(['Glycerin'])
   })
 
   it('hides archived products from the default list and clears the pin', async () => {
