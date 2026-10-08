@@ -32,7 +32,7 @@
     "@mastra/mcp": "1.17.3",
     "@mastra/memory": "1.28.3",
     "@mastra/observability": "1.17.6",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "bcryptjs": "^3.0.2",
     "drizzle-orm": "^0.44.2",
     "hono": "^4.7.10",
