@@ -31,11 +31,7 @@ function inventoryPayload(proposal: AgentProposal): InventoryProposalPayload | n
 function productPayload(proposal: AgentProposal): ProductProposalPayload | null {
   if (proposal.kind !== 'product_create') return null
   if (!isRecord(proposal.payload) || typeof proposal.payload.name !== 'string') return null
-  const formula = proposal.payload.formula
-  return {
-    ...(proposal.payload as unknown as ProductProposalPayload),
-    formula: Array.isArray(formula) ? formula : undefined,
-  }
+  return proposal.payload as unknown as ProductProposalPayload
 }
 
 function stockLine(ingredient: IngredientInput, t: (key: MessageKey) => string) {
@@ -75,13 +71,7 @@ export function AgentProposalCard({
   const description = stock
     ? stockLine(stock.ingredient, t)
     : product
-      ? [
-          t(`productType.${product.type}` as MessageKey),
-          product.brief,
-          product.formula?.length
-            ? t('agent.proposalFormulaRows', { count: product.formula.length })
-            : null,
-        ]
+      ? [t(`productType.${product.type}` as MessageKey), product.brief]
           .filter(Boolean)
           .join(' · ')
       : proposal.summary

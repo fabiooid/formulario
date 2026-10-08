@@ -31,12 +31,20 @@ async function seedRules() {
   const loadedDate = listDateFromVersion(loaded)
   if (loaded === list.version || (loadedDate && loadedDate > list.listUpdatedOn)) {
     console.log(`EU Annex II already loaded (${loaded}). Bundled copy not applied.`)
-    return
+    return false
   }
   const count = await replaceEuBanRules(list)
   console.log(
     `Loaded ${count} EU Annex II bans from CosIng (list updated ${list.listUpdatedOn}, ${list.entryCount} entries in the file).`,
   )
+  return true
+}
+
+async function refreshSavedChecks() {
+  const saved = await db.select({ id: products.id, userId: products.userId }).from(products)
+  for (const product of saved) {
+    await refreshDerived(product.id, product.userId)
+  }
 }
 
 async function seedDemoUser() {
@@ -130,7 +138,6 @@ async function seedProductWithVariants(
         phase: row.phase,
         percent: row.percent,
         notes: row.notes,
-        locked: false,
         sortOrder: rowIndex,
       })),
     )
@@ -154,13 +161,15 @@ async function seedProductWithVariants(
 
 async function main() {
   console.log('Loading the official EU banned list...')
-  await seedRules()
+  const rulesChanged = await seedRules()
+  // Production runs this on every boot: official list only, never the demo account.
+  if (process.argv.includes('--official-only')) {
+    if (rulesChanged) await refreshSavedChecks()
+    return
+  }
   const { userId, existed } = await seedDemoUser()
   if (existed) {
-    const saved = await db.select({ id: products.id, userId: products.userId }).from(products)
-    for (const product of saved) {
-      await refreshDerived(product.id, product.userId)
-    }
+    await refreshSavedChecks()
     console.log('Demo user already exists — official bans reloaded and saved checks refreshed.')
     return
   }

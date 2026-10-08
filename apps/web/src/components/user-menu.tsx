@@ -1,4 +1,5 @@
 import { LogOutIcon, MessageSquareIcon, SettingsIcon } from 'lucide-react'
+import { ASSISTANT_REQUIRES_PAID_PLAN } from '@formulario/domain'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ThemeSwitcher } from '@/components/theme-switcher'
@@ -61,9 +62,11 @@ export function UserMenu({
         <DropdownMenuGroup>
           <DropdownMenuLabel className="font-normal text-foreground">
             <p className="truncate text-sm font-medium">{user.email}</p>
-            <p className="mt-0.5 text-xs font-normal text-muted-foreground">
-              {t(`plan.${user.plan}` as MessageKey)}
-            </p>
+            {ASSISTANT_REQUIRES_PAID_PLAN ? (
+              <p className="mt-0.5 text-xs font-normal text-muted-foreground">
+                {t(`plan.${user.plan}` as MessageKey)}
+              </p>
+            ) : null}
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuGroup>

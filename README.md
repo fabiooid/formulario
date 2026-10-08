@@ -10,7 +10,7 @@ This is a local prototype. It is **not** a compliance product. It does not repla
 
 - See what needs attention today: stock to buy, formula cost, and issues on current products
 - Keep a product list with briefs, claims, and pinned favorites
-- Edit a formula, then check INCI, market notes, and a PIF draft from the committed version
+- Edit a formula, then check INCI and market notes from the committed version
 - Share an ingredient library across your workspace
 - Switch between a personal space and named organisations
 
@@ -36,10 +36,10 @@ The demo starts on the free plan. In Settings you can switch to paid to try the 
 
 The sample perfume includes Butylphenyl Methylpropional, a name on the EU banned list. Ban checks use the European Commission CosIng Annex II export. A name that is not on that list is not an approval.
 
-To refresh the official files, run `npm run rules:refresh`. It downloads the Commission list and replaces it only when the new file still matches the expected export. It also saves Singapore's current ASEAN annex PDF, without turning that PDF into bans. Run it once a day in production. If either download fails, the list already in use stays put and the command exits with an error.
+To refresh the official files, run `npm run rules:refresh`. It downloads the Commission list and replaces it only when the new file still matches the expected export. It also saves Singapore's current ASEAN annex PDF, without turning that PDF into bans. In production the API runs the same refresh every day at 03:00 UTC (see `docs/deployment.md`). If either download fails, the list already in use stays put and the command exits with an error.
 
 ## A note on claims
 
-INCI lists, market checks, and PIF drafts always come from the formula you committed — not from chat. Unknown ingredients stay unknown. Official references (CosIng, EU rules, IFRA, ASEAN) are linked in the app, not scraped.
+INCI lists and market checks always come from the formula you committed — not from chat. Unknown ingredients stay unknown. Official references (CosIng, EU rules, IFRA, ASEAN) are linked in the app, not scraped.
 
 For how the product should look and feel, see [DESIGN.md](DESIGN.md).

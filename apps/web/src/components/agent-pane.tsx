@@ -1,4 +1,5 @@
 import Markdown from 'react-markdown'
+import { canUseAssistant } from '@formulario/domain'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowUpIcon,
@@ -215,7 +216,7 @@ export function AgentPane() {
   const { data: proposalData } = useQuery({
     queryKey: ['proposals'],
     queryFn: () => api.listProposals(),
-    enabled: !!user && user.plan === 'paid' && mode !== 'closed',
+    enabled: !!user && canUseAssistant(user.plan) && mode !== 'closed',
   })
   const proposals = proposalData?.proposals ?? []
 
@@ -277,7 +278,8 @@ export function AgentPane() {
       await api.streamAgent(
         {
           userId: user.id,
-          threadId: `formulario:v2:${user.activeOrganizationId ?? user.id}`,
+          // One thread per person per organization: team members never share chat memory.
+          threadId: `formulario:v3:${user.activeOrganizationId ?? 'personal'}:${user.id}`,
           message: userMessage,
           productId,
           variantId: variantId ?? undefined,
@@ -326,7 +328,7 @@ export function AgentPane() {
 
   useEffect(() => {
     if (!pendingPrompt) return
-    if (!user || user.plan !== 'paid') {
+    if (!user || !canUseAssistant(user.plan)) {
       clearPendingPrompt()
       return
     }
@@ -338,7 +340,7 @@ export function AgentPane() {
 
   const lastMessage = messages[messages.length - 1]
   const waitingOnFirstToken = streaming && lastMessage?.role !== 'assistant'
-  const paid = user?.plan === 'paid'
+  const allowed = !!user && canUseAssistant(user.plan)
 
   const closed = mode === 'closed'
 
@@ -431,7 +433,7 @@ export function AgentPane() {
         ) : null}
       </div>
 
-      {!paid ? (
+      {!allowed ? (
         <div className="flex min-h-0 flex-1 items-center p-4">
           <EmptyState title={t('agent.paidTitle')} description={t('agent.paidDescription')} />
         </div>

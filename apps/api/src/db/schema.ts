@@ -12,6 +12,7 @@ export const users = sqliteTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   plan: text('plan', { enum: ['free', 'paid'] }).notNull().default('free'),
+  mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(false),
   agentQuotaUsed: integer('agent_quota_used').notNull().default(0),
   activeOrganizationId: text('active_organization_id').references(() => organizations.id),
   createdAt: text('created_at').notNull(),
@@ -74,7 +75,6 @@ export const formulaRows = sqliteTable('formula_rows', {
   phase: text('phase').notNull(),
   percent: real('percent').notNull(),
   notes: text('notes'),
-  locked: integer('locked', { mode: 'boolean' }).notNull().default(false),
   sortOrder: integer('sort_order').notNull(),
 }, (table) => [primaryKey({ columns: [table.versionId, table.id] })])
 
@@ -147,14 +147,6 @@ export const regulatoryChecks = sqliteTable('regulatory_checks', {
   status: text('status').notNull(),
   hits: text('hits').notNull(),
   checkedAt: text('checked_at').notNull(),
-})
-
-export const pifDocuments = sqliteTable('pif_documents', {
-  id: text('id').primaryKey(),
-  productId: text('product_id').notNull().references(() => products.id),
-  markdown: text('markdown').notNull(),
-  sections: text('sections').notNull(),
-  generatedAt: text('generated_at').notNull(),
 })
 
 export const chatThreads = sqliteTable('chat_threads', {

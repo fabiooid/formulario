@@ -1,4 +1,4 @@
-const AUTH_PATHS = new Set(['/login', '/register'])
+const AUTH_PATHS = new Set(['/login', '/register', '/password'])
 
 let returnPath = '/'
 

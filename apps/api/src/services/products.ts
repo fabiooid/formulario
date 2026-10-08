@@ -2,9 +2,7 @@ import {
   applyPatchOperations,
   computeMacerationStatus,
   computeProductStage,
-  evaluateClaimHits,
   generateInciList,
-  generatePifDraft,
   normalizeProductClaims,
   runRegulatoryChecks,
   type FormulaRow,
@@ -18,7 +16,6 @@ import {
 import { and, desc, eq, inArray, ne } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { getActiveOrganizationId, getMembership } from './organizations.js'
-import { listIngredients } from './ingredients.js'
 import {
   chatThreads,
   formulaPatches,
@@ -26,7 +23,6 @@ import {
   formulaVersions,
   ingredientRules,
   organizationMembers,
-  pifDocuments,
   productVariants,
   products,
   regulatoryChecks,
@@ -203,34 +199,8 @@ export function rowFromDb(row: typeof formulaRows.$inferSelect): FormulaRow {
     phase: row.phase,
     percent: row.percent,
     notes: row.notes ?? undefined,
-    locked: row.locked,
     sortOrder: row.sortOrder,
   }
-}
-
-export function rowsFromDraft(
-  rows: Array<{
-    inci: string
-    cas?: string
-    tradeName?: string
-    function: string
-    phase: string
-    percent: number
-    notes?: string
-  }>,
-): FormulaRow[] {
-  return rows.map((row, index) => ({
-    id: crypto.randomUUID(),
-    inci: row.inci,
-    cas: row.cas,
-    tradeName: row.tradeName,
-    function: row.function,
-    phase: row.phase,
-    percent: row.percent,
-    notes: row.notes,
-    locked: false,
-    sortOrder: index,
-  }))
 }
 
 export function variantFromDb(row: typeof productVariants.$inferSelect): ProductVariant {
@@ -413,15 +383,6 @@ export async function createProduct(input: {
   markets: Market[]
   brief: string
   claims?: ProductClaim[]
-  formula?: Array<{
-    inci: string
-    cas?: string
-    tradeName?: string
-    function: string
-    phase: string
-    percent: number
-    notes?: string
-  }>
 }) {
   const id = crypto.randomUUID()
   const now = new Date().toISOString()
@@ -444,7 +405,7 @@ export async function createProduct(input: {
     id,
     input.type === 'perfume' ? 'Variant 1' : 'Main',
     0,
-    input.formula?.length ? rowsFromDraft(input.formula) : [],
+    [],
   )
 
   const threadId = crypto.randomUUID()
@@ -595,7 +556,6 @@ export async function deleteProduct(productId: string, userId: string) {
     await tx.delete(formulaVersions).where(eq(formulaVersions.productId, productId))
     await tx.delete(productVariants).where(eq(productVariants.productId, productId))
     await tx.delete(regulatoryChecks).where(eq(regulatoryChecks.productId, productId))
-    await tx.delete(pifDocuments).where(eq(pifDocuments.productId, productId))
     await tx.delete(chatThreads).where(eq(chatThreads.productId, productId))
     await tx.delete(products).where(eq(products.id, productId))
   })
@@ -659,7 +619,6 @@ export async function saveFormulaRows(
       phase: row.phase,
       percent: row.percent,
       notes: row.notes,
-      locked: row.locked,
       sortOrder: row.sortOrder ?? index,
     })),
   )
@@ -724,43 +683,6 @@ export async function commitNewVersion(
   return db.transaction((tx) =>
     commitVersion(tx, productId, variantId, userId, rows, expectedVersionId),
   )
-}
-
-// Lock is a row guard for agent patches, not a composition change. It updates the
-// current version in place so it never creates a new formula version or a draft.
-export async function updateFormulaRowLock(
-  productId: string,
-  userId: string,
-  variantId: string,
-  rowId: string,
-  locked: boolean,
-) {
-  await requireWritableProduct(db, productId, userId)
-  const [variant] = await db
-    .select()
-    .from(productVariants)
-    .where(and(eq(productVariants.id, variantId), eq(productVariants.productId, productId)))
-    .limit(1)
-  if (!variant) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
-  const current = await getCurrentVersionForVariant(variantId)
-  if (!current) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
-  const [row] = await db
-    .select()
-    .from(formulaRows)
-    .where(and(eq(formulaRows.versionId, current.id), eq(formulaRows.id, rowId)))
-    .limit(1)
-  if (!row) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
-  await db
-    .update(formulaRows)
-    .set({ locked })
-    .where(and(eq(formulaRows.versionId, current.id), eq(formulaRows.id, rowId)))
-  await db
-    .update(products)
-    .set({ updatedAt: new Date().toISOString() })
-    .where(eq(products.id, productId))
-  const workspace = await getWorkspace(productId, userId)
-  if (!workspace) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
-  return workspace
 }
 
 export async function createVariant(
@@ -900,23 +822,7 @@ export async function refreshDerived(productId: string, userId: string) {
     )
   }
 
-  const inventory = await listIngredients(userId)
-  const claimHits = evaluateClaimHits({
-    claims: product.claims,
-    rows,
-    inventory,
-  })
-  const pif = generatePifDraft({ product, rows, checks, claimHits })
-  await db.delete(pifDocuments).where(eq(pifDocuments.productId, productId))
-  await db.insert(pifDocuments).values({
-    id: crypto.randomUUID(),
-    productId,
-    markdown: pif.markdown,
-    sections: JSON.stringify(pif.sections),
-    generatedAt: now,
-  })
-
-  return { inci: generateInciList(rows), checks, pif }
+  return { inci: generateInciList(rows), checks }
 }
 
 export async function computeChecks(productId: string, userId: string, variantId?: string) {
@@ -1042,12 +948,10 @@ export async function getWorkspace(productId: string, userId: string) {
   const variants = (await loadCurrentVariantFormulas([productId])).get(productId) ?? []
   const selectedFinalVariantId = variants.find((item) => item.variant.isSelectedFinal)?.variant.id ?? null
 
-  const [pifRows, checks, thread] = await Promise.all([
-    db.select().from(pifDocuments).where(eq(pifDocuments.productId, productId)).limit(1),
+  const [checks, thread] = await Promise.all([
     db.select().from(regulatoryChecks).where(eq(regulatoryChecks.productId, productId)),
     getChatThread(productId),
   ])
-  const [pif] = pifRows
 
   const activeVariantId = selectedFinalVariantId ?? variants[0]?.variant.id ?? null
   const patches = await listPatches(productId)
@@ -1059,13 +963,6 @@ export async function getWorkspace(productId: string, userId: string) {
     selectedFinalVariantId,
     activeVariantId,
     patches,
-    pif: pif
-      ? {
-          markdown: pif.markdown,
-          sections: parseJson(pif.sections, []),
-          generatedAt: pif.generatedAt,
-        }
-      : null,
     checks: checks.map((check) => ({
       market: check.market,
       status: check.status,

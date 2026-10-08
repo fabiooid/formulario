@@ -8,7 +8,9 @@ import { Observability, MastraStorageExporter } from '@mastra/observability'
 import { mcpConfig, mcpRoutes } from '../mcp/routes.js'
 import { formularioMcpServer } from '../mcp/tools.js'
 import { assistantAgent } from './agents/assistant-agent.js'
-import { agentGateMiddleware, appRoutes, authRoutes } from './routes/app-routes.js'
+import { agentGateMiddleware, appRoutes, authRoutes, healthRoutes } from './routes/app-routes.js'
+import { webStaticEnabled, webStaticMiddleware } from './web-static.js'
+import { startRefreshSchedule } from '../services/refresh-schedule.js'
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const mastraDbUrl = `file:${path.join(apiRoot, 'data/mastra.db')}`
@@ -22,6 +24,8 @@ const corsOrigins = studioEnabled
 if (studioEnabled) {
   console.warn('[formulario] Mastra Studio APIs are open for local use. Do not use this flag in production.')
 }
+
+if (process.env.NODE_ENV === 'production') startRefreshSchedule()
 
 export const mastra = new Mastra({
   agents: {
@@ -75,8 +79,9 @@ export const mastra = new Mastra({
           return agentGateMiddleware(c, next)
         },
       },
+      ...(webStaticEnabled ? [{ path: '*', handler: webStaticMiddleware }] : []),
     ],
-    apiRoutes: [...authRoutes, ...appRoutes, ...mcpRoutes],
+    apiRoutes: [...healthRoutes, ...authRoutes, ...appRoutes, ...mcpRoutes],
     build: {
       openAPIDocs: true,
       swaggerUI: true,

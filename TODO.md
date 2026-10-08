@@ -11,7 +11,7 @@ These are intentionally out of scope for the POC. Track as GitHub-style issues f
 ## Regulatory data
 
 - [x] **EU Annex II bans** — loaded from the CosIng export; `npm run rules:refresh` replaces it when the Commission list changes
-- [ ] **Schedule the refresh** — run `npm run rules:refresh` once a day on the production host, and alert when it exits with an error
+- [x] **Schedule the refresh** — the API runs it daily at 03:00 UTC in production and pings `REFRESH_HEARTBEAT_URL` (`/fail` on error)
 - [ ] **ASEAN bans** — the official PDF is saved daily; read Annex II from it only after its table layout is checked
 - [ ] **EU limits (Annex III–VI)** — dose limits and conditions from the same CosIng exports, shown separately from bans
 - [ ] **UK, US/MoCRA, HK market packs** — each only from that country's own official list
@@ -23,21 +23,16 @@ These are intentionally out of scope for the POC. Track as GitHub-style issues f
 - [ ] **Assessor CPSR upload** — attach PDF, mark CPSR gap resolved
 - [ ] **CoA / stability attachments** — file storage per product section
 - [ ] **Version history UI** — browse and diff frozen formula versions
-- [ ] **Export pack** — zip PIF draft + INCI + regulatory annex for assessor handoff
+- [ ] **Export pack** — zip INCI + regulatory annex for assessor handoff
 - [ ] **CPNP/SCPN filing** — explicit non-goal until assessor workflow is solid
 
 ## Formulation quality
 
-- [ ] **Materials library review** — have a formulator check bands, ceilings and notes in `formulation/materials.ts`; grow past ~140 materials (more actives, more aroma materials, surfactants for a future rinse-off format)
-- [ ] **More formats** — cleanser / rinse-off, toner without gum, hair oil, body butter (whipped), room spray
-- [ ] **Show gate warnings on the card** — the accepted proposal already carries `warnings`, `allergens` and `toOrder`; surface them under the proposal card
-- [ ] **Chat-driven format switch** — “make it a balm instead” should re-run the guide for the new format on the same product
-- [ ] **Score history** — keep `eval:briefs` results per model / prompt version so a change can be compared, not eyeballed
+- [ ] **Material data** — design a scalable, sourced material library (per-workspace table, supplier documents, links to official sources) to replace the removed hard-coded one, then decide whether MCP should expose it
 - [ ] **Perfume concentrate view** — optional: build the concentrate at 100% and dilute, instead of flat finished-product percents
 
 ## Agent & platform
 
-- [ ] **First-turn auto-formula** — on “new from brief”, trigger agent propose_formula_patch automatically
 - [ ] **Patch preview diff** — side-by-side before accept
 - [ ] **Observability dashboard** — trace viewer for tool calls in production
 - [ ] **Email magic-link auth** — replace password-only stub

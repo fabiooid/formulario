@@ -450,7 +450,7 @@ export function IngredientsPage() {
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-soft">
-          <Table className="table-fixed">
+          <Table className="table-fixed sm:min-w-[30rem] md:min-w-[36rem]">
             <TableHeader className="bg-muted/60">
               <TableRow className="hover:bg-transparent">
                 <TableHead>{t('ingredients.inci')}</TableHead>

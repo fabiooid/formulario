@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { finishFormulaSave, formulaContentEquals, formulaLockChanges, type FormulaDraft } from './formula-drafts'
+import { finishFormulaSave, formulaContentEquals, type FormulaDraft } from './formula-drafts'
 import type { FormulaRow } from './api'
 
 const row = (overrides: Partial<FormulaRow> = {}): FormulaRow => ({
@@ -8,7 +8,6 @@ const row = (overrides: Partial<FormulaRow> = {}): FormulaRow => ({
   percent: 100,
   function: 'emollient',
   phase: 'A',
-  locked: false,
   sortOrder: 0,
   ...overrides,
 })
@@ -31,16 +30,9 @@ describe('saving formula drafts', () => {
   })
 })
 
-describe('formula lock vs composition', () => {
-  it('treats lock-only changes as the same formula content', () => {
-    expect(formulaContentEquals([row()], [row({ locked: true })])).toBe(true)
+describe('comparing formula content', () => {
+  it('treats only identical rows as the same formula', () => {
+    expect(formulaContentEquals([row()], [row()])).toBe(true)
     expect(formulaContentEquals([row()], [row({ percent: 90 })])).toBe(false)
-  })
-
-  it('lists lock toggles on rows that already exist', () => {
-    expect(formulaLockChanges([row()], [row({ locked: true })])).toEqual([
-      { rowId: 'row', locked: true },
-    ])
-    expect(formulaLockChanges([row()], [row({ id: 'new', locked: true })])).toEqual([])
   })
 })

@@ -38,7 +38,6 @@ export const FormulaRowSchema = z.object({
   phase: z.string(),
   percent: z.number(),
   notes: z.string().optional(),
-  locked: z.boolean().default(false),
   sortOrder: z.number(),
 })
 export type FormulaRow = z.infer<typeof FormulaRowSchema>
@@ -281,16 +280,6 @@ export const InventoryUpdatePayloadSchema = z.object({
 })
 export type InventoryUpdatePayload = z.infer<typeof InventoryUpdatePayloadSchema>
 
-export const FormulaDraftRowSchema = z.object({
-  inci: z.string().trim().min(1),
-  cas: z.string().optional(),
-  tradeName: z.string().optional(),
-  function: z.string().trim().min(1),
-  phase: z.string().trim().min(1),
-  percent: z.coerce.number(),
-  notes: z.string().optional(),
-})
-export type FormulaDraftRow = z.infer<typeof FormulaDraftRowSchema>
 
 export const ProductCreatePayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -298,7 +287,6 @@ export const ProductCreatePayloadSchema = z.object({
   markets: z.array(MarketSchema).default(['EU']),
   brief: z.string().min(1),
   claims: z.array(ProductClaimSchema).optional(),
-  formula: z.array(FormulaDraftRowSchema).optional(),
 })
 export type ProductCreatePayload = z.infer<typeof ProductCreatePayloadSchema>
 
@@ -431,11 +419,4 @@ export function generateInciList(rows: Pick<FormulaRow, 'inci' | 'percent'>[]): 
   const onePercentOrMore = others.filter((row) => row.percent >= 1).sort(byPercentDesc)
   const underOnePercent = others.filter((row) => row.percent < 1).sort(byPercentDesc)
   return [...onePercentOrMore, ...underOnePercent, ...colorants].map((row) => row.inci).join(', ')
-}
-
-export function hasWaterPhase(rows: Pick<FormulaRow, 'inci' | 'phase'>[]): boolean {
-  return rows.some((row) => {
-    const phase = normalizeInci(row.phase)
-    return isWaterInci(row.inci) || phase === 'water' || phase === 'aqueous' || phase.includes('water')
-  })
 }

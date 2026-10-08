@@ -31,11 +31,11 @@ export function agentModel() {
   const available = ordered.filter((entry) => entry.apiKey)
 
   if (available.length === 0) {
-    console.log(`[formulario] formulator model: ${gemini.id} (no key set)`)
+    console.log(`[formulario] assistant model: ${gemini.id} (no key set)`)
     return gemini.id
   }
 
-  console.log(`[formulario] formulator model: ${available.map((entry) => entry.id).join(' → ')}`)
+  console.log(`[formulario] assistant model: ${available.map((entry) => entry.id).join(' → ')}`)
   return available.map((entry) => ({ model: entry, maxRetries: retries }))
 }
 

@@ -1,47 +1,10 @@
-import type { FormulaRow, Workspace } from './api'
+import type { FormulaRow } from './api'
 
 export type FormulaDraft = { rows: FormulaRow[]; baseVersionId: string | null }
 export type FormulaDrafts = Record<string, FormulaDraft>
-export type FormulaLockChange = { rowId: string; locked: boolean }
-
-function withoutLocks(rows: FormulaRow[]) {
-  return rows.map(({ locked: _locked, ...row }) => row)
-}
 
 export function formulaContentEquals(a: FormulaRow[], b: FormulaRow[]) {
-  return JSON.stringify(withoutLocks(a)) === JSON.stringify(withoutLocks(b))
-}
-
-export function formulaLockChanges(from: FormulaRow[], to: FormulaRow[]): FormulaLockChange[] {
-  const previousById = new Map(from.map((row) => [row.id, row]))
-  const changes: FormulaLockChange[] = []
-  for (const row of to) {
-    const previous = previousById.get(row.id)
-    if (previous && previous.locked !== row.locked) {
-      changes.push({ rowId: row.id, locked: row.locked })
-    }
-  }
-  return changes
-}
-
-export function applyFormulaRowLock(
-  workspace: Workspace | undefined,
-  variantId: string,
-  rowId: string,
-  locked: boolean,
-): Workspace | undefined {
-  if (!workspace) return workspace
-  return {
-    ...workspace,
-    variants: workspace.variants.map((entry) =>
-      entry.variant.id !== variantId
-        ? entry
-        : {
-            ...entry,
-            rows: entry.rows.map((row) => (row.id === rowId ? { ...row, locked } : row)),
-          },
-    ),
-  }
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 // A completed save only clears the snapshot it submitted. Edits made while the

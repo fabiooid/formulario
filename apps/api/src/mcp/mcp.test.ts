@@ -32,7 +32,7 @@ beforeAll(async () => {
   await db.insert(schema.organizations).values([{ id: 'org', name: 'Lab', kind: 'personal', createdAt: 'today' }, { id: 'other', name: 'Other', createdAt: 'today' }])
   await db.insert(schema.organizationMembers).values([{ id: 'one', organizationId: 'org', userId: 'owner', role: 'owner', createdAt: 'today' }, { id: 'two', organizationId: 'org', userId: 'viewer', role: 'viewer', createdAt: 'today' }, { id: 'three', organizationId: 'other', userId: 'owner', role: 'owner', createdAt: 'today' }])
   await db.update(schema.users).set({ activeOrganizationId: 'org' }).where(eq(schema.users.id, 'owner'))
-  appToken = await signAppToken({ id: 'owner', email: 'owner@test.local', plan: 'free', activeOrganizationId: 'org' })
+  appToken = await signAppToken({ id: 'owner', email: 'owner@test.local', plan: 'free' })
 })
 afterAll(async () => { libsql.close(); await rm(directory, { recursive: true, force: true }) })
 const jsonPost = (path: string, body: unknown, token?: string) => mcpApp.request(origin + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) })
@@ -59,7 +59,9 @@ async function rpc(token: string, method: string, params: unknown = {}) {
   return mcpApp.request(origin + '/mcp', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', 'MCP-Protocol-Version': '2025-11-25' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })
 }
 async function fixture() {
-  const product = await createProduct({ userId: 'owner', name: 'MCP trial', type: 'perfume', markets: ['EU'], brief: 'Dry woods', formula: [{ inci: 'Squalane', percent: 100, function: 'carrier', phase: 'base' }] })
+  const product = await createProduct({ userId: 'owner', name: 'MCP trial', type: 'perfume', markets: ['EU'], brief: 'Dry woods' })
+  const empty = (await getWorkspace(product.id, 'owner'))!.variants[0]
+  await db.insert(schema.formulaRows).values({ id: crypto.randomUUID(), versionId: empty.version!.id, inci: 'Squalane', percent: 100, function: 'carrier', phase: 'base', sortOrder: 0 })
   const w = (await getWorkspace(product.id, 'owner'))!
   return { productId: product.id, variantId: w.variants[0].variant.id, baseVersionId: w.variants[0].version!.id, summary: 'External trial', rows: [{ inci: 'Squalane', percent: 90, function: 'carrier', phase: 'base' }, { inci: 'Iso E Super', percent: 10, function: 'wood', phase: 'base' }] }
 }
@@ -96,7 +98,7 @@ describe('OAuth and MCP transport', () => {
     const { tokens } = await authorized()
     expect((await rpc(tokens.access_token, 'initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'Test', version: '1' } })).status).toBe(200)
     const listed = await (await rpc(tokens.access_token, 'tools/list')).json()
-    expect(listed.result.tools.map((t: { name: string }) => t.name)).toEqual(['list_products', 'read_product', 'read_history', 'search_materials', 'get_material_evidence', 'submit_formula_proposal'])
+    expect(listed.result.tools.map((t: { name: string }) => t.name)).toEqual(['list_products', 'read_product', 'read_history', 'submit_formula_proposal'])
     const input = await fixture()
     const before = await (await rpc(tokens.access_token, 'tools/call', { name: 'read_product', arguments: { productId: input.productId } })).json()
     expect(JSON.parse(before.result.content[0].text).variants[0].version.id).toBe(input.baseVersionId)
@@ -136,15 +138,14 @@ describe('proposal isolation and validation', () => {
     await expect(scopedWorkspace({ userId: 'outsider', organizationId: 'org' }, input.productId)).rejects.toThrow('access')
     await expect(submitFormula({ userId: 'viewer', organizationId: 'org' }, input)).rejects.toThrow('read-only')
   })
-  it('rejects bad totals, row IDs, changed locks and stale proposals at submission and acceptance', async () => {
+  it('rejects bad totals, row IDs and stale proposals at submission and acceptance', async () => {
     const input = await fixture()
     await expect(submitFormula(principal, { ...input, rows: [input.rows[0]] })).rejects.toThrow('total')
     await expect(submitFormula(principal, { ...input, rows: input.rows.map(r => ({ ...r, id: 'foreign' })) })).rejects.toThrow('Row IDs')
     const pending = await submitFormula(principal, input)
     const w = (await getWorkspace(input.productId, 'owner'))!
-    const nextId = await commitNewVersion(input.productId, input.variantId, 'owner', w.variants[0].rows.map(r => ({ ...r, locked: true })), input.baseVersionId)
+    await commitNewVersion(input.productId, input.variantId, 'owner', w.variants[0].rows.map(r => ({ ...r, notes: 'changed' })), input.baseVersionId)
     await expect(submitFormula(principal, input)).rejects.toThrow('version')
-    await expect(submitFormula(principal, { ...input, baseVersionId: nextId })).rejects.toThrow('Locked')
     await expect(resolvePatch(pending.patchId, input.productId, 'owner', 'accepted')).rejects.toMatchObject({ status: 409 })
   })
 })

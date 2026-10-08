@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { NO_OFFICIAL_LIST, runRegulatoryChecks, searchIngredientRules } from './engine.ts'
+import { NO_OFFICIAL_LIST, runRegulatoryChecks } from './engine.ts'
 import { parseEuAnnexII } from './eu-annex-ii.ts'
 import type { IngredientRule } from '../types.ts'
 
@@ -73,10 +73,5 @@ describe('official ban checks', () => {
 
     expect(results[0]?.status).toBe('unknown')
     expect(results[0]?.hits[0]?.instrument).toBe(NO_OFFICIAL_LIST)
-  })
-
-  it('searches the loaded official names', () => {
-    const hits = searchIngredientRules('butylphenyl', annex.rules, 'EU')
-    expect(hits.some((rule) => rule.id === 'eu-annex-ii-1666')).toBe(true)
   })
 })

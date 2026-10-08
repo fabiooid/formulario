@@ -11,14 +11,18 @@ import {
   ProductTypeSchema,
   TriStateFlagSchema,
 } from '@formulario/domain'
+import { canUseAssistant, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@formulario/domain'
 import {
   authenticateUser,
-  createUser,
+  changePassword,
   getUserById,
+  normalizeEmail,
+  PasswordError,
   signAppToken,
   updateUserPlan,
   verifyAppToken,
   type AuthUser,
+  type PasswordErrorCode,
 } from '../../lib/auth.js'
 import {
   commitNewVersion,
@@ -40,7 +44,6 @@ import {
   updateProductBrief,
   updateProductClaims,
   updateProductName,
-  updateFormulaRowLock,
 } from '../../services/products.js'
 import {
   createOrganization,
@@ -58,6 +61,8 @@ import {
 import { getHomeDashboard } from '../../services/home.js'
 import { listPendingProposals, resolveProposal } from '../../services/proposals.js'
 import { createFeedback } from '../../services/feedback.js'
+import { libsql } from '../../db/client.js'
+import { clearLoginFailures, loginRetryAfter, recordLoginFailure } from '../../lib/login-throttle.js'
 
 type HonoLike = {
   req: {
@@ -101,9 +106,28 @@ async function requireUser(c: BearerContext): Promise<AuthUser | null> {
   return verifyAppToken(token)
 }
 
-async function withUser(c: HonoLike, handler: (user: AuthUser) => Promise<Response>) {
+const passwordErrorText: Record<PasswordErrorCode, string> = {
+  too_short: `Use at least ${PASSWORD_MIN_LENGTH} characters.`,
+  too_long: `Use at most ${PASSWORD_MAX_LENGTH} characters.`,
+  common: 'That password is too common. Choose another.',
+  context: 'Do not use your email or the name Formulario.',
+  same: 'Choose a password that is different from the one you use now.',
+  wrong_current: 'That password is not right.',
+}
+
+async function withUser(
+  c: HonoLike,
+  handler: (user: AuthUser) => Promise<Response>,
+  options?: { allowPendingPassword?: boolean },
+) {
   const user = await requireUser(c)
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
+  if (user.mustChangePassword && !options?.allowPendingPassword) {
+    return c.json(
+      { error: 'Choose a new password before continuing.', code: 'password_change_required' },
+      403,
+    )
+  }
   try {
     return await handler(user)
   } catch (error) {
@@ -115,27 +139,26 @@ async function withUser(c: HonoLike, handler: (user: AuthUser) => Promise<Respon
   }
 }
 
+export const healthRoutes = [
+  registerApiRoute('/healthz', {
+    method: 'GET',
+    requiresAuth: false,
+    handler: async (c) => {
+      try {
+        await libsql.execute('select 1')
+        return c.json({ ok: true })
+      } catch {
+        return c.json({ ok: false }, 503)
+      }
+    },
+  }),
+]
+
 export const authRoutes = [
   registerApiRoute('/auth/register', {
     method: 'POST',
     requiresAuth: false,
-    handler: async (c) => {
-      const parsed = z
-        .object({ email: z.string().email(), password: z.string().min(4) })
-        .safeParse(await c.req.json())
-      if (!parsed.success) return c.json({ error: 'Invalid input' }, 400)
-      try {
-        const user = await createUser(parsed.data.email, parsed.data.password)
-        const token = await signAppToken(user)
-        return c.json({ user, token })
-      } catch (error) {
-        const message = error instanceof Error ? error.message : ''
-        if (message.toLowerCase().includes('unique')) {
-          return c.json({ error: 'Email already registered' }, 409)
-        }
-        throw error
-      }
-    },
+    handler: async (c) => c.json({ error: 'Registration is closed', code: 'registration_closed' }, 403),
   }),
   registerApiRoute('/auth/login', {
     method: 'POST',
@@ -145,8 +168,24 @@ export const authRoutes = [
         .object({ email: z.string().email(), password: z.string() })
         .safeParse(await c.req.json())
       if (!parsed.success) return c.json({ error: 'Invalid input' }, 400)
-      const user = await authenticateUser(parsed.data.email, parsed.data.password)
-      if (!user) return c.json({ error: 'Invalid credentials' }, 401)
+      const email = normalizeEmail(parsed.data.email)
+      const retryAfter = loginRetryAfter(email)
+      if (retryAfter > 0) {
+        return c.json(
+          {
+            error: 'Too many attempts',
+            message: `Too many sign-in attempts. Try again in ${Math.ceil(retryAfter / 60)} minutes.`,
+          },
+          429,
+          { 'Retry-After': String(retryAfter) },
+        )
+      }
+      const user = await authenticateUser(email, parsed.data.password)
+      if (!user) {
+        recordLoginFailure(email)
+        return c.json({ error: 'Invalid credentials' }, 401)
+      }
+      clearLoginFailures(email)
       const token = await signAppToken(user)
       return c.json({ user, token })
     },
@@ -154,7 +193,31 @@ export const authRoutes = [
   registerApiRoute('/auth/me', {
     method: 'GET',
     requiresAuth: false,
-    handler: async (c) => withUser(c, async (user) => c.json({ user })),
+    handler: async (c) =>
+      withUser(c, async (user) => c.json({ user }), {
+        allowPendingPassword: true,
+      }),
+  }),
+  registerApiRoute('/auth/password', {
+    method: 'POST',
+    requiresAuth: false,
+    handler: async (c) => {
+      const user = await requireUser(c)
+      if (!user) return c.json({ error: 'Unauthorized' }, 401)
+      const parsed = z
+        .object({ currentPassword: z.string().optional(), newPassword: z.string() })
+        .safeParse(await c.req.json())
+      if (!parsed.success) return c.json({ error: 'Invalid input' }, 400)
+      try {
+        const updated = await changePassword(user.id, parsed.data.newPassword, parsed.data.currentPassword)
+        return c.json({ user: updated })
+      } catch (error) {
+        if (error instanceof PasswordError) {
+          return c.json({ error: passwordErrorText[error.code], code: error.code }, 400)
+        }
+        throw error
+      }
+    },
   }),
 ]
 
@@ -164,6 +227,10 @@ export const appRoutes = [
     requiresAuth: false,
     handler: async (c) =>
       withUser(c, async (user) => {
+        // Accounts cannot upgrade themselves in production. Use `users:create --plan`.
+        if (process.env.NODE_ENV === 'production') {
+          return c.json({ error: 'Plans are managed by Formulario.' }, 403)
+        }
         const plan = z.enum(['free', 'paid']).parse((await c.req.json() as { plan: unknown }).plan)
         await updateUserPlan(user.id, plan)
         const updated = await getUserById(user.id)
@@ -441,28 +508,6 @@ export const appRoutes = [
         })
       }),
   }),
-  registerApiRoute('/app/products/:productId/formula/lock', {
-    method: 'PATCH',
-    requiresAuth: false,
-    handler: async (c) =>
-      withUser(c, async (user) => {
-        const body = z
-          .object({
-            variantId: z.string(),
-            rowId: z.string(),
-            locked: z.boolean(),
-          })
-          .parse(await c.req.json())
-        const workspace = await updateFormulaRowLock(
-          c.req.param('productId'),
-          user.id,
-          body.variantId,
-          body.rowId,
-          body.locked,
-        )
-        return c.json({ workspace })
-      }),
-  }),
   registerApiRoute('/app/products/:productId/variants', {
     method: 'POST',
     requiresAuth: false,
@@ -607,7 +652,13 @@ export async function agentGateMiddleware(
 ) {
   const user = await requireUser(c)
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
-  if (user.plan !== 'paid') {
+  if (user.mustChangePassword) {
+    return c.json(
+      { error: 'Choose a new password before continuing.', code: 'password_change_required' },
+      403,
+    )
+  }
+  if (!canUseAssistant(user.plan)) {
     return c.json(
       {
         error: 'Agent requires a paid plan',

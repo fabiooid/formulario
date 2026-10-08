@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/.mastra
+**/*.db
+**/*.db-journal
+**/*.duckdb
+**/*.duckdb.wal
+apps/api/data
+.env
+.env.*
+!.env.example
+.git
+.DS_Store
+coverage
+ds-bundle
+.ds-sync
+.design-sync

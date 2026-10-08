@@ -1,14 +1,15 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { ASSISTANT_REQUIRES_PAID_PLAN } from '@formulario/domain'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/sonner'
 import { AgentProvider } from '@/components/agent-provider'
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { HomePage } from '@/pages/home'
 import { IngredientsPage } from '@/pages/ingredients'
+import { ChoosePasswordPage } from '@/pages/choose-password'
 import { LoginPage } from '@/pages/login'
 import { ProductWorkspacePage } from '@/pages/product-workspace'
 import { ProductsPage } from '@/pages/products'
-import { RegisterPage } from '@/pages/register'
 import { SettingsConnectionsPage } from '@/pages/settings/connections'
 import { SettingsAccountPage } from '@/pages/settings/account'
 import { SettingsAppearancePage } from '@/pages/settings/appearance'
@@ -31,6 +32,15 @@ function RequireAuth() {
   return <Outlet />
 }
 
+function RequirePassword() {
+  const { user } = useAuth()
+  const location = useLocation()
+  if (user?.mustChangePassword) {
+    return <Navigate to="/password" replace state={{ from: location.pathname + location.search }} />
+  }
+  return <Outlet />
+}
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -39,19 +49,25 @@ export function App() {
           <AgentProvider>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route element={<RequireAuth />}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/settings" element={<Navigate to="/settings/account" replace />} />
-                <Route path="/settings/connections" element={<SettingsConnectionsPage />} />
-                <Route path="/settings/account" element={<SettingsAccountPage />} />
-                <Route path="/settings/appearance" element={<SettingsAppearancePage />} />
-                <Route path="/settings/language" element={<SettingsLanguagePage />} />
-                <Route path="/settings/plan" element={<SettingsPlanPage />} />
-                <Route path="/settings/organization" element={<SettingsOrganizationPage />} />
-                <Route path="/products" element={<ProductsPage />} />
-                <Route path="/products/:id" element={<ProductWorkspacePage />} />
-                <Route path="/ingredients" element={<IngredientsPage />} />
+                <Route path="/password" element={<ChoosePasswordPage />} />
+                <Route element={<RequirePassword />}>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/settings" element={<Navigate to="/settings/account" replace />} />
+                  <Route path="/settings/connections" element={<SettingsConnectionsPage />} />
+                  <Route path="/settings/account" element={<SettingsAccountPage />} />
+                  <Route path="/settings/appearance" element={<SettingsAppearancePage />} />
+                  <Route path="/settings/language" element={<SettingsLanguagePage />} />
+                  <Route
+                    path="/settings/plan"
+                    element={ASSISTANT_REQUIRES_PAID_PLAN ? <SettingsPlanPage /> : <Navigate to="/settings/account" replace />}
+                  />
+                  <Route path="/settings/organization" element={<SettingsOrganizationPage />} />
+                  <Route path="/products" element={<ProductsPage />} />
+                  <Route path="/products/:id" element={<ProductWorkspacePage />} />
+                  <Route path="/ingredients" element={<IngredientsPage />} />
+                </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

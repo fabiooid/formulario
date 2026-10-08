@@ -18,15 +18,9 @@ import {
   type FormulaRow,
   type OlfactoryPyramid,
   type ProductSummary,
-  type Workspace,
 } from '@/lib/api'
 import { useFormulaDrafts } from '@/lib/use-formula-drafts'
-import {
-  applyFormulaRowLock,
-  formulaContentEquals,
-  formulaLockChanges,
-  type FormulaDraft,
-} from '@/lib/formula-drafts'
+import { formulaContentEquals, type FormulaDraft } from '@/lib/formula-drafts'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import {
   Dialog,
@@ -78,14 +72,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   function setRows(next: FormulaRow[]) {
     if (!selectedVariantId) return
     const committed = selected?.rows ?? []
-    const lockChanges = formulaLockChanges(committed, next)
-    for (const change of lockChanges) {
-      lockMutation.mutate({
-        variantId: selectedVariantId,
-        rowId: change.rowId,
-        locked: change.locked,
-      })
-    }
     const versionMatches = baseVersionId === (selected?.version?.id ?? null)
     if (!saveMutation.isPending && versionMatches && formulaContentEquals(next, committed)) {
       if (draft) discard(selectedVariantId)
@@ -99,40 +85,14 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     return () => setVariantId(null)
   }, [selectedVariantId, setVariantId])
 
-  const lockMutation = useMutation({
-    mutationFn: (input: { variantId: string; rowId: string; locked: boolean }) =>
-      api.updateFormulaRowLock(id, input.variantId, input.rowId, input.locked),
-    onMutate: async (input) => {
-      await queryClient.cancelQueries({ queryKey: ['workspace', id] })
-      const previous = queryClient.getQueryData<Workspace>(['workspace', id])
-      queryClient.setQueryData(['workspace', id], (current: Workspace | undefined) =>
-        applyFormulaRowLock(current, input.variantId, input.rowId, input.locked),
-      )
-      return { previous }
-    },
-    onError: (_error, _input, context) => {
-      if (context?.previous) queryClient.setQueryData(['workspace', id], context.previous)
-    },
-    onSuccess: (result) => {
-      queryClient.setQueryData(['workspace', id], result.workspace)
-    },
-  })
-
   useEffect(() => {
     if (!selectedVariantId || !selected) return
     const leftover = drafts[selectedVariantId]
     if (!leftover) return
     if (leftover.baseVersionId !== (selected.version?.id ?? null)) return
     if (!formulaContentEquals(leftover.rows, selected.rows)) return
-    for (const change of formulaLockChanges(selected.rows, leftover.rows)) {
-      lockMutation.mutate({
-        variantId: selectedVariantId,
-        rowId: change.rowId,
-        locked: change.locked,
-      })
-    }
     discard(selectedVariantId)
-  }, [selectedVariantId, selected, drafts, discard, lockMutation])
+  }, [selectedVariantId, selected, drafts, discard])
 
   const saveMutation = useMutation({
     mutationFn: (input: { variantId: string; draft: FormulaDraft }) =>
@@ -291,7 +251,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   const currentRowsCommitted = hasCommittedRows(rows)
   const actionError =
     saveMutation.error ??
-    lockMutation.error ??
     patchMutation.error ??
     setFinalMutation.error ??
     createVariantMutation.error ??
@@ -420,7 +379,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
 
           <TabsContent value="regulatory" className="pt-6">
             {finalWorkspace ? (
-              <WorkspaceRegulatory variant={finalWorkspace} checks={data.checks} pif={data.pif} />
+              <WorkspaceRegulatory variant={finalWorkspace} checks={data.checks} />
             ) : (
               <EmptyState
                 title={t('workspace.final.lockedTitle')}

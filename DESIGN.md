@@ -203,7 +203,7 @@ Settings is a mode of the left nav, not a second menu on the page. While in Sett
 
 One route per topic (`/settings/account`, and so on). `/settings` opens Account. `PageHeader` then a **narrow stack** of cards (`max-w-lg`, `gap-4`). One topic per card.
 
-The formulator sparkle is hidden here. Breadcrumb: app name / Settings / current topic.
+The Lab Assistant sparkle is hidden here. Breadcrumb: app name / Settings / current topic.
 
 ### Product list
 
@@ -230,7 +230,7 @@ Money and grams use `font-mono tabular-nums`. Shelf value only counts in-house a
 Wide shell. Two peer tabs, not a numbered sequence. One column, so the agent pane can open without squeezing two work areas.
 
 - **Workspace** — brief prompt on top, formula table under it. Claims sit in the Description section, with the brief text. Ingredients that sit outside the chosen claims show a warning icon on the row (tooltip for the reason), not a banner above the table.
-- **Regulatory** — final INCI, market checks, PIF draft, and references. Market findings lead with ingredient names and action badges, sorted with bans and over-limits first. Blocking messages stay visible; sources and supporting details use shadcn Collapsible. Group unknown coverage into a count with expandable ingredient names and shared citations; never hide real labelling requirements in that group.
+- **Regulatory** — final INCI, market checks, and references. Market findings lead with ingredient names and action badges, sorted with bans and over-limits first. Blocking messages stay visible; sources and supporting details use shadcn Collapsible. Group unknown coverage into a count with expandable ingredient names and shared citations; never hide real labelling requirements in that group.
 
 The product description uses shadcn Collapsible: expanded for an empty formula, collapsed initially when the selected variant has a committed formula, with a Description heading and chevron to reopen it. Keep workspace sections at gap-4 and the tab content at pt-4 so the table stays close to the top. The description is a plain textarea that saves changes on blur. Claim chips sit under that textarea, in the same section. It has no AI-generation action.
 
@@ -276,7 +276,7 @@ Pills. `secondary` for type/stage/plan/markets, `outline` for extra/locked info,
 
 ### Empty states
 
-Use `EmptyState` (dashed border, centered, quiet). For free-plan gaps, paid-only agent, no products, no INCI, no PIF. Do not invent a custom blank illustration.
+Use `EmptyState` (dashed border, centered, quiet). For free-plan gaps, paid-only agent, no products, no INCI. Do not invent a custom blank illustration.
 
 ### Forms
 
@@ -298,7 +298,7 @@ Use one ingredient cell with mono INCI and optional trade name beneath. Keep cat
 
 ### Tabs
 
-Use for peer views of the same record. Product page: Workspace / Regulatory at the top. On Regulatory: Markets / PIF / Refs. Use `variant="line"` (word + underline), not the pill / button look.
+Use for peer views of the same record. Product page: Workspace / Regulatory at the top. On Regulatory: Markets / Refs. Use `variant="line"` (word + underline), not the pill / button look.
 
 ### Toggle groups
 
@@ -347,13 +347,12 @@ Plain, short, calm. No hype, no emoji in product UI, no “AI-powered” languag
 
 - **Inline rename:** the workspace title and the Lab Assistant thread name are inputs that look like a heading until hover/focus (`hover:bg-muted/50`, ring on focus). Enter saves, Escape cancels, empty blur restores the old name.
 - **Remembered chrome:** sidebar collapsed, product view (cards/list), theme, language.
-- **Locked formula rows:** cannot edit, cannot delete. Locking saves immediately on the current formula version — it is a guard so the assistant cannot overwrite that row, not an uncommitted formula edit. Do not show the draft banner or create a new version. The Lock column has no heading (same as delete). It holds a ghost icon button: open lock to lock, closed lock to unlock. Do not add a lock icon on the ingredient name — it shifts the row.
 - **Claim warnings on formula rows:** a Lucide `TriangleAlert` sits immediately after the ingredient name. The stock badge stays at the end of the cell. Hover or focus shows the reason in a shadcn Tooltip. Blocking vegan hits use `text-destructive`; missing flags stay muted. Do not use a banner above the table.
-- **Uncommitted formula edits:** keep a separate draft for each user, organisation, product and variant in the current browser tab. Refreshing workspace data or switching products/variants must preserve it. Show a quiet text notice and an outline discard action with confirmation. Commit or discard edits before accepting an agent patch. Failed saves keep the draft and show an error; a stale draft must never silently overwrite a newer committed version. Locking or unlocking a row is not an uncommitted edit.
+- **Uncommitted formula edits:** keep a separate draft for each user, organisation, product and variant in the current browser tab. Refreshing workspace data or switching products/variants must preserve it. Show a quiet text notice and an outline discard action with confirmation. Commit or discard edits before accepting an agent patch. Failed saves keep the draft and show an error; a stale draft must never silently overwrite a newer committed version.
 - **Destructive in menus:** Delete lives last in the product overflow menu (after Duplicate and Archive), with a confirmation dialog. Same pattern as inventory.
 - **Archived product:** quiet restore line under the title (same tone as the uncommitted-draft notice). Hide the pin while archived.
 - **Paid gates:** same layout, `EmptyState` inside — do not hide the panel entirely. Agent pane included.
-- **Empty regulatory / PIF / INCI:** `EmptyState` with a short next step. Do not use a numbered checklist to unlock a tab.
+- **Empty regulatory / INCI:** `EmptyState` with a short next step. Do not use a numbered checklist to unlock a tab.
 
 ---
 

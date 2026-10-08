@@ -7,7 +7,6 @@ import {
   generateInciList,
   isWaterInci,
   normalizeProductClaims,
-  ProductCreatePayloadSchema,
   type FormulaRow,
 } from './types.ts'
 
@@ -61,7 +60,6 @@ const row = (inci: string): FormulaRow => ({
   function: 'Test',
   phase: 'A',
   percent: 100,
-  locked: false,
   sortOrder: 0,
 })
 
@@ -174,25 +172,5 @@ describe('collectPurchaseSuggestions', () => {
       [{ inci: 'Vanilla Absolute', stockStatus: 'to_buy', pricePerKg: 980 }],
     )
     expect(suggestions[0]?.pricePerKg).toBe(980)
-  })
-})
-
-describe('ProductCreatePayloadSchema', () => {
-  it('keeps formula rows on a new product proposal', () => {
-    const parsed = ProductCreatePayloadSchema.parse({
-      name: 'Santul',
-      type: 'perfume',
-      brief: 'Smoky santal',
-      formula: [
-        {
-          inci: 'Caprylic/Capric Triglyceride',
-          function: 'Carrier',
-          phase: 'A',
-          percent: '75',
-        },
-      ],
-    })
-    expect(parsed.formula).toHaveLength(1)
-    expect(parsed.formula?.[0]?.percent).toBe(75)
   })
 })

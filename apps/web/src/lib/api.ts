@@ -24,6 +24,7 @@ export interface AuthUser {
   email: string
   plan: Plan
   activeOrganizationId?: string | null
+  mustChangePassword: boolean
 }
 
 export type OrganizationKind = 'personal' | 'team'
@@ -63,7 +64,6 @@ export interface FormulaRow {
   phase: string
   percent: number
   notes?: string
-  locked: boolean
   sortOrder: number
 }
 
@@ -120,13 +120,6 @@ export interface RegulatoryCheck {
   status: string
   hits: RegulatoryHit[]
   checkedAt: string
-}
-
-export interface PifSection {
-  id: string
-  title: string
-  content: string
-  isGap: boolean
 }
 
 export interface InventoryIngredient {
@@ -214,7 +207,6 @@ export interface Workspace {
   selectedFinalVariantId: string | null
   activeVariantId: string | null
   patches: FormulaPatch[]
-  pif: { markdown: string; sections: PifSection[]; generatedAt: string } | null
   checks: RegulatoryCheck[]
   thread: { mastraThreadId: string } | null
 }
@@ -306,12 +298,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-  register: (email: string, password: string) =>
-    request<{ user: AuthUser; token: string }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    }),
   me: () => request<{ user: AuthUser }>('/auth/me'),
+  changePassword: (input: { currentPassword?: string; newPassword: string }) =>
+    request<{ user: AuthUser }>('/auth/password', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
   updatePlan: (plan: Plan) =>
     request<{ user: AuthUser }>('/app/plan', {
       method: 'PATCH',
@@ -417,11 +409,6 @@ export const api = {
       `/app/products/${productId}/formula`,
       { method: 'PUT', body: JSON.stringify({ variantId, rows, expectedVersionId }) },
     ),
-  updateFormulaRowLock: (productId: string, variantId: string, rowId: string, locked: boolean) =>
-    request<{ workspace: Workspace }>(`/app/products/${productId}/formula/lock`, {
-      method: 'PATCH',
-      body: JSON.stringify({ variantId, rowId, locked }),
-    }),
   createVariant: (
     productId: string,
     input: { label?: string; copyFromVariantId?: string },

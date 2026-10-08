@@ -168,21 +168,6 @@ export function runRegulatoryChecks(input: CheckInput): RegulatoryCheckResult[] 
   })
 }
 
-export function searchIngredientRules(
-  query: string,
-  rules: IngredientRule[],
-  market?: Market,
-): IngredientRule[] {
-  const q = normalizeInci(query)
-  return rules.filter((rule) => {
-    if (market && rule.market !== market) return false
-    return (
-      normalizeInci(rule.substance).includes(q) ||
-      rule.inciNames.some((name) => normalizeInci(name).includes(q))
-    )
-  })
-}
-
 export function applyPatchOperations(
   rows: FormulaRow[],
   operations: PatchOperation[],
@@ -202,25 +187,23 @@ export function applyPatchOperations(
         phase: op.row.phase,
         percent: op.row.percent,
         notes: op.row.notes,
-        locked: op.row.locked ?? false,
         sortOrder,
       })
     }
 
     if (op.op === 'update') {
       next = next.map((row) => {
-        if (row.id !== op.rowId || row.locked) return row
+        if (row.id !== op.rowId) return row
         return {
           ...row,
           ...op.changes,
           id: row.id,
-          locked: row.locked,
         }
       })
     }
 
     if (op.op === 'remove') {
-      next = next.filter((row) => !(row.id === op.rowId && !row.locked))
+      next = next.filter((row) => row.id !== op.rowId)
     }
 
     if (op.op === 'reorder') {

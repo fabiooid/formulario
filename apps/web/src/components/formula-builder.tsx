@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
-import { GripVerticalIcon, LockIcon, LockOpenIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react'
+import { GripVerticalIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -87,14 +87,13 @@ export function FormulaBuilder({
         function: '',
         phase: 'A',
         percent: 0,
-        locked: false,
         sortOrder: rows.length,
       },
     ])
   }
 
   function removeRow(id: string) {
-    onChange(rows.filter((row) => row.id !== id || row.locked))
+    onChange(rows.filter((row) => row.id !== id))
   }
 
   function moveRow(sourceId: string, targetId: string) {
@@ -148,7 +147,6 @@ export function FormulaBuilder({
               <TableHead className="w-28 border-r border-border text-right text-xs tracking-wide text-muted-foreground uppercase">
                 {t('formula.percent')}
               </TableHead>
-              <TableHead className="w-20 border-r border-border" />
               <TableHead className="w-12" />
             </TableRow>
           </TableHeader>
@@ -217,7 +215,6 @@ export function FormulaBuilder({
                         value={row.inci}
                         list="inventory-incis"
                         onChange={(e) => updateRow(row.id, { inci: e.target.value })}
-                        disabled={row.locked}
                       />
                       {showWarning ? <ClaimRowWarning hits={rowHits} /> : null}
                     </div>
@@ -239,28 +236,13 @@ export function FormulaBuilder({
                     step="0.01"
                     value={row.percent}
                     onChange={(e) => updateRow(row.id, { percent: Number(e.target.value) })}
-                    disabled={row.locked}
                   />
-                </TableCell>
-                <TableCell className="border-r border-border p-0 text-center">
-                  <div className="flex h-12 items-center justify-center">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-pressed={row.locked}
-                      aria-label={row.locked ? t('formula.unlock') : t('formula.lock')}
-                      onClick={() => updateRow(row.id, { locked: !row.locked })}
-                    >
-                      {row.locked ? <LockIcon /> : <LockOpenIcon />}
-                    </Button>
-                  </div>
                 </TableCell>
                 <TableCell className="text-center">
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     onClick={() => removeRow(row.id)}
-                    disabled={row.locked}
                   >
                     <Trash2Icon />
                   </Button>

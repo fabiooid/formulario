@@ -5,7 +5,7 @@ import { MCPServer } from '@mastra/mcp'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { z } from 'zod'
 import { and, desc, eq } from 'drizzle-orm'
-import { searchMaterials, searchMaterialEvidence, materialEvidenceSummary, runRegulatoryChecks, type PatchOperation } from '@formulario/domain'
+import { runRegulatoryChecks, type PatchOperation } from '@formulario/domain'
 import { db } from '../db/client.js'
 import { products, formulaVersions, formulaPatches } from '../db/schema.js'
 import { getMembership } from '../services/organizations.js'
@@ -57,16 +57,12 @@ export async function submitFormula(principal: McpPrincipal, raw: unknown) {
   if (Math.abs(total - 100) > 0.001) throw new Error(`Formula must total 100%; received ${total}%`)
   const ids = input.rows.flatMap(r => r.id ? [r.id] : [])
   if (new Set(ids).size !== ids.length || ids.some(id => !selected.rows.some(r => r.id === id))) throw new Error('Row IDs must be unique and belong to the base formula')
-  for (const old of selected.rows.filter(r => r.locked)) {
-    const next = input.rows.find(r => r.id === old.id)
-    if (!next || ['inci', 'tradeName', 'cas', 'function', 'phase', 'percent', 'notes'].some(key => (next as Record<string, unknown>)[key] !== (old as unknown as Record<string, unknown>)[key])) throw new Error(`Locked row ${old.inci} must be preserved unchanged`)
-  }
   const operations: PatchOperation[] = []
   for (const old of selected.rows) if (!ids.includes(old.id)) operations.push({ op: 'remove', rowId: old.id })
   input.rows.forEach((row, sortOrder) => {
     const { id, ...fields } = row
     if (id) operations.push({ op: 'update', rowId: id, changes: { ...fields, sortOrder } })
-    else operations.push({ op: 'add', row: { ...fields, locked: false, sortOrder } })
+    else operations.push({ op: 'add', row: { ...fields, sortOrder } })
   })
   const checks = runRegulatoryChecks({ rows: input.rows, markets: workspace.product.markets, productType: workspace.product.type, rules: await loadRules() })
   // Deduplicate transport retries without letting an old conversation change its base version.
@@ -122,23 +118,9 @@ const mcpTools = {
       return { versions: await Promise.all(versions.slice(0, limit).map(async v => ({ ...v, rows: await getFormulaRows(v.id) }))), nextOffset: versions.length > limit ? offset + limit : null }
     }),
   }),
-  search_materials: createTool({
-    id: 'mcp_search_materials',
-    description: 'Search the reference material library. Guidance is not verified safety data. No inventory filtering or ranking.',
-    inputSchema: z.object({ query: z.string().max(200), limit: z.number().int().min(1).max(20).default(10) }),
-    mcp: readOnly,
-    execute: async ({ query, limit }, context) => runMcp(context, async () => ({ materials: searchMaterials(query, { limit }).map(m => ({ ...m, evidence: materialEvidenceSummary(m.inci) })) })),
-  }),
-  get_material_evidence: createTool({
-    id: 'mcp_get_material_evidence',
-    description: 'Retrieve supporting sources, dates, conditions and limitations. No match means missing evidence, not safe or unsafe.',
-    inputSchema: z.object({ query: z.string().min(1).max(200), limit: z.number().int().min(1).max(10).default(5) }),
-    mcp: readOnly,
-    execute: async ({ query, limit }, context) => runMcp(context, async () => ({ records: searchMaterialEvidence(query, limit) })),
-  }),
   submit_formula_proposal: createTool({
     id: 'mcp_submit_formula_proposal',
-    description: 'Submit a complete formula or revision for review in Formulario. Requires the exact current baseVersionId. Preserves locked rows; never commits a formula. Include rationale, dilution basis and unresolved evidence in summary/notes.',
+    description: 'Submit a complete formula or revision for review in Formulario. Requires the exact current baseVersionId. Never commits a formula. Include rationale, dilution basis and uncertainties in summary/notes.',
     inputSchema: proposalSchema,
     mcp: writeOnce,
     execute: async (input, context) => runMcp(context, principal => submitFormula(principal, input)),

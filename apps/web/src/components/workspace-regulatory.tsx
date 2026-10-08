@@ -4,8 +4,6 @@ import { InciPreview } from '@/components/inci-preview'
 import { StatusBadge } from '@/components/layout'
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { EmptyState } from '@/components/empty-state'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { OFFICIAL_LINKS, type RegulatoryCheck, type RegulatoryHit, type VariantWorkspace } from '@/lib/api'
@@ -14,11 +12,9 @@ import { useLanguage } from '@/i18n/language-provider'
 export function WorkspaceRegulatory({
   variant,
   checks,
-  pif,
 }: {
   variant: VariantWorkspace
   checks: RegulatoryCheck[]
-  pif: { markdown: string; generatedAt: string } | null
 }) {
   const { t } = useLanguage()
 
@@ -33,7 +29,6 @@ export function WorkspaceRegulatory({
       <Tabs defaultValue="markets">
         <TabsList variant="line">
           <TabsTrigger value="markets">{t('workspace.tabMarkets')}</TabsTrigger>
-          <TabsTrigger value="pif">{t('workspace.tabPif')}</TabsTrigger>
           <TabsTrigger value="refs">{t('workspace.tabRefs')}</TabsTrigger>
         </TabsList>
         <TabsContent value="markets" className="pt-4">
@@ -52,17 +47,6 @@ export function WorkspaceRegulatory({
               </div>
             ))}
           </div>
-        </TabsContent>
-        <TabsContent value="pif" className="pt-4">
-          {pif ? (
-            <ScrollArea className="h-[420px]">
-              <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                {pif.markdown}
-              </div>
-            </ScrollArea>
-          ) : (
-            <EmptyState title={t('workspace.noPifTitle')} description={t('workspace.noPifDescription')} />
-          )}
         </TabsContent>
         <TabsContent value="refs" className="pt-4">
           <div className="flex flex-col gap-2">

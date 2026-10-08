@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { ASSISTANT_REQUIRES_PAID_PLAN } from '@formulario/domain'
 import { useState } from 'react'
 import {
   ArrowLeftIcon,
@@ -265,13 +266,15 @@ export function AppSidebar() {
                 active={location.pathname === '/settings/language'}
                 onNavigate={closeMobile}
               />
-              <SidebarNavLink
-                to="/settings/plan"
-                icon={CreditCardIcon}
-                label={t('settings.plan')}
-                active={location.pathname === '/settings/plan'}
-                onNavigate={closeMobile}
-              />
+              {ASSISTANT_REQUIRES_PAID_PLAN ? (
+                <SidebarNavLink
+                  to="/settings/plan"
+                  icon={CreditCardIcon}
+                  label={t('settings.plan')}
+                  active={location.pathname === '/settings/plan'}
+                  onNavigate={closeMobile}
+                />
+              ) : null}
               <SidebarNavLink
                 to="/settings/organization"
                 icon={Building2Icon}

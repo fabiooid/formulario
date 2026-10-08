@@ -166,7 +166,6 @@ export async function resolveProposal(
     markets: payload.markets,
     brief: payload.brief,
     claims: payload.claims,
-    formula: payload.formula,
   })
   await refreshDerived(product.id, userId)
   await markResolved()
