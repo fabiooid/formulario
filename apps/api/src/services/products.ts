@@ -383,10 +383,18 @@ export async function createProduct(input: {
   markets: Market[]
   brief: string
   claims?: ProductClaim[]
+  /** When set (e.g. MCP grant), create in that org instead of the user's active workspace. */
+  organizationId?: string
 }) {
   const id = crypto.randomUUID()
   const now = new Date().toISOString()
-  const organizationId = await getActiveOrganizationId(input.userId)
+  let organizationId = input.organizationId ?? null
+  if (organizationId) {
+    const member = await getMembership(organizationId, input.userId)
+    if (!member) throw new Error('No access to this workspace')
+  } else {
+    organizationId = await getActiveOrganizationId(input.userId)
+  }
   await db.insert(products).values({
     id,
     userId: input.userId,

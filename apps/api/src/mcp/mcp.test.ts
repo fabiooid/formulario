@@ -19,7 +19,7 @@ vi.mock('../db/client.js', async () => {
 })
 import { db, libsql } from '../db/client.js'
 import { mcpApp, MCP_SCOPE } from './routes.js'
-import { submitFormula, scopedWorkspace } from './tools.js'
+import { createProductViaMcp, submitFormula, scopedWorkspace } from './tools.js'
 import { signAppToken } from '../lib/auth.js'
 import { createProduct, getWorkspace, resolvePatch, commitNewVersion } from '../services/products.js'
 let appToken: string
@@ -98,7 +98,12 @@ describe('OAuth and MCP transport', () => {
     const { tokens } = await authorized()
     expect((await rpc(tokens.access_token, 'initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'Test', version: '1' } })).status).toBe(200)
     const listed = await (await rpc(tokens.access_token, 'tools/list')).json()
-    expect(listed.result.tools.map((t: { name: string }) => t.name)).toEqual(['list_products', 'read_product', 'read_history', 'submit_formula_proposal'])
+    expect(listed.result.tools.map((t: { name: string }) => t.name)).toEqual(['list_products', 'create_product', 'read_product', 'read_history', 'submit_formula_proposal'])
+    const created = await (await rpc(tokens.access_token, 'tools/call', { name: 'create_product', arguments: { name: 'MCP created', type: 'perfume', brief: 'Cedar opening', claims: ['vegan'] } })).json()
+    const createdBody = JSON.parse(created.result.content[0].text)
+    expect(createdBody.product.name).toBe('MCP created')
+    expect(createdBody.variant.baseVersionId).toBeTruthy()
+    expect((await getWorkspace(createdBody.product.id, 'owner'))!.variants[0].rows).toEqual([])
     const input = await fixture()
     const before = await (await rpc(tokens.access_token, 'tools/call', { name: 'read_product', arguments: { productId: input.productId } })).json()
     expect(JSON.parse(before.result.content[0].text).variants[0].version.id).toBe(input.baseVersionId)
@@ -137,6 +142,16 @@ describe('proposal isolation and validation', () => {
     await expect(scopedWorkspace({ userId: 'owner', organizationId: 'other' }, input.productId)).rejects.toThrow('not found')
     await expect(scopedWorkspace({ userId: 'outsider', organizationId: 'org' }, input.productId)).rejects.toThrow('access')
     await expect(submitFormula({ userId: 'viewer', organizationId: 'org' }, input)).rejects.toThrow('read-only')
+    await expect(createProductViaMcp({ userId: 'viewer', organizationId: 'org' }, { name: 'Blocked' })).rejects.toThrow('read-only')
+  })
+  it('creates products in the pinned workspace even when the app active org differs', async () => {
+    await db.update(schema.users).set({ activeOrganizationId: 'other' }).where(eq(schema.users.id, 'owner'))
+    const created = await createProductViaMcp(principal, { name: 'Pinned org product', type: 'skincare', brief: '' })
+    expect(created.product.id).toBeTruthy()
+    expect(created.variant.label).toBe('Main')
+    const [row] = await db.select().from(schema.products).where(eq(schema.products.id, created.product.id)).limit(1)
+    expect(row.organizationId).toBe('org')
+    await db.update(schema.users).set({ activeOrganizationId: 'org' }).where(eq(schema.users.id, 'owner'))
   })
   it('rejects bad totals, row IDs and stale proposals at submission and acceptance', async () => {
     const input = await fixture()
