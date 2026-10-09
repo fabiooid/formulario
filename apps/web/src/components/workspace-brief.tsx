@@ -3,7 +3,6 @@ import type { ProductClaim } from '@formulario/domain'
 import { ClaimPicker } from '@/components/claim-picker'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
-import { WorkspaceSection } from '@/components/workspace-section'
 import { useLanguage } from '@/i18n/language-provider'
 
 export function WorkspaceBrief({
@@ -38,11 +37,10 @@ export function WorkspaceBrief({
   }
 
   return (
-    <WorkspaceSection
-      title={t('workspace.brief.title')}
-      description={t('workspace.brief.description')}
-    >
-      <FieldGroup className="gap-3">
+    <section>
+      <h2 className="text-lg font-semibold">{t('workspace.brief.title')}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{t('workspace.brief.description')}</p>
+      <FieldGroup className="mt-3 gap-3">
         <Field>
           <FieldLabel htmlFor="product-brief" className="sr-only">
             {t('workspace.brief.title')}
@@ -67,6 +65,6 @@ export function WorkspaceBrief({
           <FieldDescription>{t('claims.hint')}</FieldDescription>
         </Field>
       </FieldGroup>
-    </WorkspaceSection>
+    </section>
   )
 }
