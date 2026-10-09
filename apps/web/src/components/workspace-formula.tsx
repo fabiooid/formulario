@@ -105,7 +105,7 @@ export function WorkspaceFormula({
               }
             : undefined
         }
-        variantControls={isPerfume ? (
+        variantControls={
           <div className="flex min-w-0 max-w-full items-center gap-1">
             <Select
               value={selectedVariantId}
@@ -155,7 +155,7 @@ export function WorkspaceFormula({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        ) : null}
+        }
       />
 
       {hasDraft && pendingPatches.length > 0 ? (
