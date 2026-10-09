@@ -1,6 +1,6 @@
 # Production deployment plan
 
-Status, 2026-10-08: code is ready for a first tester (see "V1 readiness"). Nothing deployed yet. Next step: Phase 2 in the Railway dashboard.
+Status, 2026-10-09: production is live at https://formulari.up.railway.app. The `formulario` service is linked to GitHub `fabiooid/formulario` on `main` (Dockerfile build). GitHub Actions runs test/typecheck; Railway waits for those checks, then deploys.
 
 ## Recommendation: Railway only
 
@@ -111,12 +111,14 @@ Checked end to end against the production build on a fresh database:
 
 ## Phase 2 — Railway setup
 
+Done for the alpha. For a fresh project, or if the GitHub link is missing:
+
 1. Commit and push the Phase 1 changes.
-2. Create a new project from the GitHub repo. `railway.json` selects the Dockerfile. `main` deploys automatically.
+2. Create the Railway project / service (or keep the existing CLI-created one). Connect source **GitHub → `fabiooid/formulario` → branch `main`**. Set the service to build from the **Dockerfile** (not Railpack), healthcheck `/healthz`, timeout 120s.
 3. **Add a volume** mounted at `/app/apps/api/data`. All three databases and `official/` live there. The `mastra.db` and DuckDB paths are fixed in code, so the mount path must match.
 4. **Volume backups:** turn on daily backups if Hobby has them (see Decisions).
 5. **Generate the free domain** in the service's networking settings. Put it in both `*_PUBLIC_URL` variables.
-6. Set the environment variables below, then deploy.
+6. Set the environment variables below, then deploy (or let the next push to `main` deploy after CI passes).
 
 ### Environment variables
 
@@ -153,7 +155,7 @@ With `NODE_ENV=production`, the API refuses to start with the example JWT secret
 ## Phase 4 — Operations
 
 - **Accounts:** registration is closed. Create users with `railway ssh` → `npm run users:create`. An invite email can come later.
-- **Deploys:** a push to `main` deploys. With a volume, Railway stops the old container before starting the new one, so expect a few seconds of downtime per deploy.
+- **Deploys:** push (or merge) to `main`. GitHub Actions (`.github/workflows/ci.yml`) runs typecheck + `npm test`. Railway’s GitHub integration waits for those checks, then builds the Dockerfile and deploys. Do **not** also deploy from Actions — one path only. With a volume, Railway stops the old container before starting the new one, so expect a few seconds of downtime per deploy. Emergency fallback: `railway up` from a laptop still works, but prefer GitHub.
 - **Migrations:** they run on every boot. Make each new migration backward-safe: add first, drop in a later release.
 - **Testing loop:** run `npm run scores:report` and `npm run feedback:report` every few days while testers are active.
 - **Monitoring:** Railway logs and metrics, the refresh heartbeat, an uptime check on `/healthz`, and volume usage (`observability.duckdb` grows without a retention policy).
