@@ -30,18 +30,18 @@ Account and administrator controls vary. This repository does not provision a pu
 
 ## First complete loop
 
-1. Create or open a product in Formulario and save its description.
+1. Create a product in Formulario, or ask the external assistant to call `create_product` (name, optional type/markets/brief/claims). It lands in the connected workspace with an empty formula variant, same as the app. Description editing still makes no AI calls.
 2. Externally ask: “Find my product, read its description and current formula, then propose a revision. Submit it as a pending Formulario proposal.”
 3. `list_products` finds the product; `read_product` returns descriptions, variants, exact current version IDs, row IDs and trial/maceration notes.
 4. The client can call `read_history` to see earlier saved versions. History is paginated. Formulario has no material library; ingredient knowledge comes from the external assistant, which should state its uncertainties in the proposal.
 5. `submit_formula_proposal` takes a complete set of rows with percentages by weight totaling 100, a rationale, product/variant IDs and the exact `baseVersionId`. Preserve existing row IDs for retained rows; omit IDs on additions. Include dilution basis and uncertainties in notes/summary. It checks positive finite percentages, totals, row IDs and workspace write access. It does not impose a skeleton or pretend to certify safety.
 6. Open the product workspace (which refreshes every ten seconds while visible), inspect the existing pending-patch preview, and accept or reject. Local unsaved drafts are preserved and must be resolved before accepting. Acceptance checks the base version again atomically. If another change was committed, ask for a fresh proposal.
 
-EU ban checks use the Commission CosIng Annex II export. A missing name is not an approval. Trial notes currently mean the existing variant maceration notes; there is no new independent trial-record model in this MVP. Initial product creation happens in Formulario or through its administrative assistant.
+EU ban checks use the Commission CosIng Annex II export. A missing name is not an approval. Trial notes currently mean the existing variant maceration notes; there is no new independent trial-record model in this MVP. `create_product` and `submit_formula_proposal` require editor or owner on the pinned workspace; viewers stay read-only.
 
 ## Verification
 
-`npm test` includes an isolated SQLite OAuth/MCP integration test: initialize → list tools → read product → submit pending proposal → accept via Formulario's service. It also checks PKCE failure, code replay, unauthenticated calls, host/origin rejection, token rotation/revocation, workspace isolation, viewer restrictions, totals, row IDs and stale acceptance. No test transmits workspace data to a model or incurs model API charges.
+`npm test` includes an isolated SQLite OAuth/MCP integration test: initialize → list tools → create product → read product → submit pending proposal → accept via Formulario's service. It also checks PKCE failure, code replay, unauthenticated calls, host/origin rejection, token rotation/revocation, workspace isolation, viewer restrictions, pinned-org create, totals, row IDs and stale acceptance. No test transmits workspace data to a model or incurs model API charges.
 
 
 ## Local build caveat
