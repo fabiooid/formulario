@@ -2,7 +2,6 @@ import { CopyIcon, MoreHorizontalIcon, PlusIcon } from 'lucide-react'
 import { FormulaBuilder } from '@/components/formula-builder'
 import { InciPreview } from '@/components/inci-preview'
 import { MacerationCard } from '@/components/maceration-card'
-import { OlfactoryPyramidGenerator } from '@/components/olfactory-pyramid'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -19,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { FormulaPatch, FormulaRow, OlfactoryPyramid, ProductSummary, VariantWorkspace } from '@/lib/api'
+import type { FormulaPatch, FormulaRow, ProductSummary, VariantWorkspace } from '@/lib/api'
 import { isPatchStale, proposedFormulaRows } from '@/lib/formula-proposal'
 import { useLanguage } from '@/i18n/language-provider'
 
@@ -48,8 +47,6 @@ export function WorkspaceFormula({
   setFinalSaving,
   onMacerationSave,
   macerationSaving,
-  onSavePyramid,
-  pyramidSaving,
 }: {
   product: ProductSummary
   variants: VariantWorkspace[]
@@ -75,8 +72,6 @@ export function WorkspaceFormula({
     macerationNotes?: string | null
   }) => void
   macerationSaving?: boolean
-  onSavePyramid: (pyramid: OlfactoryPyramid) => void
-  pyramidSaving?: boolean
 }) {
   const { t } = useLanguage()
   const isPerfume = product.type === 'perfume'
@@ -226,28 +221,16 @@ export function WorkspaceFormula({
         </Button>
       </div>
 
-      <Separator />
-
-      {isPerfume ? (
-        <OlfactoryPyramidGenerator
-          initialValue={product.olfactoryPyramid}
-          brief={product.brief}
-          onSave={onSavePyramid}
-          saving={pyramidSaving}
-        />
-      ) : null}
-
-
-
       {isPerfume && selected ? (
-        <MacerationCard
-          variant={selected.variant}
-          onSave={onMacerationSave}
-          saving={macerationSaving}
-        />
+        <>
+          <Separator />
+          <MacerationCard
+            variant={selected.variant}
+            onSave={onMacerationSave}
+            saving={macerationSaving}
+          />
+        </>
       ) : null}
-
-
     </div>
   )
 }

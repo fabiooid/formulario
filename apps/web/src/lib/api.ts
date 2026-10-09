@@ -12,13 +12,6 @@ export type Plan = 'free' | 'paid'
 export type { ProductStage, ProductClaim, TriStateFlag, IngredientOriginType }
 export type MacerationStatus = 'fresh' | 'macerating' | 'ready'
 
-export interface OlfactoryPyramid {
-  direction: string
-  top: string[]
-  heart: string[]
-  base: string[]
-}
-
 export interface AuthUser {
   id: string
   email: string
@@ -47,7 +40,6 @@ export interface ProductSummary {
   markets: string[]
   brief: string
   claims?: ProductClaim[]
-  olfactoryPyramid?: OlfactoryPyramid | null
   status: ProductStatus
   stage?: ProductStage
   pinnedAt?: string | null
@@ -399,11 +391,6 @@ export const api = {
     request<{ workspace: Workspace }>(`/app/products/${productId}`, {
       method: 'PATCH',
       body: JSON.stringify({ claims }),
-    }),
-  saveOlfactoryPyramid: (productId: string, pyramid: OlfactoryPyramid) =>
-    request<{ workspace: Workspace }>(`/app/products/${productId}/olfactory-pyramid`, {
-      method: 'PUT',
-      body: JSON.stringify(pyramid),
     }),
   saveFormula: (productId: string, variantId: string, rows: FormulaRow[], expectedVersionId: string | null) =>
     request<{ versionId: string; workspace: Workspace }>(

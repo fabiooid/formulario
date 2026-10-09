@@ -34,7 +34,6 @@ export const products = sqliteTable('products', {
   type: text('type', { enum: ['skincare', 'perfume', 'hybrid'] }).notNull(),
   markets: text('markets').notNull(),
   brief: text('brief').notNull(),
-  olfactoryPyramid: text('olfactory_pyramid'),
   claims: text('claims').notNull().default('[]'),
   status: text('status', { enum: ['draft', 'archived'] }).notNull().default('draft'),
   pinnedAt: text('pinned_at'),
