@@ -1,15 +1,24 @@
 /**
- * Password rules follow NIST SP 800-63B.
- * Eight characters is the required floor. Fifteen is the length they recommend.
- * Allow at least 64 characters; we allow 128.
- * Do not require capitals, numbers, or symbols.
+ * Password rules for Formulario (chosen passwords on first sign-in and account change).
+ * Minimum eight characters, no spaces, and at least one letter, one number, and one special character.
+ * Do not require a specific case mix beyond “has a letter”.
  * Block common passwords, and passwords that use the person's email or the product name.
- * Spaces and other characters are allowed. Callers must not trim or cut a password short.
+ * Callers must not trim or cut a password short.
  */
-export const PASSWORD_MIN_LENGTH = 15
+export const PASSWORD_MIN_LENGTH = 8
 export const PASSWORD_MAX_LENGTH = 128
 
-export type PasswordRejection = 'too_short' | 'too_long' | 'common' | 'context'
+export type PasswordCriterion = 'min_length' | 'no_spaces' | 'has_letter' | 'has_number' | 'has_special'
+
+export type PasswordRejection =
+  | 'too_short'
+  | 'too_long'
+  | 'has_space'
+  | 'needs_letter'
+  | 'needs_number'
+  | 'needs_special'
+  | 'common'
+  | 'context'
 
 const COMMON_PASSWORDS = new Set(
   `123456 password 12345678 qwerty 123456789 12345 1234 111111 1234567 dragon
@@ -42,10 +51,26 @@ function lengthOf(password: string) {
   return Array.from(password).length
 }
 
+export function passwordCriteria(password: string): Record<PasswordCriterion, boolean> {
+  return {
+    min_length: lengthOf(password) >= PASSWORD_MIN_LENGTH,
+    no_spaces: !/\s/u.test(password),
+    has_letter: /\p{L}/u.test(password),
+    has_number: /\p{N}/u.test(password),
+    has_special: /[^\p{L}\p{N}\s]/u.test(password),
+  }
+}
+
 export function passwordRejection(password: string, email?: string): PasswordRejection | null {
   const length = lengthOf(password)
   if (length < PASSWORD_MIN_LENGTH) return 'too_short'
   if (length > PASSWORD_MAX_LENGTH) return 'too_long'
+
+  const checks = passwordCriteria(password)
+  if (!checks.no_spaces) return 'has_space'
+  if (!checks.has_letter) return 'needs_letter'
+  if (!checks.has_number) return 'needs_number'
+  if (!checks.has_special) return 'needs_special'
 
   const normalized = password.normalize('NFKC').toLowerCase()
   const characters = Array.from(normalized)
