@@ -250,6 +250,12 @@ export const it = {
       setFinal: 'Scegli come finale',
       finalBadge: 'Finale',
     },
+    versions: {
+      select: 'Scegli versione della formula',
+      rename: 'Nome della versione',
+      currentBadge: 'Corrente',
+      historyHint: 'Stai guardando una versione salvata. Le modifiche alla formula restano sulla versione corrente.',
+    },
     maceration: {
       title: 'Macerazione',
       description: 'Segui il tempo di riposo di questo lotto profumo prima di valutarlo.',

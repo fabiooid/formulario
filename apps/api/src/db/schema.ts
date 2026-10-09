@@ -47,9 +47,6 @@ export const productVariants = sqliteTable('product_variants', {
   label: text('label').notNull(),
   sortOrder: integer('sort_order').notNull(),
   isSelectedFinal: integer('is_selected_final', { mode: 'boolean' }).notNull().default(false),
-  macerationStartedAt: text('maceration_started_at'),
-  macerationTargetAt: text('maceration_target_at'),
-  macerationNotes: text('maceration_notes'),
   createdAt: text('created_at').notNull(),
 })
 
@@ -61,6 +58,9 @@ export const formulaVersions = sqliteTable('formula_versions', {
   label: text('label'),
   isCurrent: integer('is_current', { mode: 'boolean' }).notNull().default(false),
   frozenAt: text('frozen_at'),
+  macerationStartedAt: text('maceration_started_at'),
+  macerationTargetAt: text('maceration_target_at'),
+  macerationNotes: text('maceration_notes'),
   createdAt: text('created_at').notNull(),
 })
 

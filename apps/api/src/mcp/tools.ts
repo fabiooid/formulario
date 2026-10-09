@@ -153,25 +153,47 @@ const mcpTools = {
   }),
   read_product: createTool({
     id: 'mcp_read_product',
-    description: 'Read description, current formulas with version and row IDs, claims, and trial/maceration notes. Percentages are by weight.',
+    description:
+      'Read description, current formulas with version and row IDs, claims, and perfume maceration notes on the current version. Maceration is perfume-only (not skincare or hybrid). Percentages are by weight.',
     inputSchema: z.object({ productId: z.string() }),
     mcp: readOnly,
     execute: async ({ productId }, context) => runMcp(context, async principal => {
       const w = await scopedWorkspace(principal, productId)
       const { id, name, type, brief, markets, claims } = w.product
-      return { product: { id, name, type, description: brief, markets, claims }, variants: w.variants, pendingProposals: w.patches.filter(p => p.status === 'pending').map(p => ({ id: p.id, summary: p.summary, baseVersionId: p.baseVersionId })) }
+      return {
+        product: { id, name, type, description: brief, markets, claims },
+        variants: w.variants.map(({ variant, version, rows }) => ({ variant, version, rows })),
+        pendingProposals: w.patches
+          .filter((p) => p.status === 'pending')
+          .map((p) => ({ id: p.id, summary: p.summary, baseVersionId: p.baseVersionId })),
+      }
     }),
   }),
   read_history: createTool({
     id: 'mcp_read_history',
-    description: 'Read saved formula versions and their rows, newest first. Trial notes live on each variant in read_product.',
+    description:
+      'Read saved formula versions and their rows, newest first. Each version includes its own perfume maceration notes when present.',
     inputSchema: z.object({ productId: z.string(), variantId: z.string(), limit: z.number().int().min(1).max(10).default(5), offset: z.number().int().nonnegative().default(0) }),
     mcp: readOnly,
     execute: async ({ productId, variantId, limit, offset }, context) => runMcp(context, async principal => {
       const w = await scopedWorkspace(principal, productId)
       if (!w.variants.some(v => v.variant.id === variantId)) throw new Error('Variant not found')
       const versions = await db.select().from(formulaVersions).where(and(eq(formulaVersions.productId, productId), eq(formulaVersions.variantId, variantId))).orderBy(desc(formulaVersions.versionNumber)).limit(limit + 1).offset(offset)
-      return { versions: await Promise.all(versions.slice(0, limit).map(async v => ({ ...v, rows: await getFormulaRows(v.id) }))), nextOffset: versions.length > limit ? offset + limit : null }
+      return {
+        versions: await Promise.all(
+          versions.slice(0, limit).map(async (v) => ({
+            id: v.id,
+            versionNumber: v.versionNumber,
+            label: v.label,
+            isCurrent: v.isCurrent,
+            macerationStartedAt: v.macerationStartedAt,
+            macerationTargetAt: v.macerationTargetAt,
+            macerationNotes: v.macerationNotes,
+            rows: await getFormulaRows(v.id),
+          })),
+        ),
+        nextOffset: versions.length > limit ? offset + limit : null,
+      }
     }),
   }),
   submit_formula_proposal: createTool({

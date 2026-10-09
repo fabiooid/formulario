@@ -113,9 +113,6 @@ async function seedProductWithVariants(
       label: variantInput.label,
       sortOrder: index,
       isSelectedFinal: variantInput.isSelectedFinal ?? false,
-      macerationStartedAt: variantInput.macerationStartedAt ?? null,
-      macerationTargetAt: variantInput.macerationTargetAt ?? null,
-      macerationNotes: variantInput.macerationNotes ?? null,
       createdAt: created,
     })
 
@@ -126,6 +123,9 @@ async function seedProductWithVariants(
       versionNumber: 1,
       label: 'v1',
       isCurrent: true,
+      macerationStartedAt: variantInput.macerationStartedAt ?? null,
+      macerationTargetAt: variantInput.macerationTargetAt ?? null,
+      macerationNotes: variantInput.macerationNotes ?? null,
       createdAt: created,
     })
 

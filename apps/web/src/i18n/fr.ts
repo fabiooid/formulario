@@ -250,6 +250,12 @@ export const fr = {
       setFinal: 'Choisir comme final',
       finalBadge: 'Final',
     },
+    versions: {
+      select: 'Choisir une version de formule',
+      rename: 'Nom de la version',
+      currentBadge: 'Courante',
+      historyHint: 'Vous consultez une version enregistrée. Les modifications de formule restent sur la version courante.',
+    },
     maceration: {
       title: 'Macération',
       description: 'Suivez le temps de repos de ce lot parfum avant évaluation.',

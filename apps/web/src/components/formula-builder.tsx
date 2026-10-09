@@ -41,6 +41,7 @@ export function FormulaBuilder({
   hasChanges,
   variantControls,
   claims = [],
+  locked = false,
   proposal,
 }: {
   rows: FormulaRow[]
@@ -50,6 +51,8 @@ export function FormulaBuilder({
   hasChanges: boolean
   variantControls?: ReactNode
   claims?: ProductClaim[]
+  /** Viewing a non-current saved version — formula is read-only. */
+  locked?: boolean
   /** When set, the table shows a read-only proposed formula with accept/reject. */
   proposal?: {
     stale?: boolean
@@ -59,7 +62,7 @@ export function FormulaBuilder({
   }
 }) {
   const { t } = useLanguage()
-  const readOnly = !!proposal
+  const readOnly = locked || !!proposal
   const total = formulaPercentTotal(rows)
   const balanced = isPercentBalanced(rows)
   const [draggingId, setDraggingId] = useState<string | null>(null)

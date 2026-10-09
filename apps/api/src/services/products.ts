@@ -4,8 +4,11 @@ import {
   computeProductStage,
   generateInciList,
   normalizeProductClaims,
+  productTracksMaceration,
   runRegulatoryChecks,
   type FormulaRow,
+  type FormulaVersionSummary,
+  type FormulaVersionWorkspace,
   type IngredientRule,
   type Market,
   type PatchOperation,
@@ -81,7 +84,8 @@ function productFromRow(product: typeof products.$inferSelect) {
 
 type CurrentVariantFormula = {
   variant: ProductVariant
-  version: { id: string; versionNumber: number; label: string | null } | null
+  version: FormulaVersionSummary | null
+  versions: FormulaVersionWorkspace[]
   rows: FormulaRow[]
 }
 
@@ -94,7 +98,7 @@ function stageFromVariants(variants: CurrentVariantFormula[]) {
   })
 }
 
-async function loadCurrentVariantFormulas(productIds: string[]) {
+async function loadCurrentVariantFormulas(productIds: string[], options?: { allVersions?: boolean }) {
   const byProduct = new Map<string, CurrentVariantFormula[]>()
   for (const id of productIds) byProduct.set(id, [])
   if (productIds.length === 0) return byProduct
@@ -111,14 +115,24 @@ async function loadCurrentVariantFormulas(productIds: string[]) {
       : await db
           .select()
           .from(formulaVersions)
-          .where(and(inArray(formulaVersions.variantId, variantIds), eq(formulaVersions.isCurrent, true)))
+          .where(
+            options?.allVersions
+              ? inArray(formulaVersions.variantId, variantIds)
+              : and(inArray(formulaVersions.variantId, variantIds), eq(formulaVersions.isCurrent, true)),
+          )
 
-  const versionByVariantId = new Map<string, (typeof versionRows)[number]>()
+  const versionsByVariantId = new Map<string, FormulaVersionSummary[]>()
   for (const version of versionRows) {
-    if (version.variantId) versionByVariantId.set(version.variantId, version)
+    if (!version.variantId) continue
+    const list = versionsByVariantId.get(version.variantId) ?? []
+    list.push(versionFromDb(version))
+    versionsByVariantId.set(version.variantId, list)
+  }
+  for (const list of versionsByVariantId.values()) {
+    list.sort((a, b) => b.versionNumber - a.versionNumber || a.id.localeCompare(b.id))
   }
 
-  const versionIds = [...versionByVariantId.values()].map((version) => version.id)
+  const versionIds = versionRows.map((version) => version.id)
   const formulaRowRows =
     versionIds.length === 0
       ? []
@@ -139,13 +153,27 @@ async function loadCurrentVariantFormulas(productIds: string[]) {
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))
 
   for (const variant of variants) {
-    const version = versionByVariantId.get(variant.id) ?? null
+    const versions = (versionsByVariantId.get(variant.id) ?? []).map((version) => ({
+      ...version,
+      rows: rowsByVersionId.get(version.id) ?? [],
+    }))
+    const current = versions.find((version) => version.isCurrent) ?? versions[0] ?? null
     byProduct.get(variant.productId)?.push({
       variant,
-      version: version
-        ? { id: version.id, versionNumber: version.versionNumber, label: version.label }
+      version: current
+        ? {
+            id: current.id,
+            versionNumber: current.versionNumber,
+            label: current.label,
+            isCurrent: current.isCurrent,
+            macerationStartedAt: current.macerationStartedAt,
+            macerationTargetAt: current.macerationTargetAt,
+            macerationNotes: current.macerationNotes,
+            macerationStatus: current.macerationStatus,
+          }
         : null,
-      rows: version ? (rowsByVersionId.get(version.id) ?? []) : [],
+      versions,
+      rows: current?.rows ?? [],
     })
   }
 
@@ -197,11 +225,20 @@ export function variantFromDb(row: typeof productVariants.$inferSelect): Product
     label: row.label,
     sortOrder: row.sortOrder,
     isSelectedFinal: row.isSelectedFinal,
+    createdAt: row.createdAt,
+  }
+}
+
+export function versionFromDb(row: typeof formulaVersions.$inferSelect): FormulaVersionSummary {
+  return {
+    id: row.id,
+    versionNumber: row.versionNumber,
+    label: row.label,
+    isCurrent: row.isCurrent,
     macerationStartedAt: row.macerationStartedAt,
     macerationTargetAt: row.macerationTargetAt,
     macerationNotes: row.macerationNotes,
     macerationStatus: computeMacerationStatus(row.macerationStartedAt, row.macerationTargetAt),
-    createdAt: row.createdAt,
   }
 }
 
@@ -328,6 +365,7 @@ async function createVariantWithVersion(
     macerationStartedAt?: string | null
     macerationTargetAt?: string | null
     macerationNotes?: string | null
+    versionLabel?: string
   },
 ) {
   const now = new Date().toISOString()
@@ -340,9 +378,6 @@ async function createVariantWithVersion(
     label,
     sortOrder,
     isSelectedFinal: extras?.isSelectedFinal ?? false,
-    macerationStartedAt: extras?.macerationStartedAt ?? null,
-    macerationTargetAt: extras?.macerationTargetAt ?? null,
-    macerationNotes: extras?.macerationNotes ?? null,
     createdAt: now,
   })
 
@@ -351,8 +386,11 @@ async function createVariantWithVersion(
     productId,
     variantId,
     versionNumber: 1,
-    label: 'v1',
+    label: extras?.versionLabel ?? 'v1',
     isCurrent: true,
+    macerationStartedAt: extras?.macerationStartedAt ?? null,
+    macerationTargetAt: extras?.macerationTargetAt ?? null,
+    macerationNotes: extras?.macerationNotes ?? null,
     createdAt: now,
   })
 
@@ -499,7 +537,7 @@ export async function duplicateProduct(productId: string, userId: string, name?:
       updatedAt: now,
     })
 
-    for (const { variant, rows } of copiedVariants) {
+    for (const { variant, version, rows } of copiedVariants) {
       await createVariantWithVersion(
         newId,
         variant.label,
@@ -508,9 +546,11 @@ export async function duplicateProduct(productId: string, userId: string, name?:
         tx,
         {
           isSelectedFinal: variant.isSelectedFinal,
-          macerationStartedAt: variant.macerationStartedAt,
-          macerationTargetAt: variant.macerationTargetAt,
-          macerationNotes: variant.macerationNotes,
+          // Duplicate copies the current version only; maceration stays with that version.
+          macerationStartedAt: version?.macerationStartedAt ?? null,
+          macerationTargetAt: version?.macerationTargetAt ?? null,
+          macerationNotes: version?.macerationNotes ?? null,
+          versionLabel: version?.label ?? 'v1',
         },
       )
     }
@@ -634,6 +674,7 @@ async function commitVersion(
       .set({ isCurrent: false })
       .where(eq(formulaVersions.id, current.id))
   }
+  // New versions start with blank maceration — do not copy from the previous version.
   await session.insert(formulaVersions).values({
     id: versionId,
     productId,
@@ -641,6 +682,9 @@ async function commitVersion(
     versionNumber: nextNumber,
     label: label ?? `v${nextNumber}`,
     isCurrent: true,
+    macerationStartedAt: null,
+    macerationTargetAt: null,
+    macerationNotes: null,
     createdAt: now,
   })
   await saveFormulaRows(versionId, rows, session)
@@ -709,6 +753,66 @@ export async function renameVariant(
   return getVariant(variantId, productId)
 }
 
+export async function renameVersion(
+  versionId: string,
+  productId: string,
+  userId: string,
+  label: string,
+) {
+  await requireWritableProduct(db, productId, userId)
+  const nextLabel = label.trim()
+  if (!nextLabel) throw new ProductWriteError(409, 'invalid_label', 'Version name cannot be empty')
+
+  const [version] = await db
+    .select()
+    .from(formulaVersions)
+    .where(and(eq(formulaVersions.id, versionId), eq(formulaVersions.productId, productId)))
+    .limit(1)
+  if (!version) throw new ProductWriteError(404, 'not_found', 'Version not found')
+
+  await db
+    .update(formulaVersions)
+    .set({ label: nextLabel })
+    .where(eq(formulaVersions.id, versionId))
+  await db
+    .update(products)
+    .set({ updatedAt: new Date().toISOString() })
+    .where(eq(products.id, productId))
+
+  return getWorkspace(productId, userId)
+}
+
+async function clearMacerationForProduct(session: DatabaseSession, productId: string) {
+  await session
+    .update(formulaVersions)
+    .set({
+      macerationStartedAt: null,
+      macerationTargetAt: null,
+      macerationNotes: null,
+    })
+    .where(eq(formulaVersions.productId, productId))
+}
+
+export async function updateProductType(productId: string, userId: string, type: ProductType) {
+  await requireWritableProduct(db, productId, userId)
+  const product = await getProductForUser(productId, userId)
+  if (!product) return null
+
+  const leavingPerfume =
+    productTracksMaceration(product.type) && !productTracksMaceration(type)
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(products)
+      .set({ type, updatedAt: new Date().toISOString() })
+      .where(eq(products.id, productId))
+    // Perfume → skincare/hybrid: wipe stored maceration, do not leave hidden data.
+    if (leavingPerfume) await clearMacerationForProduct(tx, productId)
+  })
+
+  return getWorkspace(productId, userId)
+}
+
 export async function setSelectedFinalVariant(
   productId: string,
   variantId: string,
@@ -741,7 +845,7 @@ export async function setSelectedFinalVariant(
 }
 
 export async function updateMaceration(
-  variantId: string,
+  versionId: string,
   productId: string,
   userId: string,
   input: {
@@ -750,22 +854,34 @@ export async function updateMaceration(
     macerationNotes?: string | null
   },
 ) {
+  await requireWritableProduct(db, productId, userId)
   const product = await getProductForUser(productId, userId)
   if (!product) return null
-  if (product.type !== 'perfume') {
+  if (!productTracksMaceration(product.type)) {
     throw new Error('Maceration is only tracked for perfumes')
   }
 
+  const [version] = await db
+    .select()
+    .from(formulaVersions)
+    .where(and(eq(formulaVersions.id, versionId), eq(formulaVersions.productId, productId)))
+    .limit(1)
+  if (!version) throw new ProductWriteError(404, 'not_found', 'Version not found')
+
   await db
-    .update(productVariants)
+    .update(formulaVersions)
     .set({
       macerationStartedAt: input.macerationStartedAt ?? null,
       macerationTargetAt: input.macerationTargetAt ?? null,
       macerationNotes: input.macerationNotes ?? null,
     })
-    .where(and(eq(productVariants.id, variantId), eq(productVariants.productId, productId)))
+    .where(eq(formulaVersions.id, versionId))
+  await db
+    .update(products)
+    .set({ updatedAt: new Date().toISOString() })
+    .where(eq(products.id, productId))
 
-  return getVariant(variantId, productId)
+  return getWorkspace(productId, userId)
 }
 
 export async function refreshDerived(productId: string, userId: string) {
@@ -920,7 +1036,8 @@ export async function getWorkspace(productId: string, userId: string) {
   const product = await getProductForUser(productId, userId)
   if (!product) return null
 
-  const variants = (await loadCurrentVariantFormulas([productId])).get(productId) ?? []
+  const variants =
+    (await loadCurrentVariantFormulas([productId], { allVersions: true })).get(productId) ?? []
   const selectedFinalVariantId = variants.find((item) => item.variant.isSelectedFinal)?.variant.id ?? null
 
   const [checks, thread] = await Promise.all([
