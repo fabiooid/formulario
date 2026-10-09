@@ -59,6 +59,8 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     queryKey: ['workspace', id],
     queryFn: () => api.getWorkspace(id!),
     enabled: !!user && !!id,
+    // Pick up MCP proposals while the product stays open; drafts stay in local storage.
+    refetchInterval: 10_000,
   })
 
   const selectedVariantId =

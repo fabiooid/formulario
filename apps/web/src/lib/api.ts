@@ -98,6 +98,7 @@ export interface FormulaPatch {
   id: string
   productId: string
   variantId?: string | null
+  baseVersionId?: string | null
   status: 'pending' | 'accepted' | 'rejected'
   summary: string
   operations: PatchOperation[]

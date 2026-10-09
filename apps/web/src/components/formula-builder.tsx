@@ -41,6 +41,7 @@ export function FormulaBuilder({
   hasChanges,
   variantControls,
   claims = [],
+  proposal,
 }: {
   rows: FormulaRow[]
   onChange: (rows: FormulaRow[]) => void
@@ -49,8 +50,17 @@ export function FormulaBuilder({
   hasChanges: boolean
   variantControls?: ReactNode
   claims?: ProductClaim[]
+  /** When set, the table shows a read-only proposed formula with accept/reject. */
+  proposal?: {
+    summary: string
+    stale?: boolean
+    pending?: boolean
+    onAccept: () => void
+    onReject: () => void
+  }
 }) {
   const { t } = useLanguage()
+  const readOnly = !!proposal
   const total = formulaPercentTotal(rows)
   const balanced = isPercentBalanced(rows)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -118,21 +128,54 @@ export function FormulaBuilder({
             <h2 className="text-lg font-semibold tracking-normal">{t('formula.title')}</h2>
             {variantControls}
           </div>
-          <p className="text-xs text-muted-foreground">{t('formula.subtitle')}</p>
+          <p className="text-xs text-muted-foreground">
+            {proposal ? t('formula.proposalSubtitle') : t('formula.subtitle')}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className={cn('font-mono text-sm tabular-nums', !balanced && 'text-amber-600')}>
             {t('formula.total', { percent: total })} {!balanced ? t('formula.totalWarn') : ''}
           </span>
-          <Button variant="outline" size="sm" onClick={addRow}>
-            <PlusIcon data-icon="inline-start" />
-            {t('formula.addRow')}
-          </Button>
-          <Button size="sm" onClick={onSave} disabled={saving || !hasChanges}>
-            {saving ? t('formula.saving') : t('formula.commit')}
-          </Button>
+          {proposal ? (
+            <>
+              <Button
+                size="sm"
+                disabled={proposal.pending || proposal.stale}
+                onClick={proposal.onAccept}
+              >
+                {t('workspace.accept')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={proposal.pending}
+                onClick={proposal.onReject}
+              >
+                {t('workspace.reject')}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={addRow}>
+                <PlusIcon data-icon="inline-start" />
+                {t('formula.addRow')}
+              </Button>
+              <Button size="sm" onClick={onSave} disabled={saving || !hasChanges}>
+                {saving ? t('formula.saving') : t('formula.commit')}
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {proposal ? (
+        <div className="flex flex-col gap-1">
+          <p className="text-sm">{proposal.summary}</p>
+          {proposal.stale ? (
+            <p className="text-sm text-muted-foreground">{t('workspace.formulaConflict')}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="min-w-0 overflow-x-auto rounded-lg border border-border bg-card">
         <Table className="min-w-[36rem] table-fixed">
@@ -147,10 +190,20 @@ export function FormulaBuilder({
               <TableHead className="w-28 border-r border-border text-right text-xs tracking-wide text-muted-foreground uppercase">
                 {t('formula.percent')}
               </TableHead>
-              <TableHead className="w-12" />
+              {readOnly ? null : <TableHead className="w-12" />}
             </TableRow>
           </TableHeader>
           <TableBody>
+            {rows.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell
+                  colSpan={readOnly ? 3 : 4}
+                  className="h-12 px-3 text-sm text-muted-foreground"
+                >
+                  {t('formula.emptyProposal')}
+                </TableCell>
+              </TableRow>
+            ) : null}
             {rows.map((row, index) => {
               const rowHits = row.inci.trim()
                 ? (claimHitsByInci.get(normalizeInci(row.inci)) ?? [])
@@ -159,41 +212,54 @@ export function FormulaBuilder({
               return (
               <TableRow
                 key={row.id}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  event.dataTransfer.dropEffect = 'move'
-                  setDragOverId(row.id)
-                }}
-                onDrop={(event) => {
-                  event.preventDefault()
-                  const sourceId = event.dataTransfer.getData('text/plain') || draggingId
-                  if (sourceId) moveRow(sourceId, row.id)
-                  setDraggingId(null)
-                  setDragOverId(null)
-                }}
-                className={`h-12 hover:bg-muted/30 ${
-                  draggingId === row.id ? 'opacity-40' : ''
-                } ${dragOverId === row.id && draggingId !== row.id ? 'bg-muted/60' : ''}`}
+                onDragOver={
+                  readOnly
+                    ? undefined
+                    : (event) => {
+                        event.preventDefault()
+                        event.dataTransfer.dropEffect = 'move'
+                        setDragOverId(row.id)
+                      }
+                }
+                onDrop={
+                  readOnly
+                    ? undefined
+                    : (event) => {
+                        event.preventDefault()
+                        const sourceId = event.dataTransfer.getData('text/plain') || draggingId
+                        if (sourceId) moveRow(sourceId, row.id)
+                        setDraggingId(null)
+                        setDragOverId(null)
+                      }
+                }
+                className={cn(
+                  'h-12',
+                  readOnly ? 'bg-muted/20 hover:bg-muted/20' : 'hover:bg-muted/30',
+                  !readOnly && draggingId === row.id ? 'opacity-40' : '',
+                  !readOnly && dragOverId === row.id && draggingId !== row.id ? 'bg-muted/60' : '',
+                )}
               >
                 <TableCell className="border-r border-border bg-muted/20 p-0 text-muted-foreground">
                   <div className="flex h-12 items-center justify-center gap-1">
-                    <button
-                      type="button"
-                      draggable
-                      aria-label={`Move ingredient ${index + 1}`}
-                      className="cursor-grab touch-none rounded p-1 text-muted-foreground/60 hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                      onDragStart={(event) => {
-                        setDraggingId(row.id)
-                        event.dataTransfer.effectAllowed = 'move'
-                        event.dataTransfer.setData('text/plain', row.id)
-                      }}
-                      onDragEnd={() => {
-                        setDraggingId(null)
-                        setDragOverId(null)
-                      }}
-                    >
-                      <GripVerticalIcon className="size-3.5" />
-                    </button>
+                    {readOnly ? null : (
+                      <button
+                        type="button"
+                        draggable
+                        aria-label={`Move ingredient ${index + 1}`}
+                        className="cursor-grab touch-none rounded p-1 text-muted-foreground/60 hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                        onDragStart={(event) => {
+                          setDraggingId(row.id)
+                          event.dataTransfer.effectAllowed = 'move'
+                          event.dataTransfer.setData('text/plain', row.id)
+                        }}
+                        onDragEnd={() => {
+                          setDraggingId(null)
+                          setDragOverId(null)
+                        }}
+                      >
+                        <GripVerticalIcon className="size-3.5" />
+                      </button>
+                    )}
                     <span className="font-mono text-xs">{index + 1}</span>
                   </div>
                 </TableCell>
@@ -205,17 +271,23 @@ export function FormulaBuilder({
                         showWarning ? 'shrink-0' : 'flex-1',
                       )}
                     >
-                      <Input
-                        className={cn(
-                          'h-12 min-w-0 rounded-none border-0 bg-transparent px-3 shadow-none focus-visible:bg-background focus-visible:ring-0 dark:bg-transparent',
-                          showWarning
-                            ? 'w-auto field-sizing-content flex-none pr-1'
-                            : 'flex-1',
-                        )}
-                        value={row.inci}
-                        list="inventory-incis"
-                        onChange={(e) => updateRow(row.id, { inci: e.target.value })}
-                      />
+                      {readOnly ? (
+                        <span className="min-w-0 flex-1 truncate px-3 font-mono text-sm">
+                          {row.inci || '—'}
+                        </span>
+                      ) : (
+                        <Input
+                          className={cn(
+                            'h-12 min-w-0 rounded-none border-0 bg-transparent px-3 shadow-none focus-visible:bg-background focus-visible:ring-0 dark:bg-transparent',
+                            showWarning
+                              ? 'w-auto field-sizing-content flex-none pr-1'
+                              : 'flex-1',
+                          )}
+                          value={row.inci}
+                          list="inventory-incis"
+                          onChange={(e) => updateRow(row.id, { inci: e.target.value })}
+                        />
+                      )}
                       {showWarning ? <ClaimRowWarning hits={rowHits} /> : null}
                     </div>
                     {row.inci.trim() ? (
@@ -230,35 +302,45 @@ export function FormulaBuilder({
                   </div>
                 </TableCell>
                 <TableCell className="border-r border-border p-0">
-                  <Input
-                    className="h-12 rounded-none border-0 bg-transparent px-3 text-right font-mono tabular-nums shadow-none focus-visible:bg-background focus-visible:ring-0 dark:bg-transparent"
-                    type="number"
-                    step="0.01"
-                    value={row.percent}
-                    onChange={(e) => updateRow(row.id, { percent: Number(e.target.value) })}
-                  />
+                  {readOnly ? (
+                    <span className="flex h-12 items-center justify-end px-3 font-mono text-sm tabular-nums">
+                      {row.percent}
+                    </span>
+                  ) : (
+                    <Input
+                      className="h-12 rounded-none border-0 bg-transparent px-3 text-right font-mono tabular-nums shadow-none focus-visible:bg-background focus-visible:ring-0 dark:bg-transparent"
+                      type="number"
+                      step="0.01"
+                      value={row.percent}
+                      onChange={(e) => updateRow(row.id, { percent: Number(e.target.value) })}
+                    />
+                  )}
                 </TableCell>
-                <TableCell className="text-center">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => removeRow(row.id)}
-                  >
-                    <Trash2Icon />
-                  </Button>
-                </TableCell>
+                {readOnly ? null : (
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => removeRow(row.id)}
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
               )
             })}
           </TableBody>
         </Table>
-        <datalist id="inventory-incis">
-          {inventory.map((ingredient) => (
-            <option key={ingredient.id} value={ingredient.inci}>
-              {ingredient.tradeName ? `${ingredient.inci} · ${ingredient.tradeName}` : ingredient.inci}
-            </option>
-          ))}
-        </datalist>
+        {readOnly ? null : (
+          <datalist id="inventory-incis">
+            {inventory.map((ingredient) => (
+              <option key={ingredient.id} value={ingredient.inci}>
+                {ingredient.tradeName ? `${ingredient.inci} · ${ingredient.tradeName}` : ingredient.inci}
+              </option>
+            ))}
+          </datalist>
+        )}
       </div>
       </div>
     </TooltipProvider>

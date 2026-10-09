@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { FormulaPatch, FormulaRow, OlfactoryPyramid, ProductSummary, VariantWorkspace } from '@/lib/api'
+import { isPatchStale, proposedFormulaRows } from '@/lib/formula-proposal'
 import { useLanguage } from '@/i18n/language-provider'
 
 function variantOptionLabel(label: string, isFinal: boolean, finalBadge: string) {
@@ -80,17 +81,36 @@ export function WorkspaceFormula({
   const { t } = useLanguage()
   const isPerfume = product.type === 'perfume'
   const selected = variants.find((v) => v.variant.id === selectedVariantId)
-  const hasCommittedFormula = rows.some((r) => r.inci.trim())
+  const committedRows = selected?.rows ?? []
+  const currentVersionId = selected?.version?.id ?? null
+  const reviewingPatch = !hasDraft && pendingPatches[0] ? pendingPatches[0] : null
+  const reviewingStale = reviewingPatch ? isPatchStale(reviewingPatch, currentVersionId) : false
+  const tableRows = reviewingPatch
+    ? proposedFormulaRows(committedRows, reviewingPatch.operations)
+    : rows
+  const hasCommittedFormula = tableRows.some((r) => r.inci.trim())
+  const extraPending = reviewingPatch ? pendingPatches.slice(1) : pendingPatches
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <FormulaBuilder
-        rows={rows}
+        rows={tableRows}
         onChange={onRowsChange}
         onSave={onSave}
         saving={saving}
         hasChanges={hasChanges}
         claims={product.claims ?? []}
+        proposal={
+          reviewingPatch
+            ? {
+                summary: reviewingPatch.summary,
+                stale: reviewingStale,
+                pending: patchPending,
+                onAccept: () => onAcceptPatch(reviewingPatch.id),
+                onReject: () => onRejectPatch(reviewingPatch.id),
+              }
+            : undefined
+        }
         variantControls={isPerfume ? (
           <div className="flex min-w-0 max-w-full items-center gap-1">
             <Select
@@ -144,10 +164,10 @@ export function WorkspaceFormula({
         ) : null}
       />
 
-      {pendingPatches.length > 0 ? (
+      {hasDraft && pendingPatches.length > 0 ? (
         <div className="flex flex-col gap-4">
           <h3 className="text-base font-medium">{t('workspace.pendingPatches')}</h3>
-          {hasDraft ? <p className="text-sm text-muted-foreground">{t('workspace.saveBeforePatch')}</p> : null}
+          <p className="text-sm text-muted-foreground">{t('workspace.saveBeforePatch')}</p>
           {pendingPatches.map((patch, index) => (
             <div key={patch.id} className="flex flex-col gap-2">
               {index > 0 ? <Separator /> : null}
@@ -156,7 +176,30 @@ export function WorkspaceFormula({
                 {t('workspace.operations', { count: patch.operations.length })}
               </p>
               <div className="flex gap-2">
-                <Button size="sm" disabled={patchPending || hasDraft} onClick={() => onAcceptPatch(patch.id)}>
+                <Button size="sm" disabled onClick={() => onAcceptPatch(patch.id)}>
+                  {t('workspace.accept')}
+                </Button>
+                <Button size="sm" variant="outline" disabled={patchPending} onClick={() => onRejectPatch(patch.id)}>
+                  {t('workspace.reject')}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {extraPending.length > 0 && !hasDraft ? (
+        <div className="flex flex-col gap-4">
+          <h3 className="text-base font-medium">{t('workspace.pendingPatches')}</h3>
+          {extraPending.map((patch, index) => (
+            <div key={patch.id} className="flex flex-col gap-2">
+              {index > 0 ? <Separator /> : null}
+              <p className="text-sm">{patch.summary}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('workspace.operations', { count: patch.operations.length })}
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" disabled={patchPending} onClick={() => onAcceptPatch(patch.id)}>
                   {t('workspace.accept')}
                 </Button>
                 <Button size="sm" variant="outline" disabled={patchPending} onClick={() => onRejectPatch(patch.id)}>
@@ -170,14 +213,14 @@ export function WorkspaceFormula({
 
       <Separator />
 
-      <InciPreview rows={rows} preview />
+      <InciPreview rows={tableRows} preview />
 
       <div className="flex">
         <Button
           variant="outline"
           size="sm"
           onClick={onSetFinal}
-          disabled={!hasCommittedFormula || hasDraft || setFinalSaving}
+          disabled={!hasCommittedFormula || hasDraft || !!reviewingPatch || setFinalSaving}
         >
           {setFinalSaving ? t('workspace.final.generating') : t('workspace.variants.setFinal')}
         </Button>

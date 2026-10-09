@@ -290,6 +290,8 @@ export const en = {
   formula: {
     title: 'Formula builder',
     subtitle: 'Committed formula is the source of truth.',
+    proposalSubtitle: 'Proposed formula — accept to commit, or reject.',
+    emptyProposal: 'This proposal has no ingredient rows.',
     total: 'Total: {percent}%',
     totalWarn: '(target ~100%)',
     addRow: 'Ingredient',

@@ -292,6 +292,8 @@ export const fr = {
   formula: {
     title: 'Éditeur de formule',
     subtitle: 'La formule validée est la source de vérité.',
+    proposalSubtitle: 'Formule proposée — acceptez pour valider, ou refusez.',
+    emptyProposal: 'Cette proposition n’a aucune ligne d’ingrédient.',
     total: 'Total : {percent} %',
     totalWarn: '(cible ~100 %)',
     addRow: 'Ingrédient',
