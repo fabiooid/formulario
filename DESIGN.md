@@ -388,7 +388,7 @@ Plain, short, calm. No hype, no emoji in product UI, no “AI-powered” languag
 - Skip empty, loading, locked, and error states
 - Change only one instance of a pattern (if list rows change, product cards should still match)
 
-Product supporting tools: keep INCI preview and Choose as final together directly after the formula. Separate them from the scent pyramid with a separator. The pyramid is a closed-by-default shadcn Collapsible Card describing scent direction, independent of INCI. Maceration follows as a closed-by-default status Card; expand to edit dates side by side and notes below. Keep editors mounted to preserve unsaved input. Choose as final is disabled while formula drafts exist.
+Product supporting tools: keep INCI preview and Choose as final together directly after the formula. Separate them from maceration with a separator. Maceration is a closed-by-default status Card for perfume; expand to edit dates side by side and notes below. Keep editors mounted to preserve unsaved input. Choose as final is disabled while formula drafts exist.
 
 ## Expressive details
 

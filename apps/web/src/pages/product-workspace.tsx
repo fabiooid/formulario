@@ -16,7 +16,6 @@ import {
   ApiError,
   api,
   type FormulaRow,
-  type OlfactoryPyramid,
   type ProductSummary,
 } from '@/lib/api'
 import { useFormulaDrafts } from '@/lib/use-formula-drafts'
@@ -145,13 +144,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     },
   })
 
-  const pyramidMutation = useMutation({
-    mutationFn: (pyramid: OlfactoryPyramid) => api.saveOlfactoryPyramid(id!, pyramid),
-    onSuccess: (result) => {
-      queryClient.setQueryData(['workspace', id], result.workspace)
-    },
-  })
-
   const claimsMutation = useMutation({
     mutationFn: (claims: ProductClaim[]) => api.updateProductClaims(id!, claims),
     onSuccess: (result) => {
@@ -259,8 +251,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     claimsMutation.error ??
     briefMutation.error ??
     renameMutation.error ??
-    macerationMutation.error ??
-    pyramidMutation.error
+    macerationMutation.error
   const writingFormula =
     saveMutation.isPending || patchMutation.isPending || setFinalMutation.isPending
 
@@ -372,8 +363,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                   setFinalSaving={writingFormula}
                   onMacerationSave={(input) => macerationMutation.mutate(input)}
                   macerationSaving={macerationMutation.isPending}
-                  onSavePyramid={(pyramid) => pyramidMutation.mutate(pyramid)}
-                  pyramidSaving={pyramidMutation.isPending}
                 />
               ) : null}
             </div>

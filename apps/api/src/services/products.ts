@@ -70,24 +70,11 @@ function parseJson<T>(value: string, fallback: T): T {
   }
 }
 
-export type OlfactoryPyramid = {
-  direction: string
-  top: string[]
-  heart: string[]
-  base: string[]
-}
-
-function pyramidFromDb(value: string | null): OlfactoryPyramid | null {
-  if (!value) return null
-  return parseJson<OlfactoryPyramid | null>(value, null)
-}
-
 function productFromRow(product: typeof products.$inferSelect) {
   return {
     ...product,
     markets: parseJson<Market[]>(product.markets, ['EU']),
     claims: normalizeProductClaims(parseJson<string[]>(product.claims, [])),
-    olfactoryPyramid: pyramidFromDb(product.olfactoryPyramid),
     type: product.type as ProductType,
   }
 }
@@ -506,7 +493,6 @@ export async function duplicateProduct(productId: string, userId: string, name?:
       type: source.type,
       markets: JSON.stringify(source.markets),
       brief: source.brief,
-      olfactoryPyramid: source.olfactoryPyramid ? JSON.stringify(source.olfactoryPyramid) : null,
       claims: JSON.stringify(source.claims),
       status: 'draft',
       createdAt: now,
@@ -587,25 +573,6 @@ export async function updateProductClaims(
     .where(eq(products.id, productId))
 
   await refreshDerived(productId, userId)
-  return getWorkspace(productId, userId)
-}
-
-export async function updateOlfactoryPyramid(
-  productId: string,
-  userId: string,
-  pyramid: OlfactoryPyramid,
-) {
-  const product = await getProductForUser(productId, userId)
-  if (!product || product.type !== 'perfume') return null
-
-  await db
-    .update(products)
-    .set({
-      olfactoryPyramid: JSON.stringify(pyramid),
-      updatedAt: new Date().toISOString(),
-    })
-    .where(and(eq(products.id, productId), eq(products.userId, userId)))
-
   return getWorkspace(productId, userId)
 }
 

@@ -40,7 +40,6 @@ import {
   setSelectedFinalVariant,
   updateMaceration,
   setProductPinned,
-  updateOlfactoryPyramid,
   updateProductBrief,
   updateProductClaims,
   updateProductName,
@@ -461,28 +460,6 @@ export const appRoutes = [
         const product = await duplicateProduct(c.req.param('productId'), user.id, parsed.data.name)
         if (!product) return c.json({ error: 'Not found' }, 404)
         return c.json({ product }, 201)
-      }),
-  }),
-  registerApiRoute('/app/products/:productId/olfactory-pyramid', {
-    method: 'PUT',
-    requiresAuth: false,
-    handler: async (c) =>
-      withUser(c, async (user) => {
-        const pyramid = z
-          .object({
-            direction: z.string(),
-            top: z.array(z.string()).max(12),
-            heart: z.array(z.string()).max(12),
-            base: z.array(z.string()).max(12),
-          })
-          .parse(await c.req.json())
-        const workspace = await updateOlfactoryPyramid(
-          c.req.param('productId'),
-          user.id,
-          pyramid,
-        )
-        if (!workspace) return c.json({ error: 'Product not found' }, 404)
-        return c.json({ workspace })
       }),
   }),
   registerApiRoute('/app/products/:productId/formula', {

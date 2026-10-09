@@ -153,13 +153,13 @@ const mcpTools = {
   }),
   read_product: createTool({
     id: 'mcp_read_product',
-    description: 'Read description, current formulas with version and row IDs, claims, scent direction and trial/maceration notes. Percentages are by weight.',
+    description: 'Read description, current formulas with version and row IDs, claims, and trial/maceration notes. Percentages are by weight.',
     inputSchema: z.object({ productId: z.string() }),
     mcp: readOnly,
     execute: async ({ productId }, context) => runMcp(context, async principal => {
       const w = await scopedWorkspace(principal, productId)
-      const { id, name, type, brief, markets, claims, olfactoryPyramid } = w.product
-      return { product: { id, name, type, description: brief, markets, claims, olfactoryPyramid }, variants: w.variants, pendingProposals: w.patches.filter(p => p.status === 'pending').map(p => ({ id: p.id, summary: p.summary, baseVersionId: p.baseVersionId })) }
+      const { id, name, type, brief, markets, claims } = w.product
+      return { product: { id, name, type, description: brief, markets, claims }, variants: w.variants, pendingProposals: w.patches.filter(p => p.status === 'pending').map(p => ({ id: p.id, summary: p.summary, baseVersionId: p.baseVersionId })) }
     }),
   }),
   read_history: createTool({
