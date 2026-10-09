@@ -129,17 +129,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     },
   })
 
-  const createVariantMutation = useMutation({
-    mutationFn: (copyFromVariantId?: string) =>
-      api.createVariant(id!, copyFromVariantId ? { copyFromVariantId } : {}),
-    onSuccess: (result) => {
-      queryClient.setQueryData(['workspace', id], result.workspace)
-      setSelectedVariantId(result.variant.id)
-      const created = result.workspace.variants.find((item) => item.variant.id === result.variant.id)
-      setSelectedVersionId(created?.version?.id ?? created?.versions[0]?.id ?? null)
-    },
-  })
-
   const setFinalMutation = useMutation({
     mutationFn: (variantId: string) => api.setFinalVariant(id, variantId),
     onSuccess: (result) => {
@@ -219,12 +208,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     },
   })
 
-  function selectVariant(variantId: string) {
-    setSelectedVariantId(variantId)
-    const next = data?.variants.find((item) => item.variant.id === variantId)
-    setSelectedVersionId(next?.version?.id ?? next?.versions[0]?.id ?? null)
-  }
-
   function selectVersion(versionId: string) {
     setSelectedVersionId(versionId)
   }
@@ -281,7 +264,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     saveMutation.error ??
     patchMutation.error ??
     setFinalMutation.error ??
-    createVariantMutation.error ??
     claimsMutation.error ??
     briefMutation.error ??
     renameMutation.error ??
@@ -376,7 +358,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                   product={data.product}
                   variants={data.variants}
                   selectedVariantId={selectedVariantId}
-                  onSelectVariant={selectVariant}
                   selectedVersionId={resolvedVersionId}
                   onSelectVersion={selectVersion}
                   rows={rows}
@@ -394,8 +375,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                   onRejectPatch={(patchId) => {
                     if (!writingFormula) patchMutation.mutate({ patchId, action: 'rejected' })
                   }}
-                  onCreateVariant={() => createVariantMutation.mutate(undefined)}
-                  onDuplicateVariant={() => createVariantMutation.mutate(selectedVariantId)}
                   onSetFinal={handleSetFinal}
                   setFinalSaving={writingFormula}
                   onMacerationSave={(input) => macerationMutation.mutate(input)}

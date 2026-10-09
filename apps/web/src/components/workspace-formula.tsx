@@ -1,14 +1,7 @@
-import { CopyIcon, MoreHorizontalIcon, PlusIcon } from 'lucide-react'
 import { FormulaBuilder } from '@/components/formula-builder'
 import { InciPreview } from '@/components/inci-preview'
 import { MacerationCard } from '@/components/maceration-card'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -29,10 +22,6 @@ import { isPatchStale, proposedFormulaRows } from '@/lib/formula-proposal'
 import { useLanguage } from '@/i18n/language-provider'
 import { productTracksMaceration, versionDisplayLabel } from '@formulario/domain'
 
-function variantOptionLabel(label: string, isFinal: boolean, finalBadge: string) {
-  return isFinal ? `${label} · ${finalBadge}` : label
-}
-
 function versionOptionLabel(
   version: { label: string | null; versionNumber: number; isCurrent: boolean },
   currentBadge: string,
@@ -45,7 +34,6 @@ export function WorkspaceFormula({
   product,
   variants,
   selectedVariantId,
-  onSelectVariant,
   selectedVersionId,
   onSelectVersion,
   rows,
@@ -58,8 +46,6 @@ export function WorkspaceFormula({
   patchPending,
   hasDraft,
   hasChanges,
-  onCreateVariant,
-  onDuplicateVariant,
   onSetFinal,
   setFinalSaving,
   onMacerationSave,
@@ -70,7 +56,6 @@ export function WorkspaceFormula({
   product: ProductSummary
   variants: VariantWorkspace[]
   selectedVariantId: string
-  onSelectVariant: (variantId: string) => void
   selectedVersionId: string | null
   onSelectVersion: (versionId: string) => void
   rows: FormulaRow[]
@@ -83,8 +68,6 @@ export function WorkspaceFormula({
   patchPending?: boolean
   hasDraft?: boolean
   hasChanges: boolean
-  onCreateVariant: () => void
-  onDuplicateVariant: () => void
   onSetFinal: () => void
   setFinalSaving?: boolean
   onMacerationSave: (input: {
@@ -120,41 +103,6 @@ export function WorkspaceFormula({
     viewingCurrent && reviewingPatch ? pendingPatches.slice(1) : viewingCurrent ? pendingPatches : []
   const historyLocked = !viewingCurrent
 
-  const versionSwitcher =
-    versionList.length > 0 ? (
-      <>
-        <Select
-          value={viewedVersion?.id}
-          onValueChange={(value) => value && onSelectVersion(value)}
-        >
-          <SelectTrigger aria-label={t('workspace.versions.select')} className="min-w-0 max-w-full bg-card">
-            <SelectValue>
-              {viewedVersion
-                ? versionOptionLabel(viewedVersion, t('workspace.versions.currentBadge'))
-                : t('workspace.versions.select')}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {versionList.map((version) => (
-                <SelectItem key={version.id} value={version.id}>
-                  {versionOptionLabel(version, t('workspace.versions.currentBadge'))}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        {viewedVersion ? (
-          <VersionNameInput
-            key={viewedVersion.id}
-            name={versionDisplayLabel(viewedVersion)}
-            saving={renameVersionSaving}
-            onSave={onRenameVersion}
-          />
-        ) : null}
-      </>
-    ) : null
-
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <FormulaBuilder
@@ -177,56 +125,40 @@ export function WorkspaceFormula({
             : undefined
         }
         variantControls={
-          <div className="flex min-w-0 max-w-full items-center gap-1">
-            <Select
-              value={selectedVariantId}
-              onValueChange={(value) => value && onSelectVariant(value)}
-            >
-              <SelectTrigger aria-label={t('workspace.variants.select')} className="min-w-0 max-w-full bg-card">
-                <SelectValue>
-                  {selected
-                    ? variantOptionLabel(
-                        selected.variant.label,
-                        selected.variant.isSelectedFinal,
-                        t('workspace.variants.finalBadge'),
-                      )
-                    : t('workspace.variants.select')}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {variants.map(({ variant }) => (
-                    <SelectItem key={variant.id} value={variant.id}>
-                      {variantOptionLabel(
-                        variant.label,
-                        variant.isSelectedFinal,
-                        t('workspace.variants.finalBadge'),
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            {versionSwitcher}
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<Button variant="ghost" size="icon-sm" />}
-                aria-label={t('workspace.variants.actions')}
+          versionList.length > 0 && viewedVersion ? (
+            <div className="flex min-w-0 max-w-full items-center gap-1">
+              {/* One visible name (rename). Compact select switches versions without a second “v1”. */}
+              <VersionNameInput
+                key={viewedVersion.id}
+                name={versionDisplayLabel(viewedVersion)}
+                saving={renameVersionSaving}
+                onSave={onRenameVersion}
+              />
+              <Select
+                value={viewedVersion.id}
+                onValueChange={(value) => value && onSelectVersion(value)}
               >
-                <MoreHorizontalIcon />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={onCreateVariant}>
-                  <PlusIcon />
-                  {t('workspace.variants.new')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onDuplicateVariant}>
-                  <CopyIcon />
-                  {t('workspace.variants.duplicate')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                <SelectTrigger
+                  size="sm"
+                  aria-label={t('workspace.versions.select')}
+                  className="w-8 shrink-0 bg-card px-1.5"
+                >
+                  <SelectValue className="sr-only">
+                    {versionOptionLabel(viewedVersion, t('workspace.versions.currentBadge'))}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {versionList.map((version) => (
+                      <SelectItem key={version.id} value={version.id}>
+                        {versionOptionLabel(version, t('workspace.versions.currentBadge'))}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null
         }
       />
 
@@ -348,7 +280,9 @@ function VersionNameInput({
         }
       }}
       aria-label={t('workspace.versions.rename')}
-      className="-mx-1 h-8 min-w-0 max-w-[9rem] rounded-md bg-transparent px-1 text-sm outline-none hover:bg-muted/50 focus:bg-muted/50 focus:ring-2 focus:ring-ring/40 disabled:opacity-70 sm:max-w-[12rem]"
+      title={t('workspace.versions.rename')}
+      placeholder={t('workspace.versions.rename')}
+      className="-mx-1 h-8 min-w-[4.5rem] max-w-[10rem] rounded-md bg-transparent px-1 text-sm outline-none hover:bg-muted/50 focus:bg-muted/50 focus:ring-2 focus:ring-ring/40 disabled:opacity-70"
     />
   )
 }
