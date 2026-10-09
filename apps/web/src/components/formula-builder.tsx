@@ -52,7 +52,6 @@ export function FormulaBuilder({
   claims?: ProductClaim[]
   /** When set, the table shows a read-only proposed formula with accept/reject. */
   proposal?: {
-    summary: string
     stale?: boolean
     pending?: boolean
     onAccept: () => void
@@ -168,13 +167,8 @@ export function FormulaBuilder({
         </div>
       </div>
 
-      {proposal ? (
-        <div className="flex flex-col gap-1">
-          <p className="text-sm">{proposal.summary}</p>
-          {proposal.stale ? (
-            <p className="text-sm text-muted-foreground">{t('workspace.formulaConflict')}</p>
-          ) : null}
-        </div>
+      {proposal?.stale ? (
+        <p className="text-sm text-muted-foreground">{t('workspace.formulaConflict')}</p>
       ) : null}
 
       <div className="min-w-0 overflow-x-auto rounded-lg border border-border bg-card">

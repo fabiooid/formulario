@@ -98,7 +98,6 @@ export function WorkspaceFormula({
         proposal={
           reviewingPatch
             ? {
-                summary: reviewingPatch.summary,
                 stale: reviewingStale,
                 pending: patchPending,
                 onAccept: () => onAcceptPatch(reviewingPatch.id),
