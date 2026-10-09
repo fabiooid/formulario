@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Test and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck web
+        run: npm run typecheck --workspace=apps/web
+
+      - name: Typecheck API
+        run: npm exec --workspace=apps/api -- tsc --noEmit
+
+      # SQLite tests open apps/api/data/app.db; create the folder like local install does.
+      - name: Test
+        run: |
+          mkdir -p apps/api/data
+          npm test
