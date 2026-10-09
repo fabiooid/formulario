@@ -232,7 +232,7 @@ Wide shell. Two peer tabs, not a numbered sequence. One column, so the agent pan
 - **Workspace** — brief prompt on top, formula table under it. Claims sit in the Description section, with the brief text. Ingredients that sit outside the chosen claims show a warning icon on the row (tooltip for the reason), not a banner above the table.
 - **Regulatory** — final INCI, market checks, and references. Market findings lead with ingredient names and action badges, sorted with bans and over-limits first. Blocking messages stay visible; sources and supporting details use shadcn Collapsible. Group unknown coverage into a count with expandable ingredient names and shared citations; never hide real labelling requirements in that group.
 
-The product description uses shadcn Collapsible: expanded for an empty formula, collapsed initially when the selected variant has a committed formula, with a Description heading and chevron to reopen it. Keep workspace sections at gap-4 and the tab content at pt-4 so the table stays close to the top. The description is a plain textarea that saves changes on blur. Claim chips sit under that textarea, in the same section. It has no AI-generation action.
+The product description stays open: a Description heading, then the brief textarea and claim chips in the same section. Keep workspace sections at gap-4 and the tab content at pt-4 so the table stays close to the top. The description is a plain textarea that saves changes on blur. It has no AI-generation action.
 
 Use `WorkspaceSection` for a quiet heading (no step number). Empty regulatory state uses `EmptyState`, not a locked dashed card or a checklist of steps.
 

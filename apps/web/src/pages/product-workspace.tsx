@@ -314,7 +314,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
             <div className="flex min-w-0 flex-col gap-4">
               <WorkspaceBrief
                 key={data.product.id + selectedVariantId}
-                hasFormula={hasCommittedRows(selected?.rows ?? [])}
                 brief={data.product.brief}
                 saving={briefMutation.isPending}
                 onSave={(brief) => briefMutation.mutate(brief)}

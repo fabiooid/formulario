@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react'
-import { ChevronDownIcon } from 'lucide-react'
 import type { ProductClaim } from '@formulario/domain'
 import { ClaimPicker } from '@/components/claim-picker'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { WorkspaceSection } from '@/components/workspace-section'
 import { useLanguage } from '@/i18n/language-provider'
 
 export function WorkspaceBrief({
   brief,
-  hasFormula,
   saving,
   onSave,
   claims,
@@ -17,7 +15,6 @@ export function WorkspaceBrief({
   claimsSaving,
 }: {
   brief: string
-  hasFormula: boolean
   saving?: boolean
   onSave: (brief: string) => void
   claims: ProductClaim[]
@@ -26,7 +23,6 @@ export function WorkspaceBrief({
 }) {
   const { t } = useLanguage()
   const [value, setValue] = useState(brief)
-  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     setValue(brief)
@@ -42,46 +38,35 @@ export function WorkspaceBrief({
   }
 
   return (
-    <Collapsible open={!hasFormula || expanded} onOpenChange={setExpanded}>
-      <h2>
-        <CollapsibleTrigger
-          disabled={!hasFormula}
-          className="group flex w-full items-center gap-2 rounded-md py-1 text-left text-lg font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-default"
-        >
-          {t('workspace.brief.title')}
-          {hasFormula ? (
-            <ChevronDownIcon className="size-4 text-muted-foreground transition-transform duration-200 group-aria-expanded:rotate-180 motion-reduce:transition-none" />
-          ) : null}
-        </CollapsibleTrigger>
-      </h2>
-      <CollapsibleContent>
-        <p className="mt-1 text-sm text-muted-foreground">{t('workspace.brief.description')}</p>
-        <FieldGroup className="mt-3 gap-3">
-          <Field>
-            <FieldLabel htmlFor="product-brief" className="sr-only">
-              {t('workspace.brief.title')}
-            </FieldLabel>
-            <Textarea
-              id="product-brief"
-              value={value}
-              rows={4}
-              disabled={saving}
-              placeholder={t('workspace.brief.placeholder')}
-              onChange={(event) => setValue(event.target.value)}
-              onBlur={commit}
-            />
-          </Field>
-          <Field>
-            <FieldLabel>{t('products.claims')}</FieldLabel>
-            <ClaimPicker
-              value={claims}
-              onChange={onSaveClaims}
-              disabled={claimsSaving}
-            />
-            <FieldDescription>{t('claims.hint')}</FieldDescription>
-          </Field>
-        </FieldGroup>
-      </CollapsibleContent>
-    </Collapsible>
+    <WorkspaceSection
+      title={t('workspace.brief.title')}
+      description={t('workspace.brief.description')}
+    >
+      <FieldGroup className="gap-3">
+        <Field>
+          <FieldLabel htmlFor="product-brief" className="sr-only">
+            {t('workspace.brief.title')}
+          </FieldLabel>
+          <Textarea
+            id="product-brief"
+            value={value}
+            rows={4}
+            disabled={saving}
+            placeholder={t('workspace.brief.placeholder')}
+            onChange={(event) => setValue(event.target.value)}
+            onBlur={commit}
+          />
+        </Field>
+        <Field>
+          <FieldLabel>{t('products.claims')}</FieldLabel>
+          <ClaimPicker
+            value={claims}
+            onChange={onSaveClaims}
+            disabled={claimsSaving}
+          />
+          <FieldDescription>{t('claims.hint')}</FieldDescription>
+        </Field>
+      </FieldGroup>
+    </WorkspaceSection>
   )
 }
