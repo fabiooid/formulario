@@ -282,6 +282,8 @@ Use `EmptyState` (dashed border, centered, quiet). For free-plan gaps, paid-only
 
 `FieldGroup` → `Field` → `FieldLabel` → `Input` / `Textarea` / `Select`. Labels are `text-sm font-medium`. Fields are `h-9`, `rounded-lg`. Auth fields may be `h-10`.
 
+Password choose/change: a live checklist under the new-password field (`text-xs`). Unmet rows use `text-muted-foreground` with an empty circular mark; met rows use `text-foreground` with a filled circle and Lucide check. No raw green.
+
 Errors: `text-sm text-destructive` under the field. Invalid fields get the destructive border from the primitive — do not add a second error style.
 
 ### Dialogs

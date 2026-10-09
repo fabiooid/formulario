@@ -1,26 +1,42 @@
 import { useState } from 'react'
+import { CheckIcon } from 'lucide-react'
 import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
+  passwordCriteria,
   passwordRejection,
+  type PasswordCriterion,
   type PasswordRejection,
 } from '@formulario/domain'
 import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/i18n/language-provider'
 import type { MessageKey } from '@/i18n/catalogs'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 
 const rejectionKey: Record<PasswordRejection | 'same' | 'wrong_current', MessageKey> = {
   too_short: 'auth.passwordTooShort',
   too_long: 'auth.passwordTooLong',
+  has_space: 'auth.passwordHasSpace',
+  needs_letter: 'auth.passwordNeedsLetter',
+  needs_number: 'auth.passwordNeedsNumber',
+  needs_special: 'auth.passwordNeedsSpecial',
   common: 'auth.passwordCommon',
   context: 'auth.passwordContext',
   same: 'auth.passwordSame',
   wrong_current: 'auth.wrongPassword',
 }
+
+const checklistItems: { id: PasswordCriterion; label: MessageKey }[] = [
+  { id: 'min_length', label: 'auth.passwordRuleMinLength' },
+  { id: 'no_spaces', label: 'auth.passwordRuleNoSpaces' },
+  { id: 'has_letter', label: 'auth.passwordRuleLetter' },
+  { id: 'has_number', label: 'auth.passwordRuleNumber' },
+  { id: 'has_special', label: 'auth.passwordRuleSpecial' },
+]
 
 export function PasswordForm({ mode }: { mode: 'first' | 'account' }) {
   const { user, changePassword, logout } = useAuth()
@@ -32,6 +48,7 @@ export function PasswordForm({ mode }: { mode: 'first' | 'account' }) {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
   const lengthVars = { min: PASSWORD_MIN_LENGTH, max: PASSWORD_MAX_LENGTH }
+  const checks = passwordCriteria(newPassword)
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -98,7 +115,31 @@ export function PasswordForm({ mode }: { mode: 'first' | 'account' }) {
             onChange={(event) => setNewPassword(event.target.value)}
             className="h-10 bg-background"
           />
-          <FieldDescription>{t('auth.passwordRules', lengthVars)}</FieldDescription>
+          <ul className="flex flex-col gap-1.5" aria-live="polite">
+            {checklistItems.map((item) => {
+              const met = checks[item.id]
+              return (
+                <li
+                  key={item.id}
+                  className={cn(
+                    'flex items-center gap-2 text-xs transition-colors duration-150',
+                    met ? 'text-foreground' : 'text-muted-foreground',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'flex size-3.5 shrink-0 items-center justify-center rounded-full border',
+                      met ? 'border-foreground bg-foreground text-background' : 'border-border',
+                    )}
+                    aria-hidden
+                  >
+                    {met ? <CheckIcon className="size-2.5" /> : null}
+                  </span>
+                  <span>{t(item.label, lengthVars)}</span>
+                </li>
+              )
+            })}
+          </ul>
         </Field>
         <Field>
           <FieldLabel htmlFor="confirm-password">{t('auth.confirmPassword')}</FieldLabel>

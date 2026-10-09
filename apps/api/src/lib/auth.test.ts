@@ -33,8 +33,8 @@ import {
 import { generateTemporaryPassword } from './temporary-password.js'
 
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url))
-const passphrase = 'quiet lab notebook notes'
-const replacement = 'another quiet lab notebook'
+const passphrase = 'QuietLab9!'
+const replacement = 'Notebook9!quiet'
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder })
@@ -83,7 +83,7 @@ describe('closed registration and provisioned accounts', () => {
     expect(await db.select().from(schema.users).where(eq(schema.users.email, 'new@example.com'))).toHaveLength(0)
   })
 
-  it('asks for a new password before the rest of the app, then accepts a passphrase', async () => {
+  it('asks for a new password before the rest of the app, then accepts a valid password', async () => {
     const temporary = generateTemporaryPassword()
     const email = 'person@example.com'
     await createProvisionedUser(email, temporary, 'paid')

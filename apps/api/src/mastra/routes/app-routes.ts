@@ -109,6 +109,10 @@ async function requireUser(c: BearerContext): Promise<AuthUser | null> {
 const passwordErrorText: Record<PasswordErrorCode, string> = {
   too_short: `Use at least ${PASSWORD_MIN_LENGTH} characters.`,
   too_long: `Use at most ${PASSWORD_MAX_LENGTH} characters.`,
+  has_space: 'Do not use spaces.',
+  needs_letter: 'Include at least one letter.',
+  needs_number: 'Include at least one number.',
+  needs_special: 'Include at least one special character.',
   common: 'That password is too common. Choose another.',
   context: 'Do not use your email or the name Formulario.',
   same: 'Choose a password that is different from the one you use now.',
