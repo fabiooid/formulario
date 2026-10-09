@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "latest",
+    "@types/node": "^26.6.4",
     "drizzle-kit": "^0.31.1",
     "mastra": "1.27.2",
     "tsx": "^4.19.4",
