@@ -65,16 +65,28 @@ export interface ProductVariant {
   label: string
   sortOrder: number
   isSelectedFinal: boolean
+  createdAt: string
+}
+
+export interface FormulaVersionSummary {
+  id: string
+  versionNumber: number
+  label: string | null
+  isCurrent: boolean
   macerationStartedAt?: string | null
   macerationTargetAt?: string | null
   macerationNotes?: string | null
   macerationStatus?: MacerationStatus
-  createdAt: string
+}
+
+export interface FormulaVersionWorkspace extends FormulaVersionSummary {
+  rows: FormulaRow[]
 }
 
 export interface VariantWorkspace {
   variant: ProductVariant
-  version: { id: string; versionNumber: number; label: string | null } | null
+  version: FormulaVersionSummary | null
+  versions: FormulaVersionWorkspace[]
   rows: FormulaRow[]
 }
 
@@ -408,6 +420,15 @@ export const api = {
   updateVariant: (
     productId: string,
     variantId: string,
+    input: { label: string },
+  ) =>
+    request<{ workspace: Workspace }>(`/app/products/${productId}/variants/${variantId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  updateVersion: (
+    productId: string,
+    versionId: string,
     input: {
       label?: string
       macerationStartedAt?: string | null
@@ -415,7 +436,7 @@ export const api = {
       macerationNotes?: string | null
     },
   ) =>
-    request<{ workspace: Workspace }>(`/app/products/${productId}/variants/${variantId}`, {
+    request<{ workspace: Workspace }>(`/app/products/${productId}/versions/${versionId}`, {
       method: 'PATCH',
       body: JSON.stringify(input),
     }),

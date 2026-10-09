@@ -248,13 +248,19 @@ export const en = {
       setFinal: 'Choose as final',
       finalBadge: 'Final',
     },
+    versions: {
+      select: 'Select formula version',
+      rename: 'Version name',
+      currentBadge: 'Current',
+      historyHint: 'You are viewing a saved version. Formula edits stay on the current version.',
+    },
     maceration: {
       title: 'Maceration',
-      description: 'Track resting time for this perfume batch before you evaluate it.',
+      description: 'Track resting time for this perfume formula version before you evaluate it.',
       startDate: 'Started',
       targetDate: 'Ready by',
       notes: 'Notes',
-      notesPlaceholder: 'What are you testing in this batch?',
+      notesPlaceholder: 'What are you testing in this version?',
       startToday: 'Start maceration today',
       status: {
         fresh: 'Fresh',

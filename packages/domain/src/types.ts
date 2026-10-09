@@ -156,26 +156,41 @@ export const ProductVariantSchema = z.object({
   label: z.string(),
   sortOrder: z.number(),
   isSelectedFinal: z.boolean(),
-  macerationStartedAt: z.string().nullable().optional(),
-  macerationTargetAt: z.string().nullable().optional(),
-  macerationNotes: z.string().nullable().optional(),
-  macerationStatus: MacerationStatusSchema.optional(),
   createdAt: z.string(),
 })
 export type ProductVariant = z.infer<typeof ProductVariantSchema>
 
+export const FormulaVersionSummarySchema = z.object({
+  id: z.string(),
+  versionNumber: z.number(),
+  label: z.string().nullable(),
+  isCurrent: z.boolean(),
+  macerationStartedAt: z.string().nullable().optional(),
+  macerationTargetAt: z.string().nullable().optional(),
+  macerationNotes: z.string().nullable().optional(),
+  macerationStatus: MacerationStatusSchema.optional(),
+})
+export type FormulaVersionSummary = z.infer<typeof FormulaVersionSummarySchema>
+
+export const FormulaVersionWorkspaceSchema = FormulaVersionSummarySchema.extend({
+  rows: z.array(FormulaRowSchema),
+})
+export type FormulaVersionWorkspace = z.infer<typeof FormulaVersionWorkspaceSchema>
+
 export const VariantWorkspaceSchema = z.object({
   variant: ProductVariantSchema,
-  version: z
-    .object({
-      id: z.string(),
-      versionNumber: z.number(),
-      label: z.string().nullable(),
-    })
-    .nullable(),
+  /** Current formula version (source of truth for commits and MCP proposals). */
+  version: FormulaVersionSummarySchema.nullable(),
+  /** All saved versions for this trial, newest first — used by the version switcher. */
+  versions: z.array(FormulaVersionWorkspaceSchema),
   rows: z.array(FormulaRowSchema),
 })
 export type VariantWorkspace = z.infer<typeof VariantWorkspaceSchema>
+
+/** Maceration is perfume-only. Hybrid and skincare stay off. */
+export function productTracksMaceration(type: ProductType): boolean {
+  return type === 'perfume'
+}
 
 export function computeMacerationStatus(
   startedAt?: string | null,
@@ -184,6 +199,14 @@ export function computeMacerationStatus(
   if (!startedAt) return 'fresh'
   if (targetAt && new Date(targetAt) <= new Date()) return 'ready'
   return 'macerating'
+}
+
+export function versionDisplayLabel(version: {
+  label?: string | null
+  versionNumber: number
+}): string {
+  const label = version.label?.trim()
+  return label || `v${version.versionNumber}`
 }
 
 export function computeProductStage(input: {

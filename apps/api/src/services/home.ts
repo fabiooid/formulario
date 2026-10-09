@@ -83,28 +83,31 @@ export async function getHomeDashboard(userId: string) {
   for (const { product, variants } of catalog) {
     const href = `/products/${product.id}`
 
-    for (const { variant, rows } of variants) {
+    for (const { variant, version, rows } of variants) {
       for (const row of rows) {
         if (row.inci.trim()) usedIngredients.push({ inci: row.inci, productName: product.name })
       }
 
-      if (variant.macerationStatus === 'ready') {
-        pushAttention({
-          id: `ready-${variant.id}`,
-          kind: 'maceration_ready',
-          href,
-          productName: product.name,
-          variantLabel: variant.label,
-        })
-      } else if (variant.macerationStatus === 'macerating') {
-        pushAttention({
-          id: `macerating-${variant.id}`,
-          kind: 'macerating',
-          href,
-          productName: product.name,
-          variantLabel: variant.label,
-          daysLeft: daysUntil(variant.macerationTargetAt),
-        })
+      // Home maceration alerts only for perfume, keyed off the current version.
+      if (product.type === 'perfume') {
+        if (version?.macerationStatus === 'ready') {
+          pushAttention({
+            id: `ready-${version.id}`,
+            kind: 'maceration_ready',
+            href,
+            productName: product.name,
+            variantLabel: variant.label,
+          })
+        } else if (version?.macerationStatus === 'macerating') {
+          pushAttention({
+            id: `macerating-${version.id}`,
+            kind: 'macerating',
+            href,
+            productName: product.name,
+            variantLabel: variant.label,
+            daysLeft: daysUntil(version.macerationTargetAt),
+          })
+        }
       }
 
       if (rows.some((row) => row.inci.trim()) && !isPercentBalanced(rows)) {

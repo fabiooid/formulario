@@ -7,6 +7,8 @@ import {
   generateInciList,
   isWaterInci,
   normalizeProductClaims,
+  productTracksMaceration,
+  versionDisplayLabel,
   type FormulaRow,
 } from './types.ts'
 
@@ -61,6 +63,22 @@ const row = (inci: string): FormulaRow => ({
   phase: 'A',
   percent: 100,
   sortOrder: 0,
+})
+
+describe('productTracksMaceration', () => {
+  it('is perfume-only', () => {
+    expect(productTracksMaceration('perfume')).toBe(true)
+    expect(productTracksMaceration('skincare')).toBe(false)
+    expect(productTracksMaceration('hybrid')).toBe(false)
+  })
+})
+
+describe('versionDisplayLabel', () => {
+  it('prefers a custom label and falls back to vN', () => {
+    expect(versionDisplayLabel({ label: 'lower coumarin', versionNumber: 3 })).toBe('lower coumarin')
+    expect(versionDisplayLabel({ label: '  ', versionNumber: 2 })).toBe('v2')
+    expect(versionDisplayLabel({ label: null, versionNumber: 1 })).toBe('v1')
+  })
 })
 
 describe('computeMacerationStatus', () => {

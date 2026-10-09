@@ -39,9 +39,12 @@ import {
   getWorkspace,
   listPatches,
   listProducts,
+  renameVersion,
   resolvePatch,
   setProductArchived,
   setProductPinned,
+  updateMaceration,
+  updateProductType,
 } from './products.js'
 
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url))
@@ -408,6 +411,142 @@ describe('product duplicate, archive and delete', () => {
     await expect(duplicateProduct(f.productId, 'viewer')).rejects.toMatchObject({ status: 403 })
     await expect(setProductArchived(f.productId, 'viewer', true)).rejects.toMatchObject({ status: 403 })
     expect(await getProductForUser(f.productId, 'owner')).not.toBeNull()
+  })
+})
+
+describe('maceration on formula versions', () => {
+  it('stores maceration on the version, blanks it on a new commit, and rejects non-perfume', async () => {
+    const perfume = await createProduct({
+      userId: 'owner',
+      name: 'Oil perfume',
+      type: 'perfume',
+      markets: ['EU'],
+      brief: 'Woods',
+    })
+    const workspace = (await getWorkspace(perfume.id, 'owner'))!
+    const variantId = workspace.variants[0].variant.id
+    const versionId = workspace.variants[0].version!.id
+
+    await updateMaceration(versionId, perfume.id, 'owner', {
+      macerationStartedAt: '2026-01-01T00:00:00.000Z',
+      macerationTargetAt: '2026-02-01T00:00:00.000Z',
+      macerationNotes: 'Lower coumarin',
+    })
+    const withNotes = (await getWorkspace(perfume.id, 'owner'))!
+    expect(withNotes.variants[0].version).toMatchObject({
+      id: versionId,
+      macerationNotes: 'Lower coumarin',
+      macerationStatus: 'ready',
+    })
+    expect(withNotes.variants[0].versions[0]).toMatchObject({
+      id: versionId,
+      macerationNotes: 'Lower coumarin',
+    })
+
+    const nextVersionId = await commitNewVersion(
+      perfume.id,
+      variantId,
+      'owner',
+      withNotes.variants[0].rows.length
+        ? withNotes.variants[0].rows
+        : [
+            {
+              id: crypto.randomUUID(),
+              inci: 'Caprylic/Capric Triglyceride',
+              function: 'Carrier',
+              phase: 'Oil',
+              percent: 100,
+              sortOrder: 0,
+            },
+          ],
+      versionId,
+    )
+    const afterCommit = (await getWorkspace(perfume.id, 'owner'))!
+    expect(afterCommit.variants[0].version?.id).toBe(nextVersionId)
+    expect(afterCommit.variants[0].version).toMatchObject({
+      macerationStartedAt: null,
+      macerationTargetAt: null,
+      macerationNotes: null,
+      macerationStatus: 'fresh',
+    })
+    expect(afterCommit.variants[0].versions).toHaveLength(2)
+    expect(afterCommit.variants[0].versions.find((v) => v.id === versionId)?.macerationNotes).toBe(
+      'Lower coumarin',
+    )
+
+    const skincare = await createProduct({
+      userId: 'owner',
+      name: 'Cream',
+      type: 'skincare',
+      markets: ['EU'],
+      brief: '',
+    })
+    const skinVersion = (await getWorkspace(skincare.id, 'owner'))!.variants[0].version!.id
+    await expect(
+      updateMaceration(skinVersion, skincare.id, 'owner', { macerationNotes: 'nope' }),
+    ).rejects.toThrow(/only tracked for perfumes/i)
+
+    const hybrid = await createProduct({
+      userId: 'owner',
+      name: 'Hybrid',
+      type: 'hybrid',
+      markets: ['EU'],
+      brief: '',
+    })
+    const hybridVersion = (await getWorkspace(hybrid.id, 'owner'))!.variants[0].version!.id
+    await expect(
+      updateMaceration(hybridVersion, hybrid.id, 'owner', { macerationNotes: 'nope' }),
+    ).rejects.toThrow(/only tracked for perfumes/i)
+  })
+
+  it('renames any version and wipes maceration when leaving perfume', async () => {
+    const perfume = await createProduct({
+      userId: 'owner',
+      name: 'Spray',
+      type: 'perfume',
+      markets: ['EU'],
+      brief: '',
+    })
+    const first = (await getWorkspace(perfume.id, 'owner'))!
+    const variantId = first.variants[0].variant.id
+    const v1 = first.variants[0].version!.id
+    await updateMaceration(v1, perfume.id, 'owner', {
+      macerationStartedAt: '2026-03-01T00:00:00.000Z',
+      macerationNotes: 'Batch A',
+    })
+    const v2 = await commitNewVersion(
+      perfume.id,
+      variantId,
+      'owner',
+      [
+        {
+          id: crypto.randomUUID(),
+          inci: 'Ethanol',
+          function: 'Solvent',
+          phase: 'Alcohol',
+          percent: 100,
+          sortOrder: 0,
+        },
+      ],
+      v1,
+    )
+    await renameVersion(v1, perfume.id, 'owner', 'softer open')
+    await renameVersion(v2, perfume.id, 'owner', 'brighter top')
+    const renamed = (await getWorkspace(perfume.id, 'owner'))!
+    expect(renamed.variants[0].versions.find((v) => v.id === v1)?.label).toBe('softer open')
+    expect(renamed.variants[0].versions.find((v) => v.id === v2)?.label).toBe('brighter top')
+
+    await updateProductType(perfume.id, 'owner', 'skincare')
+    const wiped = (await getWorkspace(perfume.id, 'owner'))!
+    expect(wiped.product.type).toBe('skincare')
+    for (const version of wiped.variants[0].versions) {
+      expect(version).toMatchObject({
+        macerationStartedAt: null,
+        macerationTargetAt: null,
+        macerationNotes: null,
+        macerationStatus: 'fresh',
+      })
+    }
   })
 })
 

@@ -6,16 +6,16 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { ProductVariant } from '@/lib/api'
+import type { FormulaVersionSummary } from '@/lib/api'
 import { useLanguage } from '@/i18n/language-provider'
 import type { MessageKey } from '@/i18n/catalogs'
 
 export function MacerationCard({
-  variant,
+  version,
   onSave,
   saving,
 }: {
-  variant: ProductVariant
+  version: FormulaVersionSummary
   onSave: (input: {
     macerationStartedAt?: string | null
     macerationTargetAt?: string | null
@@ -24,7 +24,7 @@ export function MacerationCard({
   saving?: boolean
 }) {
   const { t } = useLanguage()
-  const status = variant.macerationStatus ?? 'fresh'
+  const status = version.macerationStatus ?? 'fresh'
   const statusKey = `workspace.maceration.status.${status}` as MessageKey
 
   function toDateInput(value?: string | null) {
@@ -37,7 +37,7 @@ export function MacerationCard({
   }
 
   return (
-    <Collapsible key={variant.id} render={<Card />} >
+    <Collapsible key={version.id} render={<Card />} >
       <CardHeader>
         <CardTitle>
           <CollapsibleTrigger className="group flex min-h-8 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
@@ -54,53 +54,53 @@ export function MacerationCard({
       <CardContent>
         <FieldGroup className="grid gap-4 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor={`mac-start-${variant.id}`}>{t('workspace.maceration.startDate')}</FieldLabel>
-            {/* Keyed on the saved value so the field refreshes after "Start today" or a variant switch,
+            <FieldLabel htmlFor={`mac-start-${version.id}`}>{t('workspace.maceration.startDate')}</FieldLabel>
+            {/* Keyed on the saved value so the field refreshes after "Start today" or a version switch,
                 without fighting the person while they type. */}
             <Input
-              key={`${variant.id}:${variant.macerationStartedAt ?? ''}`}
-              id={`mac-start-${variant.id}`}
+              key={`${version.id}:${version.macerationStartedAt ?? ''}`}
+              id={`mac-start-${version.id}`}
               type="date"
-              defaultValue={toDateInput(variant.macerationStartedAt)}
+              defaultValue={toDateInput(version.macerationStartedAt)}
               onChange={(e) =>
                 onSave({
                   macerationStartedAt: fromDateInput(e.target.value),
-                  macerationTargetAt: variant.macerationTargetAt,
-                  macerationNotes: variant.macerationNotes,
+                  macerationTargetAt: version.macerationTargetAt,
+                  macerationNotes: version.macerationNotes,
                 })
               }
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor={`mac-target-${variant.id}`}>{t('workspace.maceration.targetDate')}</FieldLabel>
+            <FieldLabel htmlFor={`mac-target-${version.id}`}>{t('workspace.maceration.targetDate')}</FieldLabel>
             <Input
-              key={`${variant.id}:${variant.macerationTargetAt ?? ''}`}
-              id={`mac-target-${variant.id}`}
+              key={`${version.id}:${version.macerationTargetAt ?? ''}`}
+              id={`mac-target-${version.id}`}
               type="date"
-              defaultValue={toDateInput(variant.macerationTargetAt)}
+              defaultValue={toDateInput(version.macerationTargetAt)}
               onChange={(e) =>
                 onSave({
-                  macerationStartedAt: variant.macerationStartedAt,
+                  macerationStartedAt: version.macerationStartedAt,
                   macerationTargetAt: fromDateInput(e.target.value),
-                  macerationNotes: variant.macerationNotes,
+                  macerationNotes: version.macerationNotes,
                 })
               }
             />
           </Field>
           <Field className="sm:col-span-2">
-            <FieldLabel htmlFor={`mac-notes-${variant.id}`}>{t('workspace.maceration.notes')}</FieldLabel>
+            <FieldLabel htmlFor={`mac-notes-${version.id}`}>{t('workspace.maceration.notes')}</FieldLabel>
             <Textarea
-              key={`${variant.id}:${variant.macerationNotes ?? ''}`}
-              id={`mac-notes-${variant.id}`}
+              key={`${version.id}:${version.macerationNotes ?? ''}`}
+              id={`mac-notes-${version.id}`}
               rows={2}
-              defaultValue={variant.macerationNotes ?? ''}
+              defaultValue={version.macerationNotes ?? ''}
               placeholder={t('workspace.maceration.notesPlaceholder')}
               onBlur={(e) => {
                 const next = e.target.value.trim() || null
-                if (next === (variant.macerationNotes ?? null)) return
+                if (next === (version.macerationNotes ?? null)) return
                 onSave({
-                  macerationStartedAt: variant.macerationStartedAt,
-                  macerationTargetAt: variant.macerationTargetAt,
+                  macerationStartedAt: version.macerationStartedAt,
+                  macerationTargetAt: version.macerationTargetAt,
                   macerationNotes: next,
                 })
               }}
@@ -115,8 +115,8 @@ export function MacerationCard({
               const today = new Date().toISOString().slice(0, 10)
               onSave({
                 macerationStartedAt: `${today}T00:00:00.000Z`,
-                macerationTargetAt: variant.macerationTargetAt,
-                macerationNotes: variant.macerationNotes,
+                macerationTargetAt: version.macerationTargetAt,
+                macerationNotes: version.macerationNotes,
               })
             }}
           >

@@ -349,7 +349,8 @@ Plain, short, calm. No hype, no emoji in product UI, no “AI-powered” languag
 
 ## Interaction details worth keeping
 
-- **Inline rename:** the workspace title and the Lab Assistant thread name are inputs that look like a heading until hover/focus (`hover:bg-muted/50`, ring on focus). Enter saves, Escape cancels, empty blur restores the old name.
+- **Inline rename:** the workspace title, formula version label, and the Lab Assistant thread name are inputs that look like a heading until hover/focus (`hover:bg-muted/50`, ring on focus). Enter saves, Escape cancels, empty blur restores the old name.
+- **Formula version switcher:** quiet select next to the variant control (perfume) or alone (skincare). Switching shows that version’s formula and, for perfume, its maceration. Non-current versions are formula read-only; rename and maceration still apply to the version you are viewing.
 - **Remembered chrome:** sidebar collapsed, product view (cards/list), theme, language.
 - **Claim warnings on formula rows:** a Lucide `TriangleAlert` sits immediately after the ingredient name. The stock badge stays at the end of the cell. Hover or focus shows the reason in a shadcn Tooltip. Blocking vegan hits use `text-destructive`; missing flags stay muted. Do not use a banner above the table.
 - **Uncommitted formula edits:** keep a separate draft for each user, organisation, product and variant in the current browser tab. Refreshing workspace data or switching products/variants must preserve it. Show a quiet text notice and an outline discard action with confirmation. Commit or discard edits before accepting an agent patch. Failed saves keep the draft and show an error; a stale draft must never silently overwrite a newer committed version.

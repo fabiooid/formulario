@@ -50,6 +50,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   const queryClient = useQueryClient()
   const { setVariantId } = useAgent()
   const [selectedId, setSelectedVariantId] = useState<string | null>(null)
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const { drafts, edit, discard, saved } = useFormulaDrafts(draftKey)
   const [tab, setTab] = useState('workspace')
   const [discardVariantId, setDiscardVariantId] = useState<string | null>(null)
@@ -65,13 +66,20 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   const selectedVariantId =
     selectedId ?? data?.activeVariantId ?? data?.variants[0]?.variant.id ?? null
   const selected = data?.variants.find((v) => v.variant.id === selectedVariantId)
-  const draft = selectedVariantId ? drafts[selectedVariantId] : undefined
+  const resolvedVersionId =
+    selectedVersionId && selected?.versions.some((version) => version.id === selectedVersionId)
+      ? selectedVersionId
+      : (selected?.version?.id ?? selected?.versions[0]?.id ?? null)
+  const viewedVersion =
+    selected?.versions.find((version) => version.id === resolvedVersionId) ?? null
+  const viewingCurrent = !!viewedVersion?.isCurrent
+  const draft = selectedVariantId && viewingCurrent ? drafts[selectedVariantId] : undefined
   const rows = draft?.rows ?? selected?.rows ?? []
   const baseVersionId = draft ? draft.baseVersionId : (selected?.version?.id ?? null)
   const dirty = !!draft
 
   function setRows(next: FormulaRow[]) {
-    if (!selectedVariantId) return
+    if (!selectedVariantId || !viewingCurrent) return
     const committed = selected?.rows ?? []
     const versionMatches = baseVersionId === (selected?.version?.id ?? null)
     if (!saveMutation.isPending && versionMatches && formulaContentEquals(next, committed)) {
@@ -101,6 +109,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     onSuccess: (result, input) => {
       queryClient.setQueryData(['workspace', id], result.workspace)
       saved(input.variantId, input.draft, result.versionId)
+      setSelectedVersionId(result.versionId)
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['home'] })
     },
@@ -109,8 +118,12 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   const patchMutation = useMutation({
     mutationFn: ({ patchId, action }: { patchId: string; action: 'accepted' | 'rejected' }) =>
       api.resolvePatch(id!, patchId, action),
-    onSuccess: (result) => {
+    onSuccess: (result, input) => {
       queryClient.setQueryData(['workspace', id], result.workspace)
+      if (input.action === 'accepted' && selectedVariantId) {
+        const next = result.workspace.variants.find((item) => item.variant.id === selectedVariantId)
+        setSelectedVersionId(next?.version?.id ?? null)
+      }
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['home'] })
     },
@@ -122,6 +135,8 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     onSuccess: (result) => {
       queryClient.setQueryData(['workspace', id], result.workspace)
       setSelectedVariantId(result.variant.id)
+      const created = result.workspace.variants.find((item) => item.variant.id === result.variant.id)
+      setSelectedVersionId(created?.version?.id ?? created?.versions[0]?.id ?? null)
     },
   })
 
@@ -138,7 +153,20 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
       macerationStartedAt?: string | null
       macerationTargetAt?: string | null
       macerationNotes?: string | null
-    }) => api.updateVariant(id!, selectedVariantId!, input),
+    }) => {
+      if (!resolvedVersionId) throw new Error('No version selected')
+      return api.updateVersion(id!, resolvedVersionId, input)
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData(['workspace', id], result.workspace)
+    },
+  })
+
+  const renameVersionMutation = useMutation({
+    mutationFn: (label: string) => {
+      if (!resolvedVersionId) throw new Error('No version selected')
+      return api.updateVersion(id!, resolvedVersionId, { label })
+    },
     onSuccess: (result) => {
       queryClient.setQueryData(['workspace', id], result.workspace)
     },
@@ -193,6 +221,12 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
 
   function selectVariant(variantId: string) {
     setSelectedVariantId(variantId)
+    const next = data?.variants.find((item) => item.variant.id === variantId)
+    setSelectedVersionId(next?.version?.id ?? next?.versions[0]?.id ?? null)
+  }
+
+  function selectVersion(versionId: string) {
+    setSelectedVersionId(versionId)
   }
 
   function commitFormula(makeFinal = false) {
@@ -251,6 +285,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     claimsMutation.error ??
     briefMutation.error ??
     renameMutation.error ??
+    renameVersionMutation.error ??
     macerationMutation.error
   const writingFormula =
     saveMutation.isPending || patchMutation.isPending || setFinalMutation.isPending
@@ -342,6 +377,8 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                   variants={data.variants}
                   selectedVariantId={selectedVariantId}
                   onSelectVariant={selectVariant}
+                  selectedVersionId={resolvedVersionId}
+                  onSelectVersion={selectVersion}
                   rows={rows}
                   onRowsChange={setRows}
                   onSave={() => commitFormula()}
@@ -363,6 +400,8 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                   setFinalSaving={writingFormula}
                   onMacerationSave={(input) => macerationMutation.mutate(input)}
                   macerationSaving={macerationMutation.isPending}
+                  onRenameVersion={(label) => renameVersionMutation.mutate(label)}
+                  renameVersionSaving={renameVersionMutation.isPending}
                 />
               ) : null}
             </div>

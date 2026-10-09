@@ -250,13 +250,19 @@ export const fr = {
       setFinal: 'Choisir comme final',
       finalBadge: 'Final',
     },
+    versions: {
+      select: 'Choisir une version de formule',
+      rename: 'Nom de la version',
+      currentBadge: 'Courante',
+      historyHint: 'Vous consultez une version enregistrée. Les modifications de formule restent sur la version courante.',
+    },
     maceration: {
       title: 'Macération',
-      description: 'Suivez le temps de repos de ce lot parfum avant évaluation.',
+      description: 'Suivez le temps de repos de cette version de formule parfum avant évaluation.',
       startDate: 'Démarrée',
       targetDate: 'Prête le',
       notes: 'Notes',
-      notesPlaceholder: 'Que testez-vous dans ce lot ?',
+      notesPlaceholder: 'Que testez-vous dans cette version ?',
       startToday: 'Démarrer la macération aujourd’hui',
       status: {
         fresh: 'Fraîche',

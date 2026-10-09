@@ -35,6 +35,7 @@ import {
   listProducts,
   refreshDerived,
   renameVariant,
+  renameVersion,
   resolvePatch,
   setProductArchived,
   setSelectedFinalVariant,
@@ -43,6 +44,7 @@ import {
   updateProductBrief,
   updateProductClaims,
   updateProductName,
+  updateProductType,
 } from '../../services/products.js'
 import {
   createOrganization,
@@ -400,6 +402,7 @@ export const appRoutes = [
           .object({
             name: productNameSchema.optional(),
             brief: z.string().trim().min(1).optional(),
+            type: ProductTypeSchema.optional(),
             pinned: z.boolean().optional(),
             archived: z.boolean().optional(),
             claims: z.array(ProductClaimSchema).optional(),
@@ -408,6 +411,7 @@ export const appRoutes = [
             (value) =>
               value.name !== undefined ||
               value.brief !== undefined ||
+              value.type !== undefined ||
               value.pinned !== undefined ||
               value.archived !== undefined ||
               value.claims !== undefined,
@@ -422,6 +426,10 @@ export const appRoutes = [
         }
         if (body.brief !== undefined) {
           workspace = await updateProductBrief(productId, user.id, body.brief)
+          if (!workspace) return c.json({ error: 'Not found' }, 404)
+        }
+        if (body.type !== undefined) {
+          workspace = await updateProductType(productId, user.id, body.type)
           if (!workspace) return c.json({ error: 'Not found' }, 404)
         }
         if (body.pinned !== undefined) {
@@ -516,36 +524,64 @@ export const appRoutes = [
         const variantId = c.req.param('variantId')
         const body = z
           .object({
+            label: z.string().min(1),
+          })
+          .parse(await c.req.json())
+
+        await renameVariant(variantId, productId, user.id, body.label)
+        const workspace = await getWorkspace(productId, user.id)
+        if (!workspace) return c.json({ error: 'Not found' }, 404)
+        return c.json({ workspace })
+      }),
+  }),
+  registerApiRoute('/app/products/:productId/versions/:versionId', {
+    method: 'PATCH',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const productId = c.req.param('productId')
+        const versionId = c.req.param('versionId')
+        const body = z
+          .object({
             label: z.string().optional(),
             macerationStartedAt: z.string().nullable().optional(),
             macerationTargetAt: z.string().nullable().optional(),
             macerationNotes: z.string().nullable().optional(),
           })
+          .refine(
+            (value) =>
+              value.label !== undefined ||
+              value.macerationStartedAt !== undefined ||
+              value.macerationTargetAt !== undefined ||
+              value.macerationNotes !== undefined,
+          )
           .parse(await c.req.json())
 
-        if (body.label) {
-          await renameVariant(variantId, productId, user.id, body.label)
-        }
-        if (
-          body.macerationStartedAt !== undefined ||
-          body.macerationTargetAt !== undefined ||
-          body.macerationNotes !== undefined
-        ) {
-          try {
-            await updateMaceration(variantId, productId, user.id, {
+        try {
+          let workspace = null
+          if (body.label !== undefined) {
+            workspace = await renameVersion(versionId, productId, user.id, body.label)
+          }
+          if (
+            body.macerationStartedAt !== undefined ||
+            body.macerationTargetAt !== undefined ||
+            body.macerationNotes !== undefined
+          ) {
+            workspace = await updateMaceration(versionId, productId, user.id, {
               macerationStartedAt: body.macerationStartedAt,
               macerationTargetAt: body.macerationTargetAt,
               macerationNotes: body.macerationNotes,
             })
-          } catch (error) {
-            const message = error instanceof Error ? error.message : 'Update failed'
-            return c.json({ error: message }, 400)
           }
+          if (!workspace) return c.json({ error: 'Not found' }, 404)
+          return c.json({ workspace })
+        } catch (error) {
+          if (error instanceof ProductWriteError) {
+            return c.json({ error: error.message, code: error.code }, error.status)
+          }
+          const message = error instanceof Error ? error.message : 'Update failed'
+          return c.json({ error: message }, 400)
         }
-
-        const workspace = await getWorkspace(productId, user.id)
-        if (!workspace) return c.json({ error: 'Not found' }, 404)
-        return c.json({ workspace })
       }),
   }),
   registerApiRoute('/app/products/:productId/variants/:variantId/final', {
