@@ -258,11 +258,11 @@ export const fr = {
     },
     maceration: {
       title: 'Macération',
-      description: 'Suivez le temps de repos de cette version de formule parfum avant évaluation.',
+      description: 'Suivez le temps de repos de ce lot parfum avant évaluation.',
       startDate: 'Démarrée',
       targetDate: 'Prête le',
       notes: 'Notes',
-      notesPlaceholder: 'Que testez-vous dans cette version ?',
+      notesPlaceholder: 'Que testez-vous dans ce lot ?',
       startToday: 'Démarrer la macération aujourd’hui',
       status: {
         fresh: 'Fraîche',

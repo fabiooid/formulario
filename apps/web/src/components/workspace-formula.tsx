@@ -121,6 +121,41 @@ export function WorkspaceFormula({
     viewingCurrent && reviewingPatch ? pendingPatches.slice(1) : viewingCurrent ? pendingPatches : []
   const historyLocked = !viewingCurrent
 
+  const versionSwitcher =
+    versionList.length > 0 ? (
+      <>
+        <Select
+          value={viewedVersion?.id}
+          onValueChange={(value) => value && onSelectVersion(value)}
+        >
+          <SelectTrigger aria-label={t('workspace.versions.select')} className="min-w-0 max-w-full bg-card">
+            <SelectValue>
+              {viewedVersion
+                ? versionOptionLabel(viewedVersion, t('workspace.versions.currentBadge'))
+                : t('workspace.versions.select')}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {versionList.map((version) => (
+                <SelectItem key={version.id} value={version.id}>
+                  {versionOptionLabel(version, t('workspace.versions.currentBadge'))}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        {viewedVersion ? (
+          <VersionNameInput
+            key={viewedVersion.id}
+            name={versionDisplayLabel(viewedVersion)}
+            saving={renameVersionSaving}
+            onSave={onRenameVersion}
+          />
+        ) : null}
+      </>
+    ) : null
+
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <FormulaBuilder
@@ -143,8 +178,8 @@ export function WorkspaceFormula({
             : undefined
         }
         variantControls={
-          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1">
-            {isPerfume ? (
+          isPerfume ? (
+            <div className="flex min-w-0 max-w-full items-center gap-1">
               <Select
                 value={selectedVariantId}
                 onValueChange={(value) => value && onSelectVariant(value)}
@@ -174,39 +209,7 @@ export function WorkspaceFormula({
                   </SelectGroup>
                 </SelectContent>
               </Select>
-            ) : null}
-            {versionList.length > 0 ? (
-              <Select
-                value={viewedVersion?.id}
-                onValueChange={(value) => value && onSelectVersion(value)}
-              >
-                <SelectTrigger aria-label={t('workspace.versions.select')} className="min-w-0 max-w-full bg-card">
-                  <SelectValue>
-                    {viewedVersion
-                      ? versionOptionLabel(viewedVersion, t('workspace.versions.currentBadge'))
-                      : t('workspace.versions.select')}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {versionList.map((version) => (
-                      <SelectItem key={version.id} value={version.id}>
-                        {versionOptionLabel(version, t('workspace.versions.currentBadge'))}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            ) : null}
-            {viewedVersion ? (
-              <VersionNameInput
-                key={viewedVersion.id}
-                name={versionDisplayLabel(viewedVersion)}
-                saving={renameVersionSaving}
-                onSave={onRenameVersion}
-              />
-            ) : null}
-            {isPerfume ? (
+              {versionSwitcher}
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={<Button variant="ghost" size="icon-sm" />}
@@ -225,8 +228,10 @@ export function WorkspaceFormula({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : null}
-          </div>
+            </div>
+          ) : versionSwitcher ? (
+            <div className="flex min-w-0 max-w-full items-center gap-1">{versionSwitcher}</div>
+          ) : null
         }
       />
 
@@ -348,7 +353,7 @@ function VersionNameInput({
         }
       }}
       aria-label={t('workspace.versions.rename')}
-      className="h-8 min-w-0 max-w-[10rem] rounded-md border border-transparent bg-transparent px-2 text-sm outline-none hover:bg-muted/50 focus:border-input focus:bg-muted/50 focus:ring-2 focus:ring-ring/40 disabled:opacity-70 sm:max-w-[14rem]"
+      className="-mx-1 h-8 min-w-0 max-w-[9rem] rounded-md bg-transparent px-1 text-sm outline-none hover:bg-muted/50 focus:bg-muted/50 focus:ring-2 focus:ring-ring/40 disabled:opacity-70 sm:max-w-[12rem]"
     />
   )
 }

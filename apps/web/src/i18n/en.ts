@@ -256,11 +256,11 @@ export const en = {
     },
     maceration: {
       title: 'Maceration',
-      description: 'Track resting time for this perfume formula version before you evaluate it.',
+      description: 'Track resting time for this perfume batch before you evaluate it.',
       startDate: 'Started',
       targetDate: 'Ready by',
       notes: 'Notes',
-      notesPlaceholder: 'What are you testing in this version?',
+      notesPlaceholder: 'What are you testing in this batch?',
       startToday: 'Start maceration today',
       status: {
         fresh: 'Fresh',
