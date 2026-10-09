@@ -45,6 +45,6 @@
     "drizzle-kit": "^0.31.1",
     "mastra": "1.27.2",
     "tsx": "^4.19.4",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   }
 }
