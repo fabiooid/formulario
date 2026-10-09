@@ -292,6 +292,8 @@ export const it = {
   formula: {
     title: 'Editor formula',
     subtitle: 'La formula confermata è la fonte di verità.',
+    proposalSubtitle: 'Formula proposta — accetta per confermare, o rifiuta.',
+    emptyProposal: 'Questa proposta non ha righe di ingredienti.',
     total: 'Totale: {percent}%',
     totalWarn: '(obiettivo ~100%)',
     addRow: 'Ingrediente',

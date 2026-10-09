@@ -238,6 +238,8 @@ Use `WorkspaceSection` for a quiet heading (no step number). Empty regulatory st
 
 The variant selector sits beside the formula heading and wraps on narrow screens. New variant and Duplicate live in an adjacent shadcn DropdownMenu. Add ingredient and Commit remain visible; Commit is disabled when the rows match the committed formula or a save is pending. Product Duplicate / Archive / Delete live in the breadcrumb overflow menu, next to the pin.
 
+Pending formula proposals (MCP or agent) preview **in the formula table** as a read-only proposed state: same table, muted rows, summary under the heading, Accept / Reject where Commit usually sits. The person still accepts before it becomes the committed version. Local unsaved drafts stay editable; resolve them before accepting. The open product workspace refreshes about every ten seconds so new proposals appear without leaving the page.
+
 Formula table is full width. The agent is not embedded here — it lives in the app chrome.
 
 ---
