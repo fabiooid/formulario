@@ -49,7 +49,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   const { t } = useLanguage()
   const queryClient = useQueryClient()
   const { setVariantId } = useAgent()
-  const [selectedId, setSelectedVariantId] = useState<string | null>(null)
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const { drafts, edit, discard, saved } = useFormulaDrafts(draftKey)
   const [tab, setTab] = useState('workspace')
@@ -63,8 +62,8 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
     refetchInterval: 10_000,
   })
 
-  const selectedVariantId =
-    selectedId ?? data?.activeVariantId ?? data?.variants[0]?.variant.id ?? null
+  // Versions-only UI: stick to the product’s active/default variant (no variant picker this pass).
+  const selectedVariantId = data?.activeVariantId ?? data?.variants[0]?.variant.id ?? null
   const selected = data?.variants.find((v) => v.variant.id === selectedVariantId)
   const resolvedVersionId =
     selectedVersionId && selected?.versions.some((version) => version.id === selectedVersionId)
