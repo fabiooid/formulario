@@ -97,7 +97,6 @@ export function WorkspaceFormula({
   renameVersionSaving?: boolean
 }) {
   const { t } = useLanguage()
-  const isPerfume = product.type === 'perfume'
   const tracksMaceration = productTracksMaceration(product.type as 'skincare' | 'perfume' | 'hybrid')
   const selected = variants.find((v) => v.variant.id === selectedVariantId)
   const versionList = selected?.versions ?? []
@@ -178,60 +177,56 @@ export function WorkspaceFormula({
             : undefined
         }
         variantControls={
-          isPerfume ? (
-            <div className="flex min-w-0 max-w-full items-center gap-1">
-              <Select
-                value={selectedVariantId}
-                onValueChange={(value) => value && onSelectVariant(value)}
+          <div className="flex min-w-0 max-w-full items-center gap-1">
+            <Select
+              value={selectedVariantId}
+              onValueChange={(value) => value && onSelectVariant(value)}
+            >
+              <SelectTrigger aria-label={t('workspace.variants.select')} className="min-w-0 max-w-full bg-card">
+                <SelectValue>
+                  {selected
+                    ? variantOptionLabel(
+                        selected.variant.label,
+                        selected.variant.isSelectedFinal,
+                        t('workspace.variants.finalBadge'),
+                      )
+                    : t('workspace.variants.select')}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {variants.map(({ variant }) => (
+                    <SelectItem key={variant.id} value={variant.id}>
+                      {variantOptionLabel(
+                        variant.label,
+                        variant.isSelectedFinal,
+                        t('workspace.variants.finalBadge'),
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {versionSwitcher}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="ghost" size="icon-sm" />}
+                aria-label={t('workspace.variants.actions')}
               >
-                <SelectTrigger aria-label={t('workspace.variants.select')} className="min-w-0 max-w-full bg-card">
-                  <SelectValue>
-                    {selected
-                      ? variantOptionLabel(
-                          selected.variant.label,
-                          selected.variant.isSelectedFinal,
-                          t('workspace.variants.finalBadge'),
-                        )
-                      : t('workspace.variants.select')}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {variants.map(({ variant }) => (
-                      <SelectItem key={variant.id} value={variant.id}>
-                        {variantOptionLabel(
-                          variant.label,
-                          variant.isSelectedFinal,
-                          t('workspace.variants.finalBadge'),
-                        )}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              {versionSwitcher}
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button variant="ghost" size="icon-sm" />}
-                  aria-label={t('workspace.variants.actions')}
-                >
-                  <MoreHorizontalIcon />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={onCreateVariant}>
-                    <PlusIcon />
-                    {t('workspace.variants.new')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onDuplicateVariant}>
-                    <CopyIcon />
-                    {t('workspace.variants.duplicate')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ) : versionSwitcher ? (
-            <div className="flex min-w-0 max-w-full items-center gap-1">{versionSwitcher}</div>
-          ) : null
+                <MoreHorizontalIcon />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={onCreateVariant}>
+                  <PlusIcon />
+                  {t('workspace.variants.new')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onDuplicateVariant}>
+                  <CopyIcon />
+                  {t('workspace.variants.duplicate')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         }
       />
 
