@@ -61,7 +61,7 @@ Focus rings use opaque `--ring` (brand violet). Components may soften with `ring
 
 Text selection uses a soft brand tint (`--accent-brand-muted`).
 
-Both light and dark are first-class. The theme switcher lives in the user menu and on Settings. Press **D** (when not typing) to flip light/dark.
+Both light and dark are first-class. The theme switcher lives only on Settings → Appearance (and on the sign-in screen). Press **D** (when not typing) to flip light/dark.
 
 ---
 

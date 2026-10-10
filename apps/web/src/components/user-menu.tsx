@@ -2,7 +2,6 @@ import { LogOutIcon, MessageSquareIcon, SettingsIcon } from 'lucide-react'
 import { ASSISTANT_REQUIRES_PAID_PLAN } from '@formulario/domain'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ThemeSwitcher } from '@/components/theme-switcher'
 import { FeedbackDialog } from '@/components/feedback-dialog'
 import {
   DropdownMenu,
@@ -86,10 +85,6 @@ export function UserMenu({
             {t('sidebar.feedback')}
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-          <span className="text-xs text-muted-foreground">{t('settings.appearance')}</span>
-          <ThemeSwitcher />
-        </div>
         <DropdownMenuItem
           variant="destructive"
           onClick={() => {
