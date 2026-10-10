@@ -103,7 +103,7 @@ describe('computeProductStage', () => {
   it('returns idea when no rows', () => {
     expect(
       computeProductStage({
-        variants: [{ rows: [], isSelectedFinal: false }],
+        variants: [{ rows: [] }],
       }),
     ).toBe('idea')
   })
@@ -111,17 +111,17 @@ describe('computeProductStage', () => {
   it('returns formula when rows exist but no final', () => {
     expect(
       computeProductStage({
-        variants: [{ rows: [row('Aqua')], isSelectedFinal: false }],
+        variants: [{ rows: [row('Aqua')] }],
       }),
     ).toBe('formula')
   })
 
-  it('returns final when a variant is selected final with rows', () => {
+  it('returns final when a variant has a final version with rows', () => {
     expect(
       computeProductStage({
         variants: [
-          { rows: [row('Aqua')], isSelectedFinal: false },
-          { rows: [row('Fragrance')], isSelectedFinal: true },
+          { rows: [row('Aqua')] },
+          { rows: [row('Fragrance')], hasFinalVersion: true },
         ],
       }),
     ).toBe('final')

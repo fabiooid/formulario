@@ -127,6 +127,13 @@
       "when": 1791460000000,
       "tag": "0017_maceration_on_versions",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1791470000000,
+      "tag": "0018_version_is_final",
+      "breakpoints": true
     }
   ]
 }

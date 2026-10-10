@@ -190,6 +190,7 @@ export function AgentPane() {
     pendingPrompt,
     clearPendingPrompt,
     variantId,
+    versionId,
     messages,
     setMessages,
     threadTitle,
@@ -283,6 +284,7 @@ export function AgentPane() {
           message: userMessage,
           productId,
           variantId: variantId ?? undefined,
+          versionId: versionId ?? undefined,
         },
         (chunk) => {
           assistant += chunk

@@ -1,8 +1,18 @@
+import { useEffect, useRef, useState } from 'react'
+import { PencilIcon } from 'lucide-react'
 import { FormulaBuilder } from '@/components/formula-builder'
 import { InciPreview } from '@/components/inci-preview'
 import { MacerationCard } from '@/components/maceration-card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -23,11 +33,11 @@ import { useLanguage } from '@/i18n/language-provider'
 import { productTracksMaceration, versionDisplayLabel } from '@formulario/domain'
 
 function versionOptionLabel(
-  version: { label: string | null; versionNumber: number; isCurrent: boolean },
-  currentBadge: string,
+  version: { label: string | null; versionNumber: number; isFinal: boolean },
+  finalBadge: string,
 ) {
   const name = versionDisplayLabel(version)
-  return version.isCurrent ? `${name} · ${currentBadge}` : name
+  return version.isFinal ? `${name} · ${finalBadge}` : name
 }
 
 export function WorkspaceFormula({
@@ -38,16 +48,18 @@ export function WorkspaceFormula({
   onSelectVersion,
   rows,
   onRowsChange,
-  onSave,
-  saving,
+  autosaving,
+  rowsSynced,
   pendingPatches,
   onAcceptPatch,
   onRejectPatch,
   patchPending,
-  hasDraft,
-  hasChanges,
-  onSetFinal,
-  setFinalSaving,
+  onCreateVersion,
+  createVersionPending,
+  onDeleteVersion,
+  deleteVersionPending,
+  onSetFinalVersion,
+  setFinalVersionPending,
   onMacerationSave,
   macerationSaving,
   onRenameVersion,
@@ -60,16 +72,18 @@ export function WorkspaceFormula({
   onSelectVersion: (versionId: string) => void
   rows: FormulaRow[]
   onRowsChange: (rows: FormulaRow[]) => void
-  onSave: () => void
-  saving?: boolean
+  autosaving?: boolean
+  rowsSynced?: boolean
   pendingPatches: FormulaPatch[]
   onAcceptPatch: (patchId: string) => void
   onRejectPatch: (patchId: string) => void
   patchPending?: boolean
-  hasDraft?: boolean
-  hasChanges: boolean
-  onSetFinal: () => void
-  setFinalSaving?: boolean
+  onCreateVersion: (copyFromVersionId: string | null) => void
+  createVersionPending?: boolean
+  onDeleteVersion: (versionId: string) => void
+  deleteVersionPending?: boolean
+  onSetFinalVersion: (versionId: string) => void
+  setFinalVersionPending?: boolean
   onMacerationSave: (input: {
     macerationStartedAt?: string | null
     macerationTargetAt?: string | null
@@ -85,33 +99,26 @@ export function WorkspaceFormula({
   const versionList = selected?.versions ?? []
   const viewedVersion: FormulaVersionWorkspace | null =
     versionList.find((version) => version.id === selectedVersionId) ??
-    versionList.find((version) => version.isCurrent) ??
+    versionList.find((version) => version.isFinal) ??
     versionList[0] ??
     null
-  const viewingCurrent = !!viewedVersion?.isCurrent
-  const committedRows = viewingCurrent ? (selected?.rows ?? []) : (viewedVersion?.rows ?? [])
-  const currentVersionId = selected?.version?.id ?? null
-  const reviewingPatch = viewingCurrent && !hasDraft && pendingPatches[0] ? pendingPatches[0] : null
-  const reviewingStale = reviewingPatch ? isPatchStale(reviewingPatch, currentVersionId) : false
+  const committedRows = viewedVersion?.rows ?? []
+  const synced = rowsSynced ?? true
+  const reviewingPatch = synced && !autosaving && pendingPatches[0] ? pendingPatches[0] : null
+  const reviewingStale = reviewingPatch ? isPatchStale(reviewingPatch, viewedVersion?.id) : false
   const tableRows = reviewingPatch
     ? proposedFormulaRows(committedRows, reviewingPatch.operations)
-    : viewingCurrent
-      ? rows
-      : (viewedVersion?.rows ?? [])
-  const hasCommittedFormula = tableRows.some((r) => r.inci.trim())
-  const extraPending =
-    viewingCurrent && reviewingPatch ? pendingPatches.slice(1) : viewingCurrent ? pendingPatches : []
-  const historyLocked = !viewingCurrent
+    : rows
+  const extraPending = reviewingPatch ? pendingPatches.slice(1) : pendingPatches
+  const canDelete = versionList.length > 1
+  const hasIngredients = tableRows.some((r) => r.inci.trim())
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <FormulaBuilder
         rows={tableRows}
         onChange={onRowsChange}
-        onSave={onSave}
-        saving={saving}
-        hasChanges={hasChanges}
-        locked={historyLocked}
+        autosaving={autosaving}
         claims={product.claims ?? []}
         proposal={
           reviewingPatch
@@ -125,71 +132,30 @@ export function WorkspaceFormula({
         }
         variantControls={
           versionList.length > 0 && viewedVersion ? (
-            <div className="flex min-w-0 max-w-full items-center gap-1">
-              {/* One visible name (rename). Compact select switches versions without a second “v1”. */}
-              <VersionNameInput
-                key={viewedVersion.id}
-                name={versionDisplayLabel(viewedVersion)}
-                saving={renameVersionSaving}
-                onSave={onRenameVersion}
-              />
-              <Select
-                value={viewedVersion.id}
-                onValueChange={(value) => value && onSelectVersion(value)}
-              >
-                <SelectTrigger
-                  size="sm"
-                  aria-label={t('workspace.versions.select')}
-                  className="w-8 shrink-0 bg-card px-1.5"
-                >
-                  <SelectValue className="sr-only">
-                    {versionOptionLabel(viewedVersion, t('workspace.versions.currentBadge'))}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {versionList.map((version) => (
-                      <SelectItem key={version.id} value={version.id}>
-                        {versionOptionLabel(version, t('workspace.versions.currentBadge'))}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+            <VersionControls
+              versions={versionList}
+              viewed={viewedVersion}
+              saving={renameVersionSaving}
+              onSelect={onSelectVersion}
+              onRename={onRenameVersion}
+              onCreateVersion={onCreateVersion}
+              createPending={createVersionPending}
+              onDelete={() => onDeleteVersion(viewedVersion.id)}
+              deletePending={deleteVersionPending}
+              canDelete={canDelete}
+              onSetFinal={() => onSetFinalVersion(viewedVersion.id)}
+              setFinalPending={setFinalVersionPending}
+              hasIngredients={hasIngredients}
+            />
           ) : null
         }
       />
 
-      {historyLocked ? (
-        <p className="text-sm text-muted-foreground">{t('workspace.versions.historyHint')}</p>
+      {!synced && pendingPatches.length > 0 ? (
+        <p className="text-sm text-muted-foreground">{t('workspace.waitForAutosave')}</p>
       ) : null}
 
-      {hasDraft && pendingPatches.length > 0 && viewingCurrent ? (
-        <div className="flex flex-col gap-4">
-          <h3 className="text-base font-medium">{t('workspace.pendingPatches')}</h3>
-          <p className="text-sm text-muted-foreground">{t('workspace.saveBeforePatch')}</p>
-          {pendingPatches.map((patch, index) => (
-            <div key={patch.id} className="flex flex-col gap-2">
-              {index > 0 ? <Separator /> : null}
-              <p className="text-sm">{patch.summary}</p>
-              <p className="text-xs text-muted-foreground">
-                {t('workspace.operations', { count: patch.operations.length })}
-              </p>
-              <div className="flex gap-2">
-                <Button size="sm" disabled onClick={() => onAcceptPatch(patch.id)}>
-                  {t('workspace.accept')}
-                </Button>
-                <Button size="sm" variant="outline" disabled={patchPending} onClick={() => onRejectPatch(patch.id)}>
-                  {t('workspace.reject')}
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {extraPending.length > 0 && !hasDraft ? (
+      {extraPending.length > 0 && synced ? (
         <div className="flex flex-col gap-4">
           <h3 className="text-base font-medium">{t('workspace.pendingPatches')}</h3>
           {extraPending.map((patch, index) => (
@@ -216,19 +182,6 @@ export function WorkspaceFormula({
 
       <InciPreview rows={tableRows} preview />
 
-      {viewingCurrent ? (
-        <div className="flex">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onSetFinal}
-            disabled={!hasCommittedFormula || hasDraft || !!reviewingPatch || setFinalSaving}
-          >
-            {setFinalSaving ? t('workspace.final.generating') : t('workspace.variants.setFinal')}
-          </Button>
-        </div>
-      ) : null}
-
       {tracksMaceration && viewedVersion ? (
         <>
           <Separator />
@@ -243,45 +196,243 @@ export function WorkspaceFormula({
   )
 }
 
+function VersionControls({
+  versions,
+  viewed,
+  saving,
+  onSelect,
+  onRename,
+  onCreateVersion,
+  createPending,
+  onDelete,
+  deletePending,
+  canDelete,
+  onSetFinal,
+  setFinalPending,
+  hasIngredients,
+}: {
+  versions: FormulaVersionWorkspace[]
+  viewed: FormulaVersionWorkspace
+  saving?: boolean
+  onSelect: (versionId: string) => void
+  onRename: (name: string) => void
+  onCreateVersion: (copyFromVersionId: string | null) => void
+  createPending?: boolean
+  onDelete: () => void
+  deletePending?: boolean
+  canDelete: boolean
+  onSetFinal: () => void
+  setFinalPending?: boolean
+  hasIngredients: boolean
+}) {
+  const { t } = useLanguage()
+  const [editing, setEditing] = useState(false)
+  const [newVersionOpen, setNewVersionOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [copyFromVersionId, setCopyFromVersionId] = useState<string | null>(null)
+  const finalBadge = t('workspace.versions.finalBadge')
+
+  if (editing) {
+    return (
+      <VersionNameInput
+        key={viewed.id}
+        name={versionDisplayLabel(viewed)}
+        saving={saving}
+        onSave={onRename}
+        onClose={() => setEditing(false)}
+      />
+    )
+  }
+
+  return (
+    <>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <Select value={viewed.id} onValueChange={(value) => value && onSelect(value)}>
+          <SelectTrigger
+            size="sm"
+            aria-label={t('workspace.versions.select')}
+            className="w-44 bg-card"
+          >
+            <SelectValue>{versionOptionLabel(viewed, finalBadge)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent align="start">
+            <SelectGroup>
+              {versions.map((version) => (
+                <SelectItem key={version.id} value={version.id}>
+                  {versionOptionLabel(version, finalBadge)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label={t('workspace.versions.renameAction')}
+          title={t('workspace.versions.renameAction')}
+          disabled={saving}
+          onClick={() => setEditing(true)}
+        >
+          <PencilIcon />
+        </Button>
+        <Button
+          type="button"
+          variant={viewed.isFinal ? 'secondary' : 'outline'}
+          size="sm"
+          disabled={!hasIngredients || setFinalPending || viewed.isFinal}
+          onClick={onSetFinal}
+        >
+          {viewed.isFinal ? t('workspace.versions.finalBadge') : t('workspace.versions.chooseFinal')}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={createPending}
+          onClick={() => {
+            setCopyFromVersionId(null)
+            setNewVersionOpen(true)
+          }}
+        >
+          {t('workspace.versions.newVersion')}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!canDelete || deletePending}
+          onClick={() => setDeleteOpen(true)}
+        >
+          {t('workspace.versions.delete')}
+        </Button>
+      </div>
+
+      <Dialog open={newVersionOpen} onOpenChange={setNewVersionOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('workspace.versions.newVersionTitle')}</DialogTitle>
+            <DialogDescription>{t('workspace.versions.newVersionDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="outline"
+              disabled={createPending}
+              onClick={() => {
+                onCreateVersion(null)
+                setNewVersionOpen(false)
+              }}
+            >
+              {t('workspace.versions.startEmpty')}
+            </Button>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground">{t('workspace.versions.copyFrom')}</p>
+              <Select
+                value={copyFromVersionId ?? ''}
+                onValueChange={(value) => setCopyFromVersionId(value || null)}
+              >
+                <SelectTrigger size="sm" className="bg-card">
+                  <SelectValue placeholder={t('workspace.versions.copyPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {versions.map((version) => (
+                      <SelectItem key={version.id} value={version.id}>
+                        {versionOptionLabel(version, finalBadge)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Button
+                disabled={!copyFromVersionId || createPending}
+                onClick={() => {
+                  onCreateVersion(copyFromVersionId)
+                  setNewVersionOpen(false)
+                }}
+              >
+                {t('workspace.versions.createCopy')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('workspace.versions.deleteTitle')}</DialogTitle>
+            <DialogDescription>{t('workspace.versions.deleteDescription')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+              {t('products.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deletePending}
+              onClick={() => {
+                onDelete()
+                setDeleteOpen(false)
+              }}
+            >
+              {t('workspace.versions.deleteConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
 function VersionNameInput({
   name,
   saving,
   onSave,
+  onClose,
 }: {
   name: string
   saving?: boolean
   onSave: (name: string) => void
+  onClose: () => void
 }) {
   const { t } = useLanguage()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const closed = useRef(false)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
+
+  function commit(raw: string) {
+    if (closed.current) return
+    closed.current = true
+    const next = raw.trim()
+    if (next && next !== name) onSave(next)
+    onClose()
+  }
 
   return (
     <input
-      key={name}
+      ref={inputRef}
       defaultValue={name}
       maxLength={80}
       disabled={saving}
-      onBlur={(event) => {
-        const next = event.currentTarget.value.trim()
-        if (!next) {
-          event.currentTarget.value = name
-          return
-        }
-        if (next !== name) onSave(next)
-      }}
+      onBlur={(event) => commit(event.currentTarget.value)}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
           event.preventDefault()
-          event.currentTarget.blur()
+          commit(event.currentTarget.value)
         }
         if (event.key === 'Escape') {
-          event.currentTarget.value = name
-          event.currentTarget.blur()
+          event.preventDefault()
+          commit(name)
         }
       }}
       aria-label={t('workspace.versions.rename')}
-      title={t('workspace.versions.rename')}
       placeholder={t('workspace.versions.rename')}
-      className="-mx-1 h-8 min-w-[4.5rem] max-w-[10rem] rounded-md bg-transparent px-1 text-sm outline-none hover:bg-muted/50 focus:bg-muted/50 focus:ring-2 focus:ring-ring/40 disabled:opacity-70"
+      className="h-8 w-44 rounded-md border border-input bg-card px-2.5 text-sm outline-none focus-visible:border-foreground/40 disabled:opacity-50 dark:bg-input/30"
     />
   )
 }

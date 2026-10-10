@@ -39,6 +39,8 @@ type AgentContextValue = {
   clearPendingPrompt: () => void
   variantId: string | null
   setVariantId: (value: string | null) => void
+  versionId: string | null
+  setVersionId: (value: string | null) => void
   messages: AgentChatMessage[]
   setMessages: React.Dispatch<React.SetStateAction<AgentChatMessage[]>>
   threadTitle: string | null
@@ -71,6 +73,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
   const inSettings = isSettingsPath(location.pathname)
   const [mode, setModeState] = useState<AgentMode>(readStoredMode)
   const [variantId, setVariantId] = useState<string | null>(null)
+  const [versionId, setVersionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<AgentChatMessage[]>([])
   const [threadTitle, setThreadTitle] = useState<string | null>(null)
   const [input, setInput] = useState('')
@@ -175,6 +178,8 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       clearPendingPrompt,
       variantId,
       setVariantId,
+      versionId,
+      setVersionId,
       messages,
       setMessages,
       threadTitle,
@@ -187,7 +192,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       error,
       setError,
     }),
-    [mode, pendingPrompt, variantId, messages, threadTitle, input, streaming, error],
+    [mode, pendingPrompt, variantId, versionId, messages, threadTitle, input, streaming, error],
   )
 
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>

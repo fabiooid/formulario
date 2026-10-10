@@ -55,12 +55,22 @@ function daysUntil(iso?: string | null) {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)
 }
 
-function pickCostVariant<T extends { variant: { isSelectedFinal: boolean }; rows: Array<{ inci: string }> }>(
-  variants: T[],
-) {
+function pickCostVariant<
+  T extends {
+    variant: { label: string }
+    rows: Array<{ inci: string }>
+    versions: Array<{ isFinal: boolean; rows: Array<{ inci: string }> }>
+  },
+>(variants: T[]) {
+  for (const item of variants) {
+    const finalVersion = item.versions.find(
+      (version) => version.isFinal && version.rows.some((row) => row.inci.trim()),
+    )
+    if (finalVersion) return { variant: item.variant, rows: finalVersion.rows }
+  }
   const withRows = variants.filter((item) => item.rows.some((row) => row.inci.trim()))
   if (!withRows.length) return null
-  return withRows.find((item) => item.variant.isSelectedFinal) ?? withRows[0]
+  return withRows[0]
 }
 
 export async function getHomeDashboard(userId: string) {
@@ -82,6 +92,10 @@ export async function getHomeDashboard(userId: string) {
 
   for (const { product, variants } of catalog) {
     const href = `/products/${product.id}`
+    const finalVersion = variants
+      .flatMap((item) => item.versions)
+      .find((version) => version.isFinal && version.rows.some((row) => row.inci.trim()))
+    const finalRows = finalVersion?.rows
 
     for (const { variant, version, rows } of variants) {
       for (const row of rows) {
@@ -121,8 +135,15 @@ export async function getHomeDashboard(userId: string) {
         })
       }
 
+    }
+
+    const regulatoryRows =
+      finalRows ??
+      variants.find((item) => item.rows.some((row) => row.inci.trim()))?.rows ??
+      []
+    if (regulatoryRows.some((row) => row.inci.trim())) {
       const checks = runRegulatoryChecks({
-        rows,
+        rows: regulatoryRows,
         markets: product.markets,
         productType: product.type,
         rules,
@@ -152,7 +173,7 @@ export async function getHomeDashboard(userId: string) {
 
       const claimHits = evaluateClaimHits({
         claims: product.claims,
-        rows,
+        rows: regulatoryRows,
         inventory,
       })
       for (const hit of claimHits) {

@@ -3,8 +3,6 @@ import { z } from 'zod'
 import { IngredientInputSchema, type Market } from '@formulario/domain'
 import {
   duplicateProduct,
-  getCurrentVersionForVariant,
-  getFormulaRows,
   getProductForUser,
   getVariant,
   getWorkspace,
@@ -27,10 +25,12 @@ export function getToolContext(context: unknown) {
   }
   const productId = requestContext?.get('productId')
   const variantId = requestContext?.get('variantId')
+  const versionId = requestContext?.get('versionId')
   return {
     userId,
     productId: typeof productId === 'string' && productId ? productId : undefined,
     variantId: typeof variantId === 'string' && variantId ? variantId : undefined,
+    versionId: typeof versionId === 'string' && versionId ? versionId : undefined,
   }
 }
 
@@ -130,14 +130,19 @@ export const getProductTool = createTool({
 export const getFormulaTool = createTool({
   id: 'get_formula',
   description:
-    'Get committed formula rows for a product variant. Pass productId or name if not currently viewing a product.',
+    'Read every saved formula version for a product. Versions are separate formulas the person can try; none is locked. isFinal marks the one that will be produced. viewingVersionId is the version open on screen. Pass productId or name if not currently viewing a product.',
   inputSchema: z.object({
     productId: z.string().optional(),
     name: z.string().optional(),
     variantId: z.string().optional(),
   }),
   execute: async (input, context) => {
-    const { userId, productId: contextProductId, variantId: contextVariantId } = getToolContext(context)
+    const {
+      userId,
+      productId: contextProductId,
+      variantId: contextVariantId,
+      versionId: contextVersionId,
+    } = getToolContext(context)
     const resolved = await resolveProductId(userId, {
       productId: input.productId,
       name: input.name,
@@ -152,11 +157,26 @@ export const getFormulaTool = createTool({
       userId,
       input.variantId ?? contextVariantId,
     )
-    if (!variantId) return { rows: [] }
-    const version = await getCurrentVersionForVariant(variantId)
-    if (!version) return { rows: [] }
-    const rows = await getFormulaRows(version.id)
-    return { productId: resolved, version: version.label, variantId, rows }
+    if (!variantId) return { versions: [] }
+    const workspace = await getWorkspace(resolved, userId)
+    const variant = workspace?.variants.find((item) => item.variant.id === variantId)
+    const versions = (variant?.versions ?? []).map((version) => ({
+      id: version.id,
+      label: version.label,
+      isFinal: version.isFinal,
+      rows: version.rows,
+      macerationStartedAt: version.macerationStartedAt,
+      macerationTargetAt: version.macerationTargetAt,
+      macerationNotes: version.macerationNotes,
+    }))
+    return {
+      productId: resolved,
+      variantId,
+      viewingVersionId: versions.some((version) => version.id === contextVersionId)
+        ? contextVersionId
+        : null,
+      versions,
+    }
   },
 })
 

@@ -27,11 +27,12 @@ import { db, libsql } from '../db/client.js'
 import { appRoutes } from '../mastra/routes/app-routes.js'
 import { signAppToken, verifyAppToken } from '../lib/auth.js'
 import {
-  commitNewVersion,
+  createVersion,
   createPatch,
   createProduct,
   createVariant,
   deleteProduct,
+  deleteVersion,
   duplicateProduct,
   getCurrentVersionForVariant,
   getFormulaRows,
@@ -41,6 +42,8 @@ import {
   listProducts,
   renameVersion,
   resolvePatch,
+  saveVersionRows,
+  setFinalVersion,
   setProductArchived,
   setProductPinned,
   updateMaceration,
@@ -136,37 +139,56 @@ describe('app token identity', () => {
 })
 
 describe('formula version persistence', () => {
-  it('saves the same row IDs repeatedly while preserving every earlier version', async () => {
+  it('autosaves a version without creating a new one', async () => {
     const f = await fixture()
-    const v2 = await commitNewVersion(
+    await saveVersionRows(
       f.productId,
-      f.variantId,
+      f.versionId,
       'owner',
       [{ ...f.rows[0], percent: 90 }],
-      f.versionId,
-    )
-    const v3 = await commitNewVersion(
-      f.productId,
       f.variantId,
-      'owner',
-      [{ ...f.rows[0], percent: 80 }],
-      v2,
     )
-    expect((await getFormulaRows(f.versionId))[0].percent).toBe(100)
-    expect((await getFormulaRows(v2))[0]).toMatchObject({ id: f.rows[0].id, percent: 90 })
-    expect((await getFormulaRows(v3))[0].percent).toBe(80)
-    expect(await getCurrentVersionForVariant(f.variantId)).toMatchObject({
-      id: v3,
-      versionNumber: 3,
-    })
+    expect((await getFormulaRows(f.versionId))[0]).toMatchObject({ id: f.rows[0].id, percent: 90 })
+    expect(
+      await db
+        .select()
+        .from(schema.formulaVersions)
+        .where(eq(schema.formulaVersions.variantId, f.variantId)),
+    ).toHaveLength(1)
   })
 
-  it('rolls back the new version and current flag if inserting its rows fails', async () => {
+  it('creates another version without changing the first', async () => {
+    const f = await fixture()
+    await saveVersionRows(
+      f.productId,
+      f.versionId,
+      'owner',
+      [{ ...f.rows[0], percent: 90 }],
+      f.variantId,
+    )
+    const v2 = await createVersion(f.productId, f.variantId, 'owner')
+    const v3 = await createVersion(f.productId, f.variantId, 'owner', {
+      copyFromVersionId: f.versionId,
+    })
+    expect((await getFormulaRows(f.versionId))[0].percent).toBe(90)
+    expect(await getFormulaRows(v2)).toEqual([])
+    expect((await getFormulaRows(v3))[0].percent).toBe(90)
+    await saveVersionRows(
+      f.productId,
+      f.versionId,
+      'owner',
+      [{ ...f.rows[0], percent: 70 }],
+      f.variantId,
+    )
+    expect((await getFormulaRows(f.versionId))[0].percent).toBe(70)
+    expect((await getFormulaRows(v3))[0].percent).toBe(90)
+  })
+
+  it('rolls back the new version if inserting its rows fails', async () => {
     const f = await fixture()
     await expect(
-      commitNewVersion(f.productId, f.variantId, 'owner', [f.rows[0], f.rows[0]], f.versionId),
-    ).rejects.toThrow()
-    expect(await getCurrentVersionForVariant(f.variantId)).toMatchObject({ id: f.versionId })
+      createVersion(f.productId, f.variantId, 'owner', { copyFromVersionId: 'missing' }),
+    ).rejects.toMatchObject({ status: 404 })
     expect(await getFormulaRows(f.versionId)).toEqual(f.rows)
     expect(
       await db
@@ -176,13 +198,42 @@ describe('formula version persistence', () => {
     ).toHaveLength(1)
   })
 
-  it('rejects stale saves without overwriting the newer formula', async () => {
+  it('rejects a missing version without touching the others', async () => {
     const f = await fixture()
-    const v2 = await commitNewVersion(f.productId, f.variantId, 'owner', f.rows, f.versionId)
+    const v2 = await createVersion(f.productId, f.variantId, 'owner')
     await expect(
-      commitNewVersion(f.productId, f.variantId, 'owner', [], f.versionId),
-    ).rejects.toMatchObject({ status: 409 })
-    expect((await getCurrentVersionForVariant(f.variantId))?.id).toBe(v2)
+      saveVersionRows(f.productId, 'missing', 'owner', [], f.variantId),
+    ).rejects.toMatchObject({ status: 404 })
+    expect(await getFormulaRows(f.versionId)).toEqual(f.rows)
+    expect(await getFormulaRows(v2)).toEqual([])
+  })
+
+  it('marks one version as final and moves the mark', async () => {
+    const f = await fixture()
+    const v2 = await createVersion(f.productId, f.variantId, 'owner', {
+      copyFromVersionId: f.versionId,
+    })
+    await setFinalVersion(f.versionId, f.productId, 'owner')
+    let workspace = (await getWorkspace(f.productId, 'owner'))!
+    expect(workspace.selectedFinalVersionId).toBe(f.versionId)
+    await setFinalVersion(v2, f.productId, 'owner')
+    workspace = (await getWorkspace(f.productId, 'owner'))!
+    expect(workspace.selectedFinalVersionId).toBe(v2)
+  })
+
+  it('deletes a version and keeps the others editable', async () => {
+    const f = await fixture()
+    const v2 = await createVersion(f.productId, f.variantId, 'owner')
+    await deleteVersion(v2, f.productId, 'owner')
+    expect(await getFormulaRows(f.versionId)).toEqual(f.rows)
+    await saveVersionRows(
+      f.productId,
+      f.versionId,
+      'owner',
+      [{ ...f.rows[0], percent: 55 }],
+      f.variantId,
+    )
+    expect((await getFormulaRows(f.versionId))[0].percent).toBe(55)
   })
 })
 
@@ -197,7 +248,7 @@ describe('formula write access', () => {
     async function request(
       userId: string | null,
       variantId = f.variantId,
-      expectedVersionId: string | undefined = f.versionId,
+      versionId: string | undefined = f.versionId,
     ) {
       const token = userId
         ? await signAppToken({
@@ -212,19 +263,19 @@ describe('formula write access', () => {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ variantId, rows: f.rows, expectedVersionId }),
+        body: JSON.stringify({ variantId, versionId, rows: f.rows }),
       })
     }
     expect((await request(null)).status).toBe(401)
     expect((await request('outsider')).status).toBe(404)
     expect((await request('viewer')).status).toBe(403)
     expect((await request('owner', other.variantId, other.versionId)).status).toBe(404)
-    expect((await request('owner', f.variantId, 'stale')).status).toBe(409)
+    expect((await request('owner', f.variantId, 'stale')).status).toBe(404)
     const response = await request('owner')
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.workspace.variants[0].version.id).toBe(body.versionId)
-    expect((await request('owner')).status).toBe(409)
+    expect((await request('owner')).status).toBe(200)
     expect((await getCurrentVersionForVariant(other.variantId))?.id).toBe(other.versionId)
   })
 
@@ -235,7 +286,7 @@ describe('formula write access', () => {
       ['viewer', 403],
     ] as const) {
       await expect(
-        commitNewVersion(f.productId, f.variantId, userId, [], f.versionId),
+        saveVersionRows(f.productId, f.versionId, userId, [], f.variantId),
       ).rejects.toMatchObject({ status })
     }
     expect((await getCurrentVersionForVariant(f.variantId))?.id).toBe(f.versionId)
@@ -247,7 +298,7 @@ describe('formula write access', () => {
     for (const userId of ['outsider', 'owner']) {
       const other = await fixture(userId)
       await expect(
-        commitNewVersion(own.productId, other.variantId, 'owner', [], other.versionId),
+        saveVersionRows(own.productId, other.versionId, 'owner', [], other.variantId),
       ).rejects.toMatchObject({ status: 404 })
       expect(
         await createVariant(own.productId, 'owner', { copyFromVariantId: other.variantId }),
@@ -258,7 +309,7 @@ describe('formula write access', () => {
 })
 
 describe('accepting a formula proposal', () => {
-  it('commits the patch and resolves it exactly once', async () => {
+  it('applies the patch on that version and resolves it exactly once', async () => {
     const f = await fixture()
     const patchId = await createPatch({
       ...f,
@@ -271,12 +322,12 @@ describe('accepting a formula proposal', () => {
     })
     expect(await resolvePatch(patchId, f.productId, 'owner', 'accepted')).toBeNull()
     const version = (await getCurrentVersionForVariant(f.variantId))!
-    expect(version.versionNumber).toBe(2)
+    expect(version.id).toBe(f.versionId)
+    expect(version.versionNumber).toBe(1)
     expect((await getFormulaRows(version.id))[0].percent).toBe(95)
-    expect((await getFormulaRows(f.versionId))[0].percent).toBe(100)
   })
 
-  it('keeps a stale proposal pending and allows it to be rejected', async () => {
+  it('applies a proposal on its version after another version exists, and drops it if that version is deleted', async () => {
     const f = await fixture()
     const patchId = await createPatch({
       ...f,
@@ -284,14 +335,20 @@ describe('accepting a formula proposal', () => {
       summary: 'Adjust',
       operations: [],
     })
-    await commitNewVersion(f.productId, f.variantId, 'owner', f.rows, f.versionId)
-    await expect(resolvePatch(patchId, f.productId, 'owner', 'accepted')).rejects.toMatchObject({
-      status: 409,
+    await createVersion(f.productId, f.variantId, 'owner')
+    expect(await resolvePatch(patchId, f.productId, 'owner', 'accepted')).toMatchObject({
+      status: 'accepted',
     })
-    expect((await listPatches(f.productId))[0].status).toBe('pending')
-    expect(await resolvePatch(patchId, f.productId, 'owner', 'rejected')).toMatchObject({
-      status: 'rejected',
+    expect((await getFormulaRows(f.versionId))[0].percent).toBe(100)
+    const leftover = await createPatch({
+      ...f,
+      baseVersionId: f.versionId,
+      summary: 'Later',
+      operations: [],
     })
+    await deleteVersion(f.versionId, f.productId, 'owner')
+    expect(await resolvePatch(leftover, f.productId, 'owner', 'accepted')).toBeNull()
+    expect((await listPatches(f.productId)).find((p) => p.id === leftover)?.status).toBe('rejected')
   })
 
   it('rolls back acceptance if a formula write fails', async () => {
@@ -415,7 +472,7 @@ describe('product duplicate, archive and delete', () => {
 })
 
 describe('maceration on formula versions', () => {
-  it('stores maceration on the version, blanks it on a new commit, and rejects non-perfume', async () => {
+  it('stores maceration on the version, blanks it on a new version, and rejects non-perfume', async () => {
     const perfume = await createProduct({
       userId: 'owner',
       name: 'Oil perfume',
@@ -443,24 +500,7 @@ describe('maceration on formula versions', () => {
       macerationNotes: 'Lower coumarin',
     })
 
-    const nextVersionId = await commitNewVersion(
-      perfume.id,
-      variantId,
-      'owner',
-      withNotes.variants[0].rows.length
-        ? withNotes.variants[0].rows
-        : [
-            {
-              id: crypto.randomUUID(),
-              inci: 'Caprylic/Capric Triglyceride',
-              function: 'Carrier',
-              phase: 'Oil',
-              percent: 100,
-              sortOrder: 0,
-            },
-          ],
-      versionId,
-    )
+    const nextVersionId = await createVersion(perfume.id, variantId, 'owner')
     const afterCommit = (await getWorkspace(perfume.id, 'owner'))!
     expect(afterCommit.variants[0].version?.id).toBe(nextVersionId)
     expect(afterCommit.variants[0].version).toMatchObject({
@@ -514,22 +554,7 @@ describe('maceration on formula versions', () => {
       macerationStartedAt: '2026-03-01T00:00:00.000Z',
       macerationNotes: 'Batch A',
     })
-    const v2 = await commitNewVersion(
-      perfume.id,
-      variantId,
-      'owner',
-      [
-        {
-          id: crypto.randomUUID(),
-          inci: 'Ethanol',
-          function: 'Solvent',
-          phase: 'Alcohol',
-          percent: 100,
-          sortOrder: 0,
-        },
-      ],
-      v1,
-    )
+    const v2 = await createVersion(perfume.id, variantId, 'owner')
     await renameVersion(v1, perfume.id, 'owner', 'softer open')
     await renameVersion(v2, perfume.id, 'owner', 'brighter top')
     const renamed = (await getWorkspace(perfume.id, 'owner'))!

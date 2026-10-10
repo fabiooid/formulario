@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate, useParams } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppShell, PageHeader } from '@/components/layout'
 import { useAgent } from '@/components/agent-provider'
 import { EmptyState } from '@/components/empty-state'
@@ -18,21 +18,13 @@ import {
   type FormulaRow,
   type ProductSummary,
 } from '@/lib/api'
-import { useFormulaDrafts } from '@/lib/use-formula-drafts'
-import { formulaContentEquals, type FormulaDraft } from '@/lib/formula-drafts'
+import { formulaContentEquals } from '@/lib/formula-drafts'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth'
 import { useLanguage } from '@/i18n/language-provider'
 import type { ProductClaim } from '@formulario/domain'
 
-function hasCommittedRows(rows: FormulaRow[]) {
+function hasIngredients(rows: FormulaRow[]) {
   return rows.some((row) => row.inci.trim())
 }
 
@@ -40,99 +32,131 @@ export function ProductWorkspacePage() {
   const { id } = useParams()
   const { user } = useAuth()
   if (!user || !id) return <Navigate to="/login" replace />
-  const draftKey = `formula-drafts:${user.id}:${user.activeOrganizationId ?? ''}:${id}`
-  return <ProductWorkspace key={draftKey} id={id} draftKey={draftKey} />
+  return <ProductWorkspace id={id} />
 }
 
-function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
+function ProductWorkspace({ id }: { id: string }) {
   const { user } = useAuth()
   const { t } = useLanguage()
   const queryClient = useQueryClient()
-  const { setVariantId } = useAgent()
+  const { setVariantId, setVersionId } = useAgent()
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
-  const { drafts, edit, discard, saved } = useFormulaDrafts(draftKey)
   const [tab, setTab] = useState('workspace')
-  const [discardVariantId, setDiscardVariantId] = useState<string | null>(null)
+  const [rows, setRows] = useState<FormulaRow[]>([])
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
+  const saveFnRef = useRef<
+    (input: { variantId: string; versionId: string; rows: FormulaRow[] }) => Promise<unknown>
+  >(async () => undefined)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['workspace', id],
     queryFn: () => api.getWorkspace(id!),
     enabled: !!user && !!id,
-    // Pick up MCP proposals while the product stays open; drafts stay in local storage.
     refetchInterval: 10_000,
   })
 
-  // Versions-only UI: stick to the product’s active/default variant (no variant picker this pass).
   const selectedVariantId = data?.activeVariantId ?? data?.variants[0]?.variant.id ?? null
   const selected = data?.variants.find((v) => v.variant.id === selectedVariantId)
   const resolvedVersionId =
     selectedVersionId && selected?.versions.some((version) => version.id === selectedVersionId)
       ? selectedVersionId
-      : (selected?.version?.id ?? selected?.versions[0]?.id ?? null)
+      : (selected?.versions.find((version) => version.isFinal)?.id ??
+        selected?.version?.id ??
+        selected?.versions[0]?.id ??
+        null)
   const viewedVersion =
     selected?.versions.find((version) => version.id === resolvedVersionId) ?? null
-  const viewingCurrent = !!viewedVersion?.isCurrent
-  const draft = selectedVariantId && viewingCurrent ? drafts[selectedVariantId] : undefined
-  const rows = draft?.rows ?? selected?.rows ?? []
-  const baseVersionId = draft ? draft.baseVersionId : (selected?.version?.id ?? null)
-  const dirty = !!draft
+  const viewedRef = useRef(viewedVersion)
+  viewedRef.current = viewedVersion
+  const variantRef = useRef(selectedVariantId)
+  variantRef.current = selectedVariantId
 
-  function setRows(next: FormulaRow[]) {
-    if (!selectedVariantId || !viewingCurrent) return
-    const committed = selected?.rows ?? []
-    const versionMatches = baseVersionId === (selected?.version?.id ?? null)
-    if (!saveMutation.isPending && versionMatches && formulaContentEquals(next, committed)) {
-      if (draft) discard(selectedVariantId)
-      return
-    }
-    edit(selectedVariantId, { rows: next, baseVersionId })
-  }
+  const saveMutation = useMutation({
+    mutationFn: (input: { variantId: string; versionId: string; rows: FormulaRow[] }) =>
+      api.saveFormula(id, input.variantId, input.versionId, input.rows),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['workspace', id], result.workspace)
+    },
+  })
+  saveFnRef.current = saveMutation.mutateAsync
+
+  useEffect(() => {
+    setRows(viewedVersion?.rows ?? [])
+  }, [viewedVersion?.id])
 
   useEffect(() => {
     setVariantId(selectedVariantId)
-    return () => setVariantId(null)
-  }, [selectedVariantId, setVariantId])
+    setVersionId(resolvedVersionId)
+    return () => {
+      setVariantId(null)
+      setVersionId(null)
+    }
+  }, [selectedVariantId, resolvedVersionId, setVariantId, setVersionId])
+
+  const flushSave = useCallback(async () => {
+    const version = viewedRef.current
+    const variantId = variantRef.current
+    if (!version || !variantId) return
+    const pending = rowsRef.current
+    if (formulaContentEquals(pending, version.rows)) return
+    await saveFnRef.current({ variantId, versionId: version.id, rows: pending })
+  }, [])
 
   useEffect(() => {
-    if (!selectedVariantId || !selected) return
-    const leftover = drafts[selectedVariantId]
-    if (!leftover) return
-    if (leftover.baseVersionId !== (selected.version?.id ?? null)) return
-    if (!formulaContentEquals(leftover.rows, selected.rows)) return
-    discard(selectedVariantId)
-  }, [selectedVariantId, selected, drafts, discard])
+    if (!viewedVersion || formulaContentEquals(rows, viewedVersion.rows)) return
+    const timer = setTimeout(() => {
+      void flushSave()
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [rows, viewedVersion?.id, flushSave])
 
-  const saveMutation = useMutation({
-    mutationFn: (input: { variantId: string; draft: FormulaDraft }) =>
-      api.saveFormula(id, input.variantId, input.draft.rows, input.draft.baseVersionId),
-    onSuccess: (result, input) => {
-      queryClient.setQueryData(['workspace', id], result.workspace)
-      saved(input.variantId, input.draft, result.versionId)
-      setSelectedVersionId(result.versionId)
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['home'] })
-    },
-  })
+  useEffect(() => {
+    return () => {
+      void flushSave()
+    }
+  }, [flushSave])
 
   const patchMutation = useMutation({
     mutationFn: ({ patchId, action }: { patchId: string; action: 'accepted' | 'rejected' }) =>
       api.resolvePatch(id!, patchId, action),
-    onSuccess: (result, input) => {
+    onSuccess: (result) => {
       queryClient.setQueryData(['workspace', id], result.workspace)
-      if (input.action === 'accepted' && selectedVariantId) {
-        const next = result.workspace.variants.find((item) => item.variant.id === selectedVariantId)
-        setSelectedVersionId(next?.version?.id ?? null)
-      }
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['home'] })
     },
   })
 
-  const setFinalMutation = useMutation({
-    mutationFn: (variantId: string) => api.setFinalVariant(id, variantId),
+  const createVersionMutation = useMutation({
+    mutationFn: async (input: { copyFromVersionId?: string | null }) => {
+      if (!selectedVariantId) throw new Error('No version')
+      await flushSave()
+      return api.createFormulaVersion(id, selectedVariantId, input)
+    },
     onSuccess: (result) => {
       queryClient.setQueryData(['workspace', id], result.workspace)
-      setTab('regulatory')
+      setSelectedVersionId(result.versionId)
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+    },
+  })
+
+  const deleteVersionMutation = useMutation({
+    mutationFn: (versionId: string) => api.deleteFormulaVersion(id, versionId),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['workspace', id], result.workspace)
+      const next = result.workspace.variants.find((v) => v.variant.id === selectedVariantId)
+      setSelectedVersionId(next?.version?.id ?? null)
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['home'] })
+    },
+  })
+
+  const setFinalVersionMutation = useMutation({
+    mutationFn: (versionId: string) => api.setFinalVersion(id, versionId),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['workspace', id], result.workspace)
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['home'] })
     },
   })
 
@@ -208,27 +232,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   })
 
   function selectVersion(versionId: string) {
-    setSelectedVersionId(versionId)
-  }
-
-  function commitFormula(makeFinal = false) {
-    if (!selectedVariantId) return
-    const variantId = selectedVariantId
-    saveMutation.mutate(
-      { variantId, draft: { rows, baseVersionId } },
-      {
-        onSuccess: () => {
-          if (makeFinal) setFinalMutation.mutate(variantId)
-        },
-      },
-    )
-  }
-
-  function handleSetFinal() {
-    commitFormula(true)
-  }
-  function handleGenerateFinal() {
-    commitFormula(true)
+    void flushSave().then(() => setSelectedVersionId(versionId))
   }
 
   if (!user) return <Navigate to="/login" replace />
@@ -255,21 +259,40 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
   }
 
   const pendingPatches = data.patches.filter(
-    (p) => p.status === 'pending' && p.variantId === selectedVariantId,
+    (p) =>
+      p.status === 'pending' &&
+      p.variantId === selectedVariantId &&
+      p.baseVersionId === resolvedVersionId,
   )
-  const finalWorkspace = data.variants.find((v) => v.variant.id === data.selectedFinalVariantId)
-  const currentRowsCommitted = hasCommittedRows(rows)
+  const finalVariantWorkspace = data.selectedFinalVersionId
+    ? data.variants.find((v) =>
+        v.versions.some((version) => version.id === data.selectedFinalVersionId),
+      )
+    : null
+  const finalVersionWorkspace = finalVariantWorkspace?.versions.find(
+    (v) => v.id === data.selectedFinalVersionId,
+  )
+  const rowsSynced =
+    !!viewedVersion &&
+    !saveMutation.isPending &&
+    formulaContentEquals(rows, viewedVersion.rows)
   const actionError =
     saveMutation.error ??
     patchMutation.error ??
-    setFinalMutation.error ??
+    createVersionMutation.error ??
+    deleteVersionMutation.error ??
+    setFinalVersionMutation.error ??
     claimsMutation.error ??
     briefMutation.error ??
     renameMutation.error ??
     renameVersionMutation.error ??
     macerationMutation.error
   const writingFormula =
-    saveMutation.isPending || patchMutation.isPending || setFinalMutation.isPending
+    saveMutation.isPending ||
+    patchMutation.isPending ||
+    createVersionMutation.isPending ||
+    deleteVersionMutation.isPending ||
+    setFinalVersionMutation.isPending
 
   return (
     <AppShell
@@ -330,7 +353,7 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
             <div className="flex min-w-0 flex-col gap-4">
               <WorkspaceBrief
                 key={data.product.id + selectedVariantId}
-                hasFormula={hasCommittedRows(selected?.rows ?? [])}
+                hasFormula={hasIngredients(viewedVersion?.rows ?? selected?.rows ?? [])}
                 brief={data.product.brief}
                 saving={briefMutation.isPending}
                 onSave={(brief) => briefMutation.mutate(brief)}
@@ -339,19 +362,6 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                 claimsSaving={claimsMutation.isPending}
               />
               <Separator />
-              {dirty ? (
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <p>{t('workspace.unsavedDraft')}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={writingFormula}
-                    onClick={() => setDiscardVariantId(selectedVariantId)}
-                  >
-                    {t('workspace.discardDraft')}
-                  </Button>
-                </div>
-              ) : null}
               {selectedVariantId ? (
                 <WorkspaceFormula
                   product={data.product}
@@ -361,21 +371,25 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
                   onSelectVersion={selectVersion}
                   rows={rows}
                   onRowsChange={setRows}
-                  onSave={() => commitFormula()}
-                  saving={writingFormula}
+                  autosaving={saveMutation.isPending}
+                  rowsSynced={rowsSynced}
                   pendingPatches={pendingPatches}
                   onAcceptPatch={(patchId) => {
-                    if (!dirty && !writingFormula)
+                    if (rowsSynced && !writingFormula)
                       patchMutation.mutate({ patchId, action: 'accepted' })
                   }}
                   patchPending={writingFormula}
-                  hasDraft={dirty}
-                  hasChanges={dirty && JSON.stringify(rows) !== JSON.stringify(selected?.rows ?? [])}
                   onRejectPatch={(patchId) => {
                     if (!writingFormula) patchMutation.mutate({ patchId, action: 'rejected' })
                   }}
-                  onSetFinal={handleSetFinal}
-                  setFinalSaving={writingFormula}
+                  onCreateVersion={(copyFromVersionId) =>
+                    createVersionMutation.mutate({ copyFromVersionId })
+                  }
+                  createVersionPending={createVersionMutation.isPending}
+                  onDeleteVersion={(versionId) => deleteVersionMutation.mutate(versionId)}
+                  deleteVersionPending={deleteVersionMutation.isPending}
+                  onSetFinalVersion={(versionId) => setFinalVersionMutation.mutate(versionId)}
+                  setFinalVersionPending={setFinalVersionMutation.isPending}
                   onMacerationSave={(input) => macerationMutation.mutate(input)}
                   macerationSaving={macerationMutation.isPending}
                   onRenameVersion={(label) => renameVersionMutation.mutate(label)}
@@ -386,62 +400,27 @@ function ProductWorkspace({ id, draftKey }: { id: string; draftKey: string }) {
           </TabsContent>
 
           <TabsContent value="regulatory" className="pt-6">
-            {finalWorkspace ? (
-              <WorkspaceRegulatory variant={finalWorkspace} checks={data.checks} />
+            {finalVariantWorkspace && finalVersionWorkspace ? (
+              <WorkspaceRegulatory
+                variant={{
+                  ...finalVariantWorkspace,
+                  rows: finalVersionWorkspace.rows,
+                  version: finalVersionWorkspace,
+                }}
+                checks={data.checks}
+              />
             ) : (
               <EmptyState
                 title={t('workspace.final.lockedTitle')}
                 description={t('workspace.final.lockedDescription')}
               >
-                <div className="flex flex-col items-center gap-3">
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleGenerateFinal}
-                      disabled={!currentRowsCommitted || writingFormula}
-                    >
-                      {setFinalMutation.isPending
-                        ? t('workspace.final.generating')
-                        : t('workspace.final.generateCta')}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setTab('workspace')}>
-                      {t('workspace.final.editFormula')}
-                    </Button>
-                  </div>
-                  {!currentRowsCommitted ? (
-                    <p className="text-xs text-muted-foreground">
-                      {t('workspace.final.needCommit')}
-                    </p>
-                  ) : null}
-                </div>
+                <Button variant="outline" size="sm" onClick={() => setTab('workspace')}>
+                  {t('workspace.final.editFormula')}
+                </Button>
               </EmptyState>
             )}
           </TabsContent>
         </Tabs>
-        <Dialog
-          open={discardVariantId !== null}
-          onOpenChange={(open) => {
-            if (!open) setDiscardVariantId(null)
-          }}
-        >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t('workspace.discardDraft')}</DialogTitle>
-              <DialogDescription>{t('workspace.confirmDiscard')}</DialogDescription>
-            </DialogHeader>
-            <Button
-              onClick={() => {
-                if (discardVariantId) discard(discardVariantId)
-                setDiscardVariantId(null)
-                saveMutation.reset()
-                patchMutation.reset()
-                void refetch()
-              }}
-            >
-              {t('workspace.discardDraft')}
-            </Button>
-          </DialogContent>
-        </Dialog>
       </div>
     </AppShell>
   )
