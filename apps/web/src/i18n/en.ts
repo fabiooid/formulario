@@ -307,6 +307,17 @@ export const en = {
     saving: 'Saving…',
     inci: 'Ingredient',
     percent: '%',
+    moveRow: 'Move ingredient {n}',
+    sortAriaYourOrder:
+      'Percentage. Your order. Activate to sort highest first.',
+    sortAriaHighest:
+      'Percentage. Highest first. Activate to sort lowest first.',
+    sortAriaLowest:
+      'Percentage. Lowest first. Activate to return to your order.',
+    sortNoteHighest: 'Showing highest % first. Drag is off until you return to your order.',
+    sortNoteLowest: 'Showing lowest % first. Drag is off until you return to your order.',
+    sortBack: 'Back to your order',
+    sortKeep: 'Keep this order',
   },
   agent: {
     title: 'Lab Assistant',

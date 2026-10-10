@@ -263,6 +263,8 @@ Pending formula proposals (MCP or agent) preview **in the formula table** as a r
 
 Formula table is full width. The agent is not embedded here — it lives in the app chrome.
 
+**Sort by %** is view-only by default. Click the `%` column header to cycle highest first → lowest first → your order. A sort icon on that header shows the current state (`aria-sort` + accessible label). While sorted, drag handles hide and a quiet note offers **Back to your order** and **Keep this order** (Keep rewrites saved `sortOrder` to the display order; Back only clears the view). Sort preference may remember per product in `localStorage` and must not sync as server data. Pending MCP proposal rows sort with the rest by their proposed %.
+
 ---
 
 ## Components — when to use which
