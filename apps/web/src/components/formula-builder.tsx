@@ -164,7 +164,7 @@ export function FormulaBuilder({
         <p className="text-sm text-muted-foreground">{t('workspace.formulaConflict')}</p>
       ) : null}
 
-      <div className="min-w-0 overflow-x-auto rounded-lg border border-border bg-card">
+      <div className="min-w-0 overflow-x-auto rounded-xl bg-card shadow-soft">
         <Table className="min-w-[36rem] table-fixed">
           <TableHeader className="bg-muted/60">
             <TableRow className="hover:bg-transparent">

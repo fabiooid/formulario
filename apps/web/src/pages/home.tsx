@@ -44,7 +44,7 @@ function HeroCard({
   icon: React.ComponentType<{ className?: string }>
 }) {
   return (
-    <Card size="sm" className="relative border-t-2 border-t-accent-brand/40">
+    <Card size="sm" className="relative">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardDescription>{label}</CardDescription>
         <span className="flex size-8 items-center justify-center rounded-lg bg-accent-brand/5 text-accent-brand"><Icon className="size-4" /></span>

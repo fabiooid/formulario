@@ -305,7 +305,7 @@ export function ProductsPage() {
                 return (
                   <div key={product.id} className="group/pin relative h-full max-w-sm">
                     <Link to={`/products/${product.id}`} className="group block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      <Card className="h-full gap-3 transition-[border-color,box-shadow] duration-200 hover:border-border hover:shadow-soft-hover motion-reduce:transition-none">
+                      <Card className="h-full gap-3 transition-[box-shadow] duration-200 hover:shadow-soft-hover motion-reduce:transition-none">
                         <CardHeader className="pr-24">
                           <CardTitle className="line-clamp-1 min-h-6 text-base font-medium tracking-tight group-hover:text-foreground">
                             {product.name}
@@ -319,7 +319,7 @@ export function ProductsPage() {
                             <ProductMeta product={product} />
                             <span className="ml-auto"><ProductClaimIcons product={product} /></span>
                           </div>
-                          <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
+                          <div className="mt-1 flex items-center justify-between gap-2 pt-1">
                             <ProductDates product={product} className="truncate" />
                             <ArrowUpRightIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                           </div>

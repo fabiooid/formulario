@@ -24,11 +24,11 @@ export function SettingsPlanPage() {
             <CardDescription>{t('settings.planDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <div className="rounded-md border border-border p-3 text-sm">
+            <div className="rounded-lg bg-muted/50 p-3 text-sm">
               <p className="font-medium">{t('settings.freeTitle')}</p>
               <p className="text-muted-foreground">{t('settings.freeDescription')}</p>
             </div>
-            <div className="rounded-md border border-border p-3 text-sm">
+            <div className="rounded-lg bg-muted/50 p-3 text-sm">
               <p className="font-medium">{t('settings.paidTitle')}</p>
               <p className="text-muted-foreground">{t('settings.paidDescription')}</p>
             </div>

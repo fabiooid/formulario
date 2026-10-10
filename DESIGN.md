@@ -132,9 +132,26 @@ The assistant is named **Lab Assistant** in the UI (breadcrumb launcher, message
 
 **Shadow**
 
-- Resting cards and outline buttons: `shadow-soft`
+- Resting cards, dialogs, and outline buttons: `shadow-soft` (dialogs may use `shadow-soft-hover` so they lift over the page)
 - Hover on clickable cards: `shadow-soft-hover`
 - Keep shadows quiet. No heavy drop shadows, no glow.
+
+**Borders (what to keep vs skip)**
+
+Separate raised surfaces with **background**, **elevation** (`shadow-soft`), and **spacing**. Do not frame cards, empty states, dialogs, or formula shells with decorative hairlines.
+
+Keep borders only when they carry meaning or structure:
+
+| Keep | Examples |
+|---|---|
+| Form controls | `Input`, `Textarea`, `Select`, outline `Button`, theme toggle cluster |
+| Tables | Row and cell dividers so formula and inventory rows stay readable |
+| Focus | `ring` / `ring-ring/50` on keyboard focus |
+| Status | Badge outlines (`outline`, Low stock, banned destructive edge) |
+| App chrome splits | Sidebar edge, agent pane resize split |
+| Meaningful error | Destructive ring/border on invalid or error attachments |
+
+Do not add: card outlines, dashed empty-state frames, Home brand top edges, ornamental footer rules on product cards, or per-dialog border overrides.
 
 **Background texture**
 
@@ -268,12 +285,12 @@ Pending labels: “Saving…”, “Signing in…”, “Thinking…” — same
 
 ### Cards
 
-Default grouping for a topic (maceration, settings, product list). `rounded-xl`, `border-border/70`, `shadow-soft`. Brief, formula, and INCI on the product page stay flat — headings, separators, and spacing, not Card-in-Card.
+Default grouping for a topic (maceration, settings, product list). `rounded-xl`, `bg-card`, `shadow-soft`, no outline border. Brief, formula, and INCI on the product page stay flat: headings, separators, and spacing, not Card-in-Card.
 
 - Card titles are `text-base`, not another page title
 - Optional description is muted `text-sm`
 - Title and description always stack. If there is a header action, it sits to the right until the card is narrow, then it drops under the text. Do not overlap.
-- Clickable cards (product grid): whole card is the link, hover border + `shadow-soft-hover`
+- Clickable cards (product grid): whole card is the link, hover `shadow-soft-hover` (no hover border)
 
 ### Badges
 
@@ -281,7 +298,7 @@ Pills. `secondary` for type/stage/plan/markets, `outline` for extra/locked info,
 
 ### Empty states
 
-Use `EmptyState` (dashed border, centered, quiet). For free-plan gaps, paid-only agent, no products, no INCI. Do not invent a custom blank illustration.
+Use `EmptyState` (muted fill `bg-muted/40`, centered, quiet, no dashed frame). For free-plan gaps, paid-only agent, no products, no INCI. Do not invent a custom blank illustration.
 
 ### Forms
 
@@ -293,11 +310,11 @@ Errors: `text-sm text-destructive` under the field. Invalid fields get the destr
 
 ### Dialogs
 
-Small (`sm:max-w-md`), centered, light overlay (`bg-black/10` + slight blur). Title, then fields, then the primary action in the field group. One job per dialog (new product, new organisation).
+Small (`sm:max-w-md`), centered, light overlay (`bg-black/10` + slight blur). Raised with `shadow-soft-hover`, no outline border. Title, then fields, then the primary action in the field group. One job per dialog (new product, new organisation).
 
 ### Tables
 
-The formula editor is a real table, not a list of cards. Header row `bg-muted/60`, uppercase muted labels, cell borders. Inputs sit flush in cells (`border-0 bg-transparent`). Percents are right-aligned mono. Row numbers are mono.
+The formula editor is a real table, not a list of cards. Shell is `bg-card` + `shadow-soft` (no outer hairline). Header row `bg-muted/60`, uppercase muted labels, cell borders for reading. Inputs sit flush in cells (`border-0 bg-transparent`). Percents are right-aligned mono. Row numbers are mono.
 
 ### Ingredient inventory
 
@@ -407,6 +424,7 @@ Icon-only controls: `Button` `size="icon-sm"` or `icon-xs`, with `aria-label`. D
 - Center the product around chat
 - Introduce a second font, icon set, or button style
 - Use large brand-colored banners
+- Frame cards or empty states with decorative borders (use fill + shadow + gap)
 - Mix cards and a custom “panel” look for the same kind of content
 - Skip empty, loading, locked, and error states
 - Change only one instance of a pattern (if list rows change, product cards should still match)
@@ -415,7 +433,7 @@ Product supporting tools: keep INCI preview and Choose as final together directl
 
 ## Expressive details
 
-Keep shadcn primitives and the quiet notebook layout. Home summary cards use a fine `accent-brand/40` top edge. Product cards stay neutral, without type icons or violet accents, and have a divided date footer with a directional arrow. Reserve header space for the pin and overflow controls. Large surfaces stay neutral. Product links have a visible keyboard focus ring. Home figures use 30px mono type, with small tinted icon tiles. Do not add decorative motion. Cost rows wrap their labels above the bar on narrow screens.
+Keep shadcn primitives and the quiet notebook layout. Home summary cards are plain raised cards (no brand top edge). Product cards stay neutral, without type icons or violet accents, with a date row and directional arrow separated by spacing (not a hairline). Reserve header space for the pin and overflow controls. Large surfaces stay neutral. Product links have a visible keyboard focus ring. Home figures use 30px mono type, with small tinted icon tiles. Do not add decorative motion. Cost rows wrap their labels above the bar on narrow screens.
 
 Product pin and overflow controls use shadcn `icon-sm` buttons (32px targets) and 18px Lucide icons. Card headers reserve `pr-24` for the pair so product names do not overlap the controls.
 

@@ -11,6 +11,7 @@ Read `DESIGN.md` before changing layout, styling, or components. Match existing 
 - Calm, dense, formula-first. Chat is secondary.
 - Reuse `AppShell`, `PageHeader`, `Card`, `Button`, `EmptyState`, `FieldGroup`, `StatusBadge`.
 - Semantic tokens only (`bg-background`, `text-muted-foreground`, `text-warning`). No raw Tailwind colors for status.
+- No decorative card/empty/dialog hairlines; separate surfaces with fill, `shadow-soft`, and gap. Keep form, table, focus, and badge borders.
 - `gap-*` not `space-y-*`. Lucide icons. Copy through i18n (en, fr, it).
 - One primary button per cluster. Empty/locked/paid-gap states stay in the same layout.
 - Check light and dark, and a narrow screen.
