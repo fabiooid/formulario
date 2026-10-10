@@ -22,3 +22,4 @@ apps/web/.ds-compiled.css
 apps/web/ds-entry.ts
 apps/web/ds-types/
 apps/web/index.d.ts
+apps/api/data/
