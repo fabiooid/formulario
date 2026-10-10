@@ -61,7 +61,18 @@ async function seedDemoUser() {
   return { userId, existed: false }
 }
 
-/** Demo perfume should show Regulatory findings on first look (final version set). */
+function demoMacerationDates() {
+  return {
+    startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    targetAt: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
+  }
+}
+
+/**
+ * Demo perfume: final version set for Regulatory, and maceration only on the
+ * visible (selected-final) version so Home matches the versions-only UI.
+ * Leftover trial variants (Softer, Brighter top) keep no maceration dates.
+ */
 async function ensureDemoPerfumeFinal(userId: string) {
   const productId = 'prod-perfume'
   const [product] = await db.select({ id: products.id }).from(products).where(eq(products.id, productId)).limit(1)
@@ -72,28 +83,28 @@ async function ensureDemoPerfumeFinal(userId: string) {
     .from(formulaVersions)
     .where(and(eq(formulaVersions.productId, productId), eq(formulaVersions.isFinal, true)))
     .limit(1)
-  if (alreadyFinal) return
 
-  const [selected] = await db
-    .select({ id: productVariants.id })
-    .from(productVariants)
-    .where(and(eq(productVariants.productId, productId), eq(productVariants.isSelectedFinal, true)))
-    .limit(1)
-  const variantId = selected?.id
-  const [version] = variantId
-    ? await db
-        .select({ id: formulaVersions.id })
-        .from(formulaVersions)
-        .where(and(eq(formulaVersions.variantId, variantId), eq(formulaVersions.isCurrent, true)))
-        .limit(1)
-    : await db
-        .select({ id: formulaVersions.id })
-        .from(formulaVersions)
-        .where(eq(formulaVersions.productId, productId))
-        .limit(1)
-  if (!version) return
+  if (!alreadyFinal) {
+    const [selected] = await db
+      .select({ id: productVariants.id })
+      .from(productVariants)
+      .where(and(eq(productVariants.productId, productId), eq(productVariants.isSelectedFinal, true)))
+      .limit(1)
+    const variantId = selected?.id
+    const [version] = variantId
+      ? await db
+          .select({ id: formulaVersions.id })
+          .from(formulaVersions)
+          .where(and(eq(formulaVersions.variantId, variantId), eq(formulaVersions.isCurrent, true)))
+          .limit(1)
+      : await db
+          .select({ id: formulaVersions.id })
+          .from(formulaVersions)
+          .where(eq(formulaVersions.productId, productId))
+          .limit(1)
+    if (version) await setFinalVersion(version.id, productId, userId)
+  }
 
-  await setFinalVersion(version.id, productId, userId)
   // Align leftover "Variant …" seed labels with versions-only wording when still present.
   const variants = await db.select().from(productVariants).where(eq(productVariants.productId, productId))
   for (const variant of variants) {
@@ -106,6 +117,47 @@ async function ensureDemoPerfumeFinal(userId: string) {
         .update(formulaVersions)
         .set({ label: nextLabel })
         .where(eq(formulaVersions.variantId, variant.id))
+    }
+  }
+
+  await ensureDemoPerfumeMaceration(productId)
+}
+
+/** Refresh maceration on the visible final version; clear hidden trial leftovers. */
+async function ensureDemoPerfumeMaceration(productId: string) {
+  const variants = await db.select().from(productVariants).where(eq(productVariants.productId, productId))
+  if (!variants.length) return
+  const visible = variants.find((variant) => variant.isSelectedFinal) ?? variants[0]
+  const { startedAt, targetAt } = demoMacerationDates()
+
+  for (const variant of variants) {
+    const versions = await db
+      .select()
+      .from(formulaVersions)
+      .where(eq(formulaVersions.variantId, variant.id))
+    for (const version of versions) {
+      const onVisible = variant.id === visible.id
+      const isWorking = version.isFinal || version.isCurrent
+      if (onVisible && isWorking) {
+        await db
+          .update(formulaVersions)
+          .set({
+            macerationStartedAt: startedAt,
+            macerationTargetAt: targetAt,
+            macerationNotes: version.macerationNotes ?? 'Resting the final batch.',
+          })
+          .where(eq(formulaVersions.id, version.id))
+      } else if (version.macerationStartedAt || version.macerationTargetAt) {
+        // Leftover trial variants are hidden in the versions-only UI.
+        await db
+          .update(formulaVersions)
+          .set({
+            macerationStartedAt: null,
+            macerationTargetAt: null,
+            macerationNotes: null,
+          })
+          .where(eq(formulaVersions.id, version.id))
+      }
     }
   }
 }
@@ -269,8 +321,7 @@ async function main() {
     ],
   })
 
-  const macerationStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-  const macerationTarget = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString()
+  const { startedAt: macerationStart, targetAt: macerationTarget } = demoMacerationDates()
 
   await seedProductWithVariants(userId, personal.id, {
     id: 'prod-perfume',
@@ -279,11 +330,10 @@ async function main() {
     brief: 'Oil-based perfume. Includes an ingredient named on the EU banned list.',
     variants: [
       {
+        // Leftover trial variant: kept in the DB but hidden from the versions-only UI.
+        // No maceration dates, so Home does not alert on a version the maker cannot open.
         label: 'Softer',
         versionLabel: 'Softer',
-        macerationStartedAt: macerationStart,
-        macerationTargetAt: macerationTarget,
-        macerationNotes: 'Testing lower coumarin.',
         rows: [
           { inci: 'Fragrance', function: 'Fragrance', phase: 'Fragrance', percent: 16 },
           { inci: 'Linalool', function: 'Fragrance allergen', phase: 'Fragrance', percent: 0.06 },
@@ -296,6 +346,9 @@ async function main() {
         label: 'Original',
         versionLabel: 'Original',
         isSelectedFinal: true,
+        macerationStartedAt: macerationStart,
+        macerationTargetAt: macerationTarget,
+        macerationNotes: 'Resting the final batch.',
         rows: [
           { inci: 'Fragrance', function: 'Fragrance', phase: 'Fragrance', percent: 18 },
           { inci: 'Linalool', function: 'Fragrance allergen', phase: 'Fragrance', percent: 0.08 },

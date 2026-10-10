@@ -6,7 +6,7 @@ Product name in the UI: **Formulario**.
 
 ## What it should feel like
 
-Calm, dense, and formula-first. This is a quiet lab notebook for indie skincare and perfume — not a chat app, not a marketing site, not a dashboard full of charts.
+Calm, dense, and formula-first. This is a quiet lab notebook for indie skincare and perfume — not a chat app, not a marketing site, not a metrics wall.
 
 - The **formula table** is the source of truth. Chat proposes. The person accepts on that formula.
 - Surfaces stay quiet. Color, motion, and decoration are used sparingly.
@@ -237,13 +237,14 @@ Header actions, right side: Active / Archived filter, view switcher, then primar
 
 ### Home
 
-A morning brief, not a metrics wall. Same cards as everywhere else.
+A morning brief, not a metrics wall. Same cards as everywhere else. Small icons, meters, and one cost chart are welcome when they carry meaning (stock level, maceration progress, % priced). Do not add decorative sparklines, badge clusters, or colour-only status.
 
-1. Three small numbers: shelf value, to-purchase count, formulas with a full cost
-2. Two working lists: to purchase (with € / kg) and needs attention. Use simple divided purchase rows inside the existing Card. Group attention findings by product link, with the product name once and all issues underneath; preserve severity order and keep every issue visible.
-3. Ranked formula cost (`SimpleBarChart`, foreground fill, mono money)
+1. Three small numbers: shelf value, to-purchase count, formulas that are fully priced **and** balanced near 100%
+2. **Formulas at risk:** one line per product (ban on a final formula, or missing / low stock on the active or final formula). Lucide icon + text reason + product link. Ordered by severity. Do not repeat the same ban under Needs attention.
+3. Two working lists: to purchase (ingredients that block an active/final formula, with € / kg, `StockBadge`, and a small stock-level meter) and needs attention (claims, over-limits, unbalanced totals, maceration on versions the maker can open). Group attention by product; each finding has a type icon and text. Maceration rows show a progress meter (days rested vs target) and deep-link with `?version=`. Show the full list and a count; do not silently truncate.
+4. Ranked formula cost (`SimpleBarChart`, foreground fill, mono money) with a second quiet meter for how much of each formula is priced
 
-Money and grams use `font-mono tabular-nums`. Shelf value only counts in-house and low stock that have both a price and an amount on hand. Always show coverage so a missing price cannot look like zero.
+Ban and claim checks on Home run only after a final version exists (same gate as Regulatory). Money and grams use `font-mono tabular-nums`. Shelf value only counts in-house and low stock that have both a price and an amount on hand. Always show coverage so a missing price cannot look like zero. Empty purchase copy must stay honest when there are no formulas yet.
 
 ### Product workspace
 
@@ -433,7 +434,7 @@ Product supporting tools: keep INCI preview and Choose as final together directl
 
 ## Expressive details
 
-Keep shadcn primitives and the quiet notebook layout. Home summary cards are plain raised cards (no brand top edge). Product cards stay neutral, without type icons or violet accents, with a date row and directional arrow separated by spacing (not a hairline). Reserve header space for the pin and overflow controls. Large surfaces stay neutral. Product links have a visible keyboard focus ring. Home figures use 30px mono type, with small tinted icon tiles. Do not add decorative motion. Cost rows wrap their labels above the bar on narrow screens.
+Keep shadcn primitives and the quiet notebook layout. Home summary cards are plain raised cards (no brand top edge). Product cards stay neutral, without type icons or violet accents, with a date row and directional arrow separated by spacing (not a hairline). Reserve header space for the pin and overflow controls. Large surfaces stay neutral. Product links have a visible keyboard focus ring. Home figures use 30px mono type, with small tinted icon tiles. Home list rows may use a quiet Lucide type icon (ban, stock, balance, maceration) plus text; never colour alone. Do not add decorative motion. Cost rows wrap their labels above the bar on narrow screens; a second thin meter may show % priced.
 
 Product pin and overflow controls use shadcn `icon-sm` buttons (32px targets) and 18px Lucide icons. Card headers reserve `pr-24` for the pair so product names do not overlap the controls.
 
