@@ -255,7 +255,7 @@ export function ProductsPage() {
           />
         ) : (
           view === 'list' ? (
-            <div className="@container/products overflow-hidden rounded-xl border border-border/70 bg-card shadow-soft">
+            <Card className="@container/products gap-0 overflow-hidden py-0">
               {data.products.map((product) => {
                 const pinned = isProductPinned(product)
                 return (
@@ -297,7 +297,7 @@ export function ProductsPage() {
                   </div>
                 )
               })}
-            </div>
+            </Card>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {data.products.map((product) => {

@@ -47,7 +47,7 @@ export function FeedbackDialog({
         onOpenChange(next)
       }}
     >
-      <DialogContent className="border-border/80 bg-background sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('feedback.title')}</DialogTitle>
           <DialogDescription>{t('feedback.description')}</DialogDescription>

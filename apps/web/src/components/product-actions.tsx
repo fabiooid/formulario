@@ -130,7 +130,7 @@ export function ProductActionsMenu({
       </DropdownMenu>
 
       <Dialog open={deleting} onOpenChange={(open) => !open && !deleteMutation.isPending && setDeleting(false)}>
-        <DialogContent className="border-border/80 bg-background">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('products.deleteTitle')}</DialogTitle>
             <DialogDescription>

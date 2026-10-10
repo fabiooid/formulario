@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/empty-state'
 import { useLanguage } from '@/i18n/language-provider'
 import { api } from '@/lib/api'
 import { SettingsSection } from './section'
@@ -63,10 +64,30 @@ export function SettingsConnectionsPage() {
     <Card>
       <CardHeader><CardTitle>{t('connections.active')}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        {connections.isLoading ? <p>{t('common.loading')}</p> : !connections.data?.grants.length ? <p className="text-sm text-muted-foreground">{t('connections.empty')}</p> : connections.data.grants.map(grant => <div key={grant.id} className="flex flex-wrap items-center justify-between gap-2">
-          <div><p className="text-sm font-medium">{grant.clientName}</p><p className="text-sm text-muted-foreground">{connections.data.organizations.find(o => o.id === grant.organizationId)?.name ?? grant.organizationId}</p></div>
-          <Button variant="outline" disabled={revoke.isPending} onClick={() => revoke.mutate(grant.id)}>{t('connections.revoke')}</Button>
-        </div>)}
+        {connections.isLoading ? (
+          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+        ) : !connections.data?.grants.length ? (
+          <EmptyState title={t('connections.emptyTitle')} description={t('connections.emptyDescription')} />
+        ) : (
+          connections.data.grants.map((grant) => (
+            <div key={grant.id} className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium">{grant.clientName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {connections.data.organizations.find((o) => o.id === grant.organizationId)?.name ??
+                    grant.organizationId}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                disabled={revoke.isPending}
+                onClick={() => revoke.mutate(grant.id)}
+              >
+                {t('connections.revoke')}
+              </Button>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   </SettingsSection>

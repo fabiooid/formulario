@@ -161,13 +161,9 @@ export function PasswordForm({ mode }: { mode: 'first' | 'account' }) {
         </Button>
         {mode === 'first' ? (
           <p className="text-center text-sm text-muted-foreground">
-            <button
-              type="button"
-              onClick={logout}
-              className="text-foreground underline underline-offset-4 hover:opacity-80"
-            >
+            <Button type="button" variant="link" onClick={logout} className="h-auto p-0">
               {t('auth.differentAccount')}
-            </button>
+            </Button>
           </p>
         ) : null}
       </FieldGroup>

@@ -41,6 +41,7 @@ Light mode is warm paper with cool ink. Dark mode inverts it: near-neutral charc
 | `primary` | Main actions (near-black in light, near-white in dark) |
 | `accent-brand` | Sparse brand moments only (focus tint, sparkle) |
 | `destructive` | Errors, bans, delete, sign out |
+| `warning` | Formula total not near 100% (`text-warning`) |
 | `sidebar*` | Sidebar only |
 
 **Brand violet** (`accent-brand`) is an accent, not a fill. Do not paint large blocks with it.
@@ -54,7 +55,9 @@ Light mode is warm paper with cool ink. Dark mode inverts it: near-neutral charc
 | not on the banned list | `outline` |
 | not checked | `outline` |
 
-**Warning:** a formula that does not add up to ~100% uses amber text (`text-amber-600`). That is the only allowed raw color. Do not spread amber elsewhere — if we need a real warning token later, add it in CSS first.
+**Warning:** unbalanced formula totals use `text-warning` (semantic token in `index.css`). Do not use raw amber Tailwind classes.
+
+Focus rings use opaque `--ring` (brand violet). Components may soften with `ring-ring/50`; do not bake alpha into the token itself.
 
 Text selection uses a soft brand tint (`--accent-brand-muted`).
 
@@ -370,6 +373,25 @@ Plain, short, calm. No hype, no emoji in product UI, no “AI-powered” languag
 - Hit targets in chrome stay at least 28–32px.
 
 ---
+
+## Base components (use these, do not fork)
+
+| Need | Use |
+|---|---|
+| Page chrome + title | `AppShell`, `PageHeader` |
+| Grouped topic / list shell | `Card` (override `gap-0 py-0` for dense tables/lists) |
+| Primary / secondary / quiet / dangerous actions | `Button` variants (`default`, `outline`, `ghost`, `destructive`, `link`) |
+| Status chips (regulatory) | `StatusBadge` |
+| Stock chips | `StockBadge` |
+| Other pills | `Badge` (`secondary`, `outline`, `destructive`, `warning`) |
+| Blank / paid-gap / locked | `EmptyState` |
+| Forms | `FieldGroup` → `Field` → `FieldLabel` → `Input` / `Textarea` / `Select` |
+| Confirm / create modals | `Dialog` + `DialogContent` (default chrome; no per-screen border overrides) |
+| Peer views | `Tabs` `variant="line"` |
+| Menus | `DropdownMenu` |
+| Quiet section heading on product page | `WorkspaceSection` |
+
+Icon-only controls: `Button` `size="icon-sm"` or `icon-xs`, with `aria-label`. Do not hand-roll focus rings on raw `<button>`.
 
 ## How to add something new
 

@@ -6,6 +6,7 @@ import { AppShell, PageHeader } from '@/components/layout'
 import { EmptyState } from '@/components/empty-state'
 import { StockBadge } from '@/components/stock-badge'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -190,7 +191,7 @@ export function IngredientsPage() {
       />
 
       <Dialog open={formOpen} onOpenChange={(open) => { if (!open) closeForm() }}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-border/80 bg-background">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editing ? t('ingredients.dialogEdit') : t('ingredients.dialogCreate')}
@@ -449,7 +450,7 @@ export function IngredientsPage() {
           description={t('ingredients.emptyFilterDescription')}
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-soft">
+        <Card className="gap-0 overflow-hidden py-0">
           <Table className="table-fixed sm:min-w-[30rem] md:min-w-[36rem]">
             <TableHeader className="bg-muted/60">
               <TableRow className="hover:bg-transparent">
@@ -515,11 +516,11 @@ export function IngredientsPage() {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       )}
 
       <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent className="border-border/80 bg-background">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('ingredients.deleteTitle')}</DialogTitle>
             <DialogDescription>
