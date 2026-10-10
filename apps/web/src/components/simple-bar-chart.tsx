@@ -7,7 +7,14 @@ export function SimpleBarChart({
   emptyLabel,
   formatValue,
 }: {
-  items: Array<{ label: string; value: number; hint?: string; href?: string }>
+  items: Array<{
+    label: string
+    value: number
+    hint?: string
+    href?: string
+    pricedPercent?: number
+    pricedLabel?: string
+  }>
   emptyLabel: string
   formatValue?: (value: number) => string
 }) {
@@ -21,39 +28,56 @@ export function SimpleBarChart({
     <div className="-mx-2 flex flex-col">
       {items.map((item) => {
         const priced = item.value > 0
+        const pricedPercent = Math.min(100, Math.max(0, item.pricedPercent ?? (priced ? 100 : 0)))
 
         const inner = (
-          <Meter
-            className="flex-row flex-wrap items-center gap-x-4 gap-y-2"
-            max={max || 1}
-            value={item.value}
-          >
-            <div className="w-full min-w-0 sm:w-50 sm:flex-none">
-              <MeterLabel
-                className={priced ? undefined : 'text-muted-foreground'}
-              >
-                {item.label}
-              </MeterLabel>
-              {item.hint ? (
-                <span className="block text-xs text-muted-foreground">
-                  {item.hint}
-                </span>
-              ) : null}
-            </div>
-            <MeterTrack className="min-w-0 flex-1">
-              <MeterIndicator
-                className={priced ? 'min-w-[6%]' : undefined}
-                variant={priced ? 'default' : 'muted'}
-              />
-            </MeterTrack>
-            <span
-              className={`w-32 flex-none text-right font-mono text-sm tabular-nums${
-                priced ? '' : ' text-muted-foreground'
-              }`}
+          <div className="flex min-w-0 flex-col gap-2">
+            <Meter
+              className="flex-row flex-wrap items-center gap-x-4 gap-y-2"
+              max={max || 1}
+              value={item.value}
             >
-              {formatValue ? formatValue(item.value) : item.value}
-            </span>
-          </Meter>
+              <div className="w-full min-w-0 sm:w-50 sm:flex-none">
+                <MeterLabel className={priced ? undefined : 'text-muted-foreground'}>
+                  {item.label}
+                </MeterLabel>
+                {item.hint ? (
+                  <span className="block text-xs text-muted-foreground">{item.hint}</span>
+                ) : null}
+              </div>
+              <MeterTrack className="min-w-0 flex-1">
+                <MeterIndicator
+                  className={priced ? 'min-w-[6%]' : undefined}
+                  variant={priced ? 'default' : 'muted'}
+                />
+              </MeterTrack>
+              <span
+                className={`w-32 flex-none text-right font-mono text-sm tabular-nums${
+                  priced ? '' : ' text-muted-foreground'
+                }`}
+              >
+                {formatValue ? formatValue(item.value) : String(item.value)}
+              </span>
+            </Meter>
+            {item.pricedLabel ? (
+              <Meter
+                className="flex-row flex-wrap items-center gap-x-4 gap-y-1"
+                max={100}
+                value={pricedPercent}
+                aria-label={item.pricedLabel}
+              >
+                <span className="w-full min-w-0 text-xs text-muted-foreground sm:w-50 sm:flex-none">
+                  {item.pricedLabel}
+                </span>
+                <MeterTrack className="h-1.5 min-w-0 flex-1">
+                  <MeterIndicator variant={pricedPercent >= 99.5 ? 'default' : 'muted'} />
+                </MeterTrack>
+                <span className="w-32 flex-none text-right font-mono text-xs tabular-nums text-muted-foreground">
+                  {Math.round(pricedPercent)}%
+                </span>
+              </Meter>
+            ) : null}
+          </div>
         )
 
         if (item.href) {

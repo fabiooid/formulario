@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppShell, PageHeader } from '@/components/layout'
 import { useAgent } from '@/components/agent-provider'
@@ -39,8 +39,10 @@ function ProductWorkspace({ id }: { id: string }) {
   const { user } = useAuth()
   const { t } = useLanguage()
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { setVariantId, setVersionId } = useAgent()
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
+  const versionFromUrl = searchParams.get('version')
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(versionFromUrl)
   const [tab, setTab] = useState('workspace')
   const [rows, setRows] = useState<FormulaRow[]>([])
   const rowsRef = useRef(rows)
@@ -55,6 +57,10 @@ function ProductWorkspace({ id }: { id: string }) {
     enabled: !!user && !!id,
     refetchInterval: 10_000,
   })
+
+  useEffect(() => {
+    if (versionFromUrl) setSelectedVersionId(versionFromUrl)
+  }, [versionFromUrl])
 
   const selectedVariantId = data?.activeVariantId ?? data?.variants[0]?.variant.id ?? null
   const selected = data?.variants.find((v) => v.variant.id === selectedVariantId)
@@ -232,7 +238,12 @@ function ProductWorkspace({ id }: { id: string }) {
   })
 
   function selectVersion(versionId: string) {
-    void flushSave().then(() => setSelectedVersionId(versionId))
+    void flushSave().then(() => {
+      setSelectedVersionId(versionId)
+      const next = new URLSearchParams(searchParams)
+      next.set('version', versionId)
+      setSearchParams(next, { replace: true })
+    })
   }
 
   if (!user) return <Navigate to="/login" replace />
