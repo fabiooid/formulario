@@ -165,6 +165,7 @@ export const FormulaVersionSummarySchema = z.object({
   versionNumber: z.number(),
   label: z.string().nullable(),
   isCurrent: z.boolean(),
+  isFinal: z.boolean(),
   macerationStartedAt: z.string().nullable().optional(),
   macerationTargetAt: z.string().nullable().optional(),
   macerationNotes: z.string().nullable().optional(),
@@ -179,7 +180,7 @@ export type FormulaVersionWorkspace = z.infer<typeof FormulaVersionWorkspaceSche
 
 export const VariantWorkspaceSchema = z.object({
   variant: ProductVariantSchema,
-  /** Current formula version (source of truth for commits and MCP proposals). */
+  /** Default formula version for lists, duplicate, and MCP. */
   version: FormulaVersionSummarySchema.nullable(),
   /** All saved versions for this trial, newest first — used by the version switcher. */
   versions: z.array(FormulaVersionWorkspaceSchema),
@@ -210,10 +211,10 @@ export function versionDisplayLabel(version: {
 }
 
 export function computeProductStage(input: {
-  variants: Array<{ rows: FormulaRow[]; isSelectedFinal: boolean }>
+  variants: Array<{ rows: FormulaRow[]; hasFinalVersion?: boolean }>
 }): ProductStage {
   const hasAnyRows = input.variants.some((v) => v.rows.some((r) => r.inci.trim()))
-  const hasFinal = input.variants.some((v) => v.isSelectedFinal && v.rows.some((r) => r.inci.trim()))
+  const hasFinal = input.variants.some((v) => v.hasFinalVersion)
   if (hasFinal) return 'final'
   if (hasAnyRows) return 'formula'
   return 'idea'

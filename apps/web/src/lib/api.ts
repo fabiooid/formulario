@@ -73,6 +73,7 @@ export interface FormulaVersionSummary {
   versionNumber: number
   label: string | null
   isCurrent: boolean
+  isFinal: boolean
   macerationStartedAt?: string | null
   macerationTargetAt?: string | null
   macerationNotes?: string | null
@@ -210,6 +211,7 @@ export interface Workspace {
   stage: ProductStage
   variants: VariantWorkspace[]
   selectedFinalVariantId: string | null
+  selectedFinalVersionId: string | null
   activeVariantId: string | null
   patches: FormulaPatch[]
   checks: RegulatoryCheck[]
@@ -404,11 +406,30 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ claims }),
     }),
-  saveFormula: (productId: string, variantId: string, rows: FormulaRow[], expectedVersionId: string | null) =>
+  saveFormula: (productId: string, variantId: string, versionId: string, rows: FormulaRow[]) =>
     request<{ versionId: string; workspace: Workspace }>(
       `/app/products/${productId}/formula`,
-      { method: 'PUT', body: JSON.stringify({ variantId, rows, expectedVersionId }) },
+      { method: 'PUT', body: JSON.stringify({ variantId, versionId, rows }) },
     ),
+  createFormulaVersion: (
+    productId: string,
+    variantId: string,
+    input: {
+      copyFromVersionId?: string | null
+    } = {},
+  ) =>
+    request<{ versionId: string; workspace: Workspace }>(
+      `/app/products/${productId}/variants/${variantId}/versions`,
+      { method: 'POST', body: JSON.stringify(input) },
+    ),
+  deleteFormulaVersion: (productId: string, versionId: string) =>
+    request<{ workspace: Workspace }>(`/app/products/${productId}/versions/${versionId}`, {
+      method: 'DELETE',
+    }),
+  setFinalVersion: (productId: string, versionId: string) =>
+    request<{ workspace: Workspace }>(`/app/products/${productId}/versions/${versionId}/final`, {
+      method: 'PATCH',
+    }),
   createVariant: (
     productId: string,
     input: { label?: string; copyFromVariantId?: string },
@@ -467,6 +488,7 @@ export const api = {
       message: string
       productId?: string
       variantId?: string
+      versionId?: string
     },
     onChunk: (text: string) => void,
   ) => {
@@ -475,6 +497,7 @@ export const api = {
     const requestContext: Record<string, string> = {}
     if (input.productId) requestContext.productId = input.productId
     if (input.variantId) requestContext.variantId = input.variantId
+    if (input.versionId) requestContext.versionId = input.versionId
 
     const res = await fetch('/api/agents/assistantAgent/stream', {
       method: 'POST',

@@ -16,7 +16,7 @@ import {
   type ProductType,
   type ProductVariant,
 } from '@formulario/domain'
-import { and, desc, eq, inArray, ne } from 'drizzle-orm'
+import { and, desc, eq, inArray, ne, or } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { getActiveOrganizationId, getMembership } from './organizations.js'
 import {
@@ -93,7 +93,9 @@ function stageFromVariants(variants: CurrentVariantFormula[]) {
   return computeProductStage({
     variants: variants.map((item) => ({
       rows: item.rows,
-      isSelectedFinal: item.variant.isSelectedFinal,
+      hasFinalVersion: item.versions.some(
+        (version) => version.isFinal && version.rows.some((row) => row.inci.trim()),
+      ),
     })),
   })
 }
@@ -118,7 +120,10 @@ async function loadCurrentVariantFormulas(productIds: string[], options?: { allV
           .where(
             options?.allVersions
               ? inArray(formulaVersions.variantId, variantIds)
-              : and(inArray(formulaVersions.variantId, variantIds), eq(formulaVersions.isCurrent, true)),
+              : and(
+                  inArray(formulaVersions.variantId, variantIds),
+                  or(eq(formulaVersions.isCurrent, true), eq(formulaVersions.isFinal, true)),
+                ),
           )
 
   const versionsByVariantId = new Map<string, FormulaVersionSummary[]>()
@@ -166,6 +171,7 @@ async function loadCurrentVariantFormulas(productIds: string[], options?: { allV
             versionNumber: current.versionNumber,
             label: current.label,
             isCurrent: current.isCurrent,
+            isFinal: current.isFinal,
             macerationStartedAt: current.macerationStartedAt,
             macerationTargetAt: current.macerationTargetAt,
             macerationNotes: current.macerationNotes,
@@ -235,6 +241,7 @@ export function versionFromDb(row: typeof formulaVersions.$inferSelect): Formula
     versionNumber: row.versionNumber,
     label: row.label,
     isCurrent: row.isCurrent,
+    isFinal: row.isFinal,
     macerationStartedAt: row.macerationStartedAt,
     macerationTargetAt: row.macerationTargetAt,
     macerationNotes: row.macerationNotes,
@@ -333,10 +340,22 @@ export async function getCurrentVersionForVariant(
   return version ?? null
 }
 
+async function getFinalVersionForProduct(
+  productId: string,
+  session: DatabaseSession = db,
+) {
+  const [version] = await session
+    .select()
+    .from(formulaVersions)
+    .where(and(eq(formulaVersions.productId, productId), eq(formulaVersions.isFinal, true)))
+    .limit(1)
+  return version ?? null
+}
+
 async function getActiveVersion(productId: string, variantId?: string) {
+  const finalVersion = await getFinalVersionForProduct(productId)
+  if (finalVersion) return finalVersion
   if (variantId) return getCurrentVersionForVariant(variantId)
-  const finalVariant = await getSelectedFinalVariant(productId)
-  if (finalVariant) return getCurrentVersionForVariant(finalVariant.id)
   const variants = await listVariants(productId)
   if (variants[0]) return getCurrentVersionForVariant(variants[0].id)
   return null
@@ -639,16 +658,66 @@ export async function saveFormulaRows(
   )
 }
 
-// The caller must supply the version they edited. All authorization and writes happen
-// in one transaction, shared with patch resolution when accepting an agent proposal.
-async function commitVersion(
+async function getVersionForWrite(
+  session: DatabaseSession,
+  productId: string,
+  versionId: string,
+  variantId?: string,
+) {
+  const [version] = await session
+    .select()
+    .from(formulaVersions)
+    .where(and(eq(formulaVersions.id, versionId), eq(formulaVersions.productId, productId)))
+    .limit(1)
+  if (!version || !version.variantId) {
+    throw new ProductWriteError(404, 'not_found', 'Version not found')
+  }
+  if (variantId && version.variantId !== variantId) {
+    throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
+  }
+  const [variant] = await session
+    .select()
+    .from(productVariants)
+    .where(and(eq(productVariants.id, version.variantId), eq(productVariants.productId, productId)))
+    .limit(1)
+  if (!variant) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
+  return { ...version, variantId: version.variantId }
+}
+
+async function saveVersionRowsInTransaction(
+  session: DatabaseSession,
+  productId: string,
+  versionId: string,
+  userId: string,
+  rows: FormulaRow[],
+  variantId?: string,
+) {
+  await requireWritableProduct(session, productId, userId)
+  const version = await getVersionForWrite(session, productId, versionId, variantId)
+  const now = new Date().toISOString()
+  await saveFormulaRows(version.id, rows, session)
+  await session.update(products).set({ updatedAt: now }).where(eq(products.id, productId))
+  return version.id
+}
+
+export async function saveVersionRows(
+  productId: string,
+  versionId: string,
+  userId: string,
+  rows: FormulaRow[],
+  variantId?: string,
+) {
+  return db.transaction((tx) =>
+    saveVersionRowsInTransaction(tx, productId, versionId, userId, rows, variantId),
+  )
+}
+
+async function createVersionInTransaction(
   session: DatabaseSession,
   productId: string,
   variantId: string,
   userId: string,
-  rows: FormulaRow[],
-  expectedVersionId: string | null,
-  label?: string,
+  input: { copyFromVersionId?: string | null } = {},
 ) {
   await requireWritableProduct(session, productId, userId)
   const [variant] = await session
@@ -657,51 +726,151 @@ async function commitVersion(
     .where(and(eq(productVariants.id, variantId), eq(productVariants.productId, productId)))
     .limit(1)
   if (!variant) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
-  const current = await getCurrentVersionForVariant(variantId, session)
-  if ((current?.id ?? null) !== expectedVersionId) {
-    throw new ProductWriteError(
-      409,
-      'formula_conflict',
-      'The formula has changed since this draft was started',
-    )
+
+  const siblings = await session
+    .select()
+    .from(formulaVersions)
+    .where(eq(formulaVersions.variantId, variantId))
+  if (siblings.length === 0) throw new ProductWriteError(404, 'not_found', 'Version not found')
+
+  let sourceRows: FormulaRow[] = []
+  if (input.copyFromVersionId) {
+    const source = await getVersionForWrite(session, productId, input.copyFromVersionId, variantId)
+    sourceRows = (await getFormulaRows(source.id, session)).map((row) => ({
+      ...row,
+      id: crypto.randomUUID(),
+    }))
   }
+
   const now = new Date().toISOString()
-  const nextNumber = (current?.versionNumber ?? 0) + 1
+  const nextNumber = Math.max(...siblings.map((item) => item.versionNumber)) + 1
   const versionId = crypto.randomUUID()
-  if (current) {
-    await session
-      .update(formulaVersions)
-      .set({ isCurrent: false })
-      .where(eq(formulaVersions.id, current.id))
-  }
-  // New versions start with blank maceration — do not copy from the previous version.
+  await session
+    .update(formulaVersions)
+    .set({ isCurrent: false })
+    .where(eq(formulaVersions.variantId, variantId))
+
   await session.insert(formulaVersions).values({
     id: versionId,
     productId,
     variantId,
     versionNumber: nextNumber,
-    label: label ?? `v${nextNumber}`,
+    label: `v${nextNumber}`,
     isCurrent: true,
+    isFinal: false,
     macerationStartedAt: null,
     macerationTargetAt: null,
     macerationNotes: null,
     createdAt: now,
   })
-  await saveFormulaRows(versionId, rows, session)
+  await saveFormulaRows(versionId, sourceRows, session)
   await session.update(products).set({ updatedAt: now }).where(eq(products.id, productId))
   return versionId
 }
 
-export async function commitNewVersion(
+export async function createVersion(
   productId: string,
   variantId: string,
   userId: string,
-  rows: FormulaRow[],
-  expectedVersionId: string | null,
+  input: { copyFromVersionId?: string | null } = {},
 ) {
-  return db.transaction((tx) =>
-    commitVersion(tx, productId, variantId, userId, rows, expectedVersionId),
-  )
+  return db.transaction((tx) => createVersionInTransaction(tx, productId, variantId, userId, input))
+}
+
+export async function deleteVersion(versionId: string, productId: string, userId: string) {
+  await db.transaction(async (tx) => {
+    await requireWritableProduct(tx, productId, userId)
+    const version = await getVersionForWrite(tx, productId, versionId)
+
+    const siblings = await tx
+      .select()
+      .from(formulaVersions)
+      .where(eq(formulaVersions.variantId, version.variantId))
+    if (siblings.length <= 1) {
+      throw new ProductWriteError(409, 'last_version', 'The last version cannot be deleted')
+    }
+
+    const linkedPatches = await tx
+      .select()
+      .from(formulaPatches)
+      .where(eq(formulaPatches.baseVersionId, versionId))
+    for (const patch of linkedPatches) {
+      await tx
+        .update(formulaPatches)
+        .set({
+          baseVersionId: null,
+          status: patch.status === 'pending' ? 'rejected' : patch.status,
+          resolvedAt: patch.status === 'pending' ? new Date().toISOString() : patch.resolvedAt,
+        })
+        .where(eq(formulaPatches.id, patch.id))
+    }
+
+    await tx.delete(formulaRows).where(eq(formulaRows.versionId, versionId))
+    await tx.delete(formulaVersions).where(eq(formulaVersions.id, versionId))
+
+    if (version.isFinal) {
+      await tx
+        .update(productVariants)
+        .set({ isSelectedFinal: false })
+        .where(eq(productVariants.id, version.variantId))
+    }
+
+    if (version.isCurrent) {
+      const remaining = siblings
+        .filter((item) => item.id !== versionId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.versionNumber - a.versionNumber)
+      const nextOpen = remaining[0]
+      if (nextOpen) {
+        await tx
+          .update(formulaVersions)
+          .set({ isCurrent: true })
+          .where(eq(formulaVersions.id, nextOpen.id))
+      }
+    }
+
+    await tx
+      .update(products)
+      .set({ updatedAt: new Date().toISOString() })
+      .where(eq(products.id, productId))
+  })
+  return getWorkspace(productId, userId)
+}
+
+export async function setFinalVersion(versionId: string, productId: string, userId: string) {
+  await db.transaction(async (tx) => {
+    await requireWritableProduct(tx, productId, userId)
+    const version = await getVersionForWrite(tx, productId, versionId)
+    const rows = await getFormulaRows(version.id, tx)
+    if (!rows.some((row) => row.inci.trim())) {
+      throw new ProductWriteError(
+        409,
+        'empty_formula',
+        'Add at least one ingredient before marking this version as final',
+      )
+    }
+
+    await tx
+      .update(formulaVersions)
+      .set({ isFinal: false })
+      .where(eq(formulaVersions.productId, productId))
+    await tx.update(formulaVersions).set({ isFinal: true }).where(eq(formulaVersions.id, versionId))
+
+    await tx
+      .update(productVariants)
+      .set({ isSelectedFinal: false })
+      .where(eq(productVariants.productId, productId))
+    await tx
+      .update(productVariants)
+      .set({ isSelectedFinal: true })
+      .where(eq(productVariants.id, version.variantId))
+
+    await tx
+      .update(products)
+      .set({ updatedAt: new Date().toISOString() })
+      .where(eq(products.id, productId))
+  })
+  await refreshDerived(productId, userId)
+  return getWorkspace(productId, userId)
 }
 
 export async function createVariant(
@@ -995,19 +1164,11 @@ export async function resolvePatch(
           'Ask for a new proposal based on the current formula',
         )
       }
-      const version = await getCurrentVersionForVariant(patch.variantId, tx)
-      const currentRows = version ? await getFormulaRows(version.id, tx) : []
+      const version = await getVersionForWrite(tx, productId, patch.baseVersionId, patch.variantId)
+      const currentRows = await getFormulaRows(version.id, tx)
       const operations = parseJson<PatchOperation[]>(patch.operations, [])
       const nextRows = applyPatchOperations(currentRows, operations)
-      await commitVersion(
-        tx,
-        productId,
-        patch.variantId,
-        userId,
-        nextRows,
-        patch.baseVersionId,
-        `patch-${patchId.slice(0, 8)}`,
-      )
+      await saveVersionRowsInTransaction(tx, productId, version.id, userId, nextRows, patch.variantId)
     }
     await tx
       .update(formulaPatches)
@@ -1039,6 +1200,8 @@ export async function getWorkspace(productId: string, userId: string) {
   const variants =
     (await loadCurrentVariantFormulas([productId], { allVersions: true })).get(productId) ?? []
   const selectedFinalVariantId = variants.find((item) => item.variant.isSelectedFinal)?.variant.id ?? null
+  const selectedFinalVersionId =
+    variants.flatMap((item) => item.versions).find((version) => version.isFinal)?.id ?? null
 
   const [checks, thread] = await Promise.all([
     db.select().from(regulatoryChecks).where(eq(regulatoryChecks.productId, productId)),
@@ -1053,6 +1216,7 @@ export async function getWorkspace(productId: string, userId: string) {
     stage: stageFromVariants(variants),
     variants,
     selectedFinalVariantId,
+    selectedFinalVersionId,
     activeVariantId,
     patches,
     checks: checks.map((check) => ({

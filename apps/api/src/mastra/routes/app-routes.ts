@@ -25,10 +25,13 @@ import {
   type PasswordErrorCode,
 } from '../../lib/auth.js'
 import {
-  commitNewVersion,
+  createVersion,
+  deleteVersion,
   ProductWriteError,
   createProduct,
   createVariant,
+  saveVersionRows,
+  setFinalVersion,
   deleteProduct,
   duplicateProduct,
   getWorkspace,
@@ -479,22 +482,73 @@ export const appRoutes = [
         const body = z
           .object({
             variantId: z.string(),
+            versionId: z.string(),
             rows: z.array(FormulaRowSchema),
-            expectedVersionId: z.string().nullable(),
           })
           .parse(await c.req.json())
-        const versionId = await commitNewVersion(
-          productId, body.variantId, user.id, body.rows, body.expectedVersionId,
+        const versionId = await saveVersionRows(
+          productId,
+          body.versionId,
+          user.id,
+          body.rows,
+          body.variantId,
         )
-        const finalWorkspace = await getWorkspace(productId, user.id)
-        const isFinal = finalWorkspace?.selectedFinalVariantId === body.variantId
-        const derived = isFinal ? await refreshDerived(productId, user.id) : null
+        const workspace = await getWorkspace(productId, user.id)
+        const savedVersion = workspace?.variants
+          .flatMap((item) => item.versions)
+          .find((version) => version.id === versionId)
+        const derived = savedVersion?.isFinal ? await refreshDerived(productId, user.id) : null
         return c.json({
           ok: true,
           versionId,
-          workspace: isFinal ? await getWorkspace(productId, user.id) : finalWorkspace,
+          workspace: derived ? await getWorkspace(productId, user.id) : workspace,
           ...(derived ?? {}),
         })
+      }),
+  }),
+  registerApiRoute('/app/products/:productId/variants/:variantId/versions', {
+    method: 'POST',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const productId = c.req.param('productId')
+        const variantId = c.req.param('variantId')
+        const body = z
+          .object({
+            copyFromVersionId: z.string().nullable().optional(),
+          })
+          .parse(await c.req.json().catch(() => ({})))
+        const versionId = await createVersion(productId, variantId, user.id, body)
+        const workspace = await getWorkspace(productId, user.id)
+        return c.json({ versionId, workspace }, 201)
+      }),
+  }),
+  registerApiRoute('/app/products/:productId/versions/:versionId', {
+    method: 'DELETE',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const workspace = await deleteVersion(
+          c.req.param('versionId'),
+          c.req.param('productId'),
+          user.id,
+        )
+        if (!workspace) return c.json({ error: 'Not found' }, 404)
+        return c.json({ workspace })
+      }),
+  }),
+  registerApiRoute('/app/products/:productId/versions/:versionId/final', {
+    method: 'PATCH',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const workspace = await setFinalVersion(
+          c.req.param('versionId'),
+          c.req.param('productId'),
+          user.id,
+        )
+        if (!workspace) return c.json({ error: 'Not found' }, 404)
+        return c.json({ workspace })
       }),
   }),
   registerApiRoute('/app/products/:productId/variants', {

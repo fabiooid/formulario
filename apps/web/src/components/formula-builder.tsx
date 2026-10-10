@@ -36,23 +36,16 @@ import { cn } from '@/lib/utils'
 export function FormulaBuilder({
   rows,
   onChange,
-  onSave,
-  saving,
-  hasChanges,
+  autosaving,
   variantControls,
   claims = [],
-  locked = false,
   proposal,
 }: {
   rows: FormulaRow[]
   onChange: (rows: FormulaRow[]) => void
-  onSave: () => void
-  saving?: boolean
-  hasChanges: boolean
+  autosaving?: boolean
   variantControls?: ReactNode
   claims?: ProductClaim[]
-  /** Viewing a non-current saved version — formula is read-only. */
-  locked?: boolean
   /** When set, the table shows a read-only proposed formula with accept/reject. */
   proposal?: {
     stale?: boolean
@@ -62,7 +55,7 @@ export function FormulaBuilder({
   }
 }) {
   const { t } = useLanguage()
-  const readOnly = locked || !!proposal
+  const readOnly = !!proposal
   const total = formulaPercentTotal(rows)
   const balanced = isPercentBalanced(rows)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -124,15 +117,12 @@ export function FormulaBuilder({
   return (
     <TooltipProvider delay={200}>
       <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold tracking-normal">{t('formula.title')}</h2>
-            {variantControls}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {proposal ? t('formula.proposalSubtitle') : t('formula.subtitle')}
-          </p>
+          {variantControls}
+          {proposal ? (
+            <p className="mt-1 text-xs text-muted-foreground">{t('formula.proposalSubtitle')}</p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className={cn('font-mono text-sm tabular-nums', !balanced && 'text-amber-600')}>
@@ -158,12 +148,12 @@ export function FormulaBuilder({
             </>
           ) : (
             <>
-              <Button variant="outline" size="sm" onClick={addRow}>
+              {autosaving ? (
+                <span className="text-xs text-muted-foreground">{t('formula.saving')}</span>
+              ) : null}
+              <Button variant="outline" size="sm" onClick={addRow} disabled={autosaving}>
                 <PlusIcon data-icon="inline-start" />
                 {t('formula.addRow')}
-              </Button>
-              <Button size="sm" onClick={onSave} disabled={saving || !hasChanges}>
-                {saving ? t('formula.saving') : t('formula.commit')}
               </Button>
             </>
           )}

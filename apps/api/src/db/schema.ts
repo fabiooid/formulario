@@ -57,6 +57,7 @@ export const formulaVersions = sqliteTable('formula_versions', {
   versionNumber: integer('version_number').notNull(),
   label: text('label'),
   isCurrent: integer('is_current', { mode: 'boolean' }).notNull().default(false),
+  isFinal: integer('is_final', { mode: 'boolean' }).notNull().default(false),
   frozenAt: text('frozen_at'),
   macerationStartedAt: text('maceration_started_at'),
   macerationTargetAt: text('maceration_target_at'),

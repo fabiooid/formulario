@@ -21,7 +21,7 @@ import { db, libsql } from '../db/client.js'
 import { mcpApp, MCP_SCOPE } from './routes.js'
 import { createProductViaMcp, submitFormula, scopedWorkspace } from './tools.js'
 import { signAppToken } from '../lib/auth.js'
-import { createProduct, getWorkspace, resolvePatch, commitNewVersion } from '../services/products.js'
+import { createProduct, createVersion, deleteVersion, getWorkspace, resolvePatch } from '../services/products.js'
 let appToken: string
 const origin = 'http://localhost:4111'
 const verifier = 'a'.repeat(43)
@@ -106,7 +106,8 @@ describe('OAuth and MCP transport', () => {
     expect((await getWorkspace(createdBody.product.id, 'owner'))!.variants[0].rows).toEqual([])
     const input = await fixture()
     const before = await (await rpc(tokens.access_token, 'tools/call', { name: 'read_product', arguments: { productId: input.productId } })).json()
-    expect(JSON.parse(before.result.content[0].text).variants[0].version.id).toBe(input.baseVersionId)
+    const read = JSON.parse(before.result.content[0].text)
+    expect(read.variants[0].versions.map((version: { id: string }) => version.id)).toContain(input.baseVersionId)
     const proposed = await (await rpc(tokens.access_token, 'tools/call', { name: 'submit_formula_proposal', arguments: input })).json()
     const pending = JSON.parse(proposed.result.content[0].text)
     expect(pending.status).toBe('pending')
@@ -158,9 +159,12 @@ describe('proposal isolation and validation', () => {
     await expect(submitFormula(principal, { ...input, rows: [input.rows[0]] })).rejects.toThrow('total')
     await expect(submitFormula(principal, { ...input, rows: input.rows.map(r => ({ ...r, id: 'foreign' })) })).rejects.toThrow('Row IDs')
     const pending = await submitFormula(principal, input)
-    const w = (await getWorkspace(input.productId, 'owner'))!
-    await commitNewVersion(input.productId, input.variantId, 'owner', w.variants[0].rows.map(r => ({ ...r, notes: 'changed' })), input.baseVersionId)
+    await createVersion(input.productId, input.variantId, 'owner')
+    await expect(submitFormula(principal, { ...input, baseVersionId: 'missing' })).rejects.toThrow('version')
+    expect(await resolvePatch(pending.patchId, input.productId, 'owner', 'accepted')).toMatchObject({
+      status: 'accepted',
+    })
+    await deleteVersion(input.baseVersionId, input.productId, 'owner')
     await expect(submitFormula(principal, input)).rejects.toThrow('version')
-    await expect(resolvePatch(pending.patchId, input.productId, 'owner', 'accepted')).rejects.toMatchObject({ status: 409 })
   })
 })

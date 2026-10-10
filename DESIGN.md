@@ -8,7 +8,7 @@ Product name in the UI: **Formulario**.
 
 Calm, dense, and formula-first. This is a quiet lab notebook for indie skincare and perfume — not a chat app, not a marketing site, not a dashboard full of charts.
 
-- The **formula table** is the source of truth. Chat proposes. The person commits.
+- The **formula table** is the source of truth. Chat proposes. The person accepts on that formula.
 - Surfaces stay quiet. Color, motion, and decoration are used sparingly.
 - Everything should feel like it belongs to the same product: same spacing, same cards, same buttons, same words.
 
@@ -236,9 +236,9 @@ The product description stays open always (no collapse). Keep workspace sections
 
 Use `WorkspaceSection` for a quiet heading (no step number). Empty regulatory state uses `EmptyState`, not a locked dashed card or a checklist of steps.
 
-Formula header shows **versions only for now**: an editable version name (quiet inline rename, same pattern as the product title) and a compact select to switch saved versions. Trial/variant picker, New variant, and Duplicate stay out of this header for this pass (API still uses the product’s default variant under the hood). Add ingredient and Commit remain visible; Commit is disabled when the rows match the committed formula or a save is pending. Product Duplicate / Archive / Delete live in the breadcrumb overflow menu, next to the pin.
+Formula header shows **versions only for now**: a bordered dropdown shows the version name and switches saved versions. Each version is a separate formula you can try — there is no locked history. A pencil opens a field in that same spot to rename the version you are viewing. Beside the name: **Choose as final** (shows **Final** on the chosen version), **New version** (empty or copy from another version), and **Delete** (not the last version). Trial/variant picker, New variant, and Duplicate stay out of this header for this pass (API still uses the product’s default variant under the hood). Any version is editable; edits autosave shortly after typing. **Add ingredient** stays visible. There is no Commit button. Product Duplicate / Archive / Delete live in the breadcrumb overflow menu, next to the pin.
 
-Pending formula proposals (MCP or agent) preview **in the formula table** as a read-only proposed state: same table, muted rows, short subtitle under the heading (“Proposed formula — accept to commit, or reject.”), Accept / Reject where Commit usually sits. The MCP/agent patch summary is still stored and returned by the API, but it is not shown above the table for now. The person still accepts before it becomes the committed version. Local unsaved drafts stay editable; resolve them before accepting. The open product workspace refreshes about every ten seconds so new proposals appear without leaving the page.
+Pending formula proposals (MCP or agent) preview **in the formula table** as a read-only proposed state: same table, muted rows, short subtitle under the heading (“Proposed formula — accept to apply on this version, or reject.”), Accept / Reject in the toolbar. The MCP/agent patch summary is still stored and returned by the API, but it is not shown above the table for now. Accept applies rows on the version the proposal was based on. Wait for autosave to finish before accepting. The open product workspace refreshes about every ten seconds so new proposals appear without leaving the page.
 
 Formula table is full width. The agent is not embedded here — it lives in the app chrome.
 
@@ -252,7 +252,7 @@ Reuse these. Do not restyle them ad hoc for one screen.
 
 | Variant | When |
 |---|---|
-| `default` | The one main action on a block (Create, Commit, Send, Sign in) |
+| `default` | The one main action on a block (Create, Send, Sign in) |
 | `outline` | Secondary action next to a primary (Add row, Duplicate, Reject) |
 | `ghost` | Quiet chrome (menu, delete in a table, close) |
 | `destructive` | Harmful (sign out). Prefer ghost/destructive in menus, not a red primary in the page. |
@@ -342,18 +342,18 @@ Plain, short, calm. No hype, no emoji in product UI, no “AI-powered” languag
 - Loading: “Loading…”
 - Empty: a title + one sentence of what to do next
 - Compliance honesty: never say a formula is legally on the market. Unknown INCI stays “unknown”.
-- Formula is “committed”, patches are “accepted” or “rejected”.
+- Formula versions are peer formulas you can try; each autosaves; patches are “accepted” or “rejected”.
 - Claims always include a visible “No claims” state. Empty claims should feel intentional, not missing.
 
 ---
 
 ## Interaction details worth keeping
 
-- **Inline rename:** the workspace title, formula version label, and the Lab Assistant thread name are inputs that look like a heading until hover/focus (`hover:bg-muted/50`, ring on focus). Enter saves, Escape cancels, empty blur restores the old name.
-- **Formula versions (for now):** one editable version name + compact switcher beside the formula heading. No trial/variant dropdown in this header yet. Switching versions shows that version’s formula and, for perfume only, its maceration. Non-current versions are formula read-only; rename and maceration still apply to the version you are viewing.
+- **Inline rename:** the workspace title and the Lab Assistant thread name are inputs that look like a heading until hover/focus (`hover:bg-muted/50`, ring on focus). Enter saves, Escape cancels, empty blur restores the old name.
+- **Formula versions (for now):** a bordered dropdown in the formula header shows the version name and switches saved versions. Each version is a formula you can edit. A pencil opens a field in that same spot to rename the version you are viewing. Enter saves, Escape cancels, empty blur restores the old name. **Choose as final**, **New version**, and **Delete** sit beside the dropdown. No trial/variant dropdown in this header yet. Switching versions shows that version’s formula and, for perfume only, its maceration. Regulatory INCI and market checks use the **final** version’s rows.
 - **Remembered chrome:** sidebar collapsed, product view (cards/list), theme, language.
 - **Claim warnings on formula rows:** a Lucide `TriangleAlert` sits immediately after the ingredient name. The stock badge stays at the end of the cell. Hover or focus shows the reason in a shadcn Tooltip. Blocking vegan hits use `text-destructive`; missing flags stay muted. Do not use a banner above the table.
-- **Uncommitted formula edits:** keep a separate draft for each user, organisation, product and variant in the current browser tab. Refreshing workspace data or switching products/variants must preserve it. Show a quiet text notice and an outline discard action with confirmation. Commit or discard edits before accepting an agent patch. Failed saves keep the draft and show an error; a stale draft must never silently overwrite a newer committed version.
+- **Formula autosave:** edits on the version you are viewing save to the server after a short pause and again before **New version**, switching versions, or leaving the page. Failed saves keep what you typed and show an error. Wait for saving to finish before accepting an agent patch.
 - **Destructive in menus:** Delete lives last in the product overflow menu (after Duplicate and Archive), with a confirmation dialog. Same pattern as inventory.
 - **Archived product:** quiet restore line under the title (same tone as the uncommitted-draft notice). Hide the pin while archived.
 - **Paid gates:** same layout, `EmptyState` inside — do not hide the panel entirely. Agent pane included.
