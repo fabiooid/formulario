@@ -167,16 +167,38 @@ export type HomeAttentionKind =
   | 'maceration_ready'
   | 'macerating'
 
+export type HomeAtRiskKind = 'banned' | 'missing_ingredient' | 'stock_out'
+
 export interface HomeAttention {
   id: string
   kind: HomeAttentionKind
   href: string
   productName: string
   versionLabel?: string
+  versionId?: string
   inci?: string
   claim?: ProductClaim
   daysLeft?: number
+  daysRested?: number
+  macerationProgress?: number | null
   totalPercent?: number
+}
+
+export interface HomeAtRiskReason {
+  kind: HomeAtRiskKind
+  inci: string
+  market?: string
+  instrument?: string
+  onHandGrams?: number | null
+  formulaPercent?: number
+}
+
+export interface HomeAtRisk {
+  id: string
+  kind: HomeAtRiskKind
+  href: string
+  productName: string
+  reasons: HomeAtRiskReason[]
 }
 
 export interface HomeFormulaCost {
@@ -187,9 +209,16 @@ export interface HomeFormulaCost {
   costPerKg: number | null
   pricedPercent: number
   hasGap: boolean
+  balanced: boolean
+  fullCost: boolean
+}
+
+export type HomePurchaseSuggestion = PurchaseSuggestion & {
+  onHandGrams?: number | null
 }
 
 export interface HomeDashboard {
+  productCount: number
   shelf: {
     value: number
     valuedCount: number
@@ -201,8 +230,10 @@ export interface HomeDashboard {
     completeCount: number
     totalCount: number
   }
-  purchaseSuggestions: PurchaseSuggestion[]
+  purchaseSuggestions: HomePurchaseSuggestion[]
   attention: HomeAttention[]
+  attentionTotal: number
+  atRisk: HomeAtRisk[]
   formulaCosts: HomeFormulaCost[]
 }
 
