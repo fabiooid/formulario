@@ -246,6 +246,10 @@ A morning brief, not a metrics wall. Same cards as everywhere else. Small icons,
 
 Ban and claim checks on Home run only after a final version exists (same gate as Regulatory). Money and grams use `font-mono tabular-nums`. Shelf value only counts in-house and low stock that have both a price and an amount on hand. Always show coverage so a missing price cannot look like zero. Empty purchase copy must stay honest when there are no formulas yet.
 
+### Calendar
+
+A calm **list timeline** (not a month grid). Two sections: maceration dates on perfume versions the maker can open (same visible-version rule as Home), and stock to watch (low / to buy) **without invented run-out dates**. Each row links to the product version or Ingredients. Empty states stay honest.
+
 ### Product workspace
 
 Wide shell. Two peer tabs, not a numbered sequence. One column, so the agent pane can open without squeezing two work areas.

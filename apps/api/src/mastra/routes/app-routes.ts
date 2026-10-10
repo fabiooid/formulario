@@ -70,6 +70,7 @@ import {
   updateSupplier,
 } from '../../services/suppliers.js'
 import { getHomeDashboard } from '../../services/home.js'
+import { getCalendarDashboard } from '../../services/calendar.js'
 import { listPendingProposals, resolveProposal } from '../../services/proposals.js'
 import { createFeedback } from '../../services/feedback.js'
 import { libsql } from '../../db/client.js'
@@ -306,6 +307,11 @@ export const appRoutes = [
     method: 'GET',
     requiresAuth: false,
     handler: async (c) => withUser(c, async (user) => c.json(await getHomeDashboard(user.id))),
+  }),
+  registerApiRoute('/app/calendar', {
+    method: 'GET',
+    requiresAuth: false,
+    handler: async (c) => withUser(c, async (user) => c.json(await getCalendarDashboard(user.id))),
   }),
   registerApiRoute('/app/suppliers', {
     method: 'GET',

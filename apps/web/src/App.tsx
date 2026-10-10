@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/auth'
 import { HomePage } from '@/pages/home'
 import { IngredientsPage } from '@/pages/ingredients'
 import { SuppliersPage } from '@/pages/suppliers'
+import { CalendarPage } from '@/pages/calendar'
 import { ChoosePasswordPage } from '@/pages/choose-password'
 import { LoginPage } from '@/pages/login'
 import { ProductWorkspacePage } from '@/pages/product-workspace'
@@ -69,6 +70,7 @@ export function App() {
                   <Route path="/products/:id" element={<ProductWorkspacePage />} />
                   <Route path="/ingredients" element={<IngredientsPage />} />
                   <Route path="/suppliers" element={<SuppliersPage />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
                 </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

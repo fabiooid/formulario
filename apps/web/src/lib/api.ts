@@ -267,6 +267,32 @@ export interface HomeDashboard {
   formulaCosts: HomeFormulaCost[]
 }
 
+export interface CalendarMacerationEntry {
+  id: string
+  kind: 'maceration_ready' | 'maceration_target'
+  date: string | null
+  href: string
+  productName: string
+  versionLabel: string
+  daysLeft?: number
+}
+
+export interface CalendarStockEntry {
+  id: string
+  kind: 'stock_low' | 'stock_to_buy'
+  date: null
+  href: string
+  inci: string
+  stockStatus: 'low' | 'to_buy'
+  onHandGrams?: number | null
+  canEstimateRunOut: false
+}
+
+export interface CalendarDashboard {
+  maceration: CalendarMacerationEntry[]
+  stock: CalendarStockEntry[]
+}
+
 export interface Workspace {
   product: ProductSummary
   stage: ProductStage
@@ -405,6 +431,7 @@ export const api = {
       body: JSON.stringify({ organizationId }),
     }),
   getHome: () => request<HomeDashboard>('/app/home'),
+  getCalendar: () => request<CalendarDashboard>('/app/calendar'),
   listSuppliers: () => request<{ suppliers: Supplier[] }>('/app/suppliers'),
   createSupplier: (input: SupplierInput) =>
     request<{ supplier: Supplier }>('/app/suppliers', {
