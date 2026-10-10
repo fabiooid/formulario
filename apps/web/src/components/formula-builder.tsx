@@ -125,7 +125,7 @@ export function FormulaBuilder({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className={cn('font-mono text-sm tabular-nums', !balanced && 'text-amber-600')}>
+          <span className={cn('font-mono text-sm tabular-nums', !balanced && 'text-warning')}>
             {t('formula.total', { percent: total })} {!balanced ? t('formula.totalWarn') : ''}
           </span>
           {proposal ? (
@@ -229,11 +229,13 @@ export function FormulaBuilder({
                 <TableCell className="border-r border-border bg-muted/20 p-0 text-muted-foreground">
                   <div className="flex h-12 items-center justify-center gap-1">
                     {readOnly ? null : (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon-xs"
                         draggable
                         aria-label={`Move ingredient ${index + 1}`}
-                        className="cursor-grab touch-none rounded p-1 text-muted-foreground/60 hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                        className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
                         onDragStart={(event) => {
                           setDraggingId(row.id)
                           event.dataTransfer.effectAllowed = 'move'
@@ -245,7 +247,7 @@ export function FormulaBuilder({
                         }}
                       >
                         <GripVerticalIcon className="size-3.5" />
-                      </button>
+                      </Button>
                     )}
                     <span className="font-mono text-xs">{index + 1}</span>
                   </div>
@@ -344,8 +346,15 @@ function ClaimRowWarning({ hits }: { hits: ClaimHit[] }) {
   return (
     <Tooltip>
       <TooltipTrigger
-        className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        aria-label={t('claims.rowWarning')}
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="shrink-0 text-muted-foreground"
+            aria-label={t('claims.rowWarning')}
+          />
+        }
       >
         <TriangleAlertIcon className={cn('size-3.5', blocked && 'text-destructive')} />
       </TooltipTrigger>
