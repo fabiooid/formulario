@@ -6,6 +6,7 @@ import {
   formulaPercentTotal,
   isPercentBalanced,
   runRegulatoryChecks,
+  versionDisplayLabel,
   type ProductClaim,
 } from '@formulario/domain'
 import { listProductFormulas, loadRules } from './products.js'
@@ -24,7 +25,8 @@ export type HomeAttention = {
   kind: HomeAttentionKind
   href: string
   productName: string
-  variantLabel?: string
+  /** Version display name (versions-only UI). */
+  versionLabel?: string
   inci?: string
   claim?: ProductClaim
   daysLeft?: number
@@ -34,7 +36,7 @@ export type HomeAttention = {
 export type HomeFormulaCost = {
   productId: string
   productName: string
-  variantLabel: string
+  versionLabel: string
   href: string
   costPerKg: number | null
   pricedPercent: number
@@ -58,19 +60,36 @@ function daysUntil(iso?: string | null) {
 function pickCostVariant<
   T extends {
     variant: { label: string }
+    version: { label?: string | null; versionNumber: number } | null
     rows: Array<{ inci: string; percent: number }>
-    versions: Array<{ isFinal: boolean; rows: Array<{ inci: string; percent: number }> }>
+    versions: Array<{
+      label?: string | null
+      versionNumber: number
+      isFinal: boolean
+      rows: Array<{ inci: string; percent: number }>
+    }>
   },
 >(variants: T[]) {
   for (const item of variants) {
     const finalVersion = item.versions.find(
       (version) => version.isFinal && version.rows.some((row) => row.inci.trim()),
     )
-    if (finalVersion) return { variant: item.variant, rows: finalVersion.rows }
+    if (finalVersion) {
+      return {
+        versionLabel: versionDisplayLabel(finalVersion),
+        rows: finalVersion.rows,
+      }
+    }
   }
   const withRows = variants.filter((item) => item.rows.some((row) => row.inci.trim()))
   if (!withRows.length) return null
-  return withRows[0]
+  const picked = withRows[0]
+  return {
+    versionLabel: picked.version
+      ? versionDisplayLabel(picked.version)
+      : picked.variant.label,
+    rows: picked.rows,
+  }
 }
 
 export async function getHomeDashboard(userId: string) {
@@ -84,7 +103,7 @@ export async function getHomeDashboard(userId: string) {
   const formulaCosts: HomeFormulaCost[] = []
 
   function pushAttention(item: HomeAttention) {
-    const key = `${item.kind}:${item.href}:${item.inci ?? item.variantLabel ?? item.totalPercent ?? ''}`
+    const key = `${item.kind}:${item.href}:${item.inci ?? item.versionLabel ?? item.totalPercent ?? ''}`
     if (seenAttention.has(key)) return
     seenAttention.add(key)
     attention.push(item)
@@ -102,6 +121,10 @@ export async function getHomeDashboard(userId: string) {
         if (row.inci.trim()) usedIngredients.push({ inci: row.inci, productName: product.name })
       }
 
+      const versionLabel = version
+        ? versionDisplayLabel(version)
+        : variant.label
+
       // Home maceration alerts only for perfume, keyed off the current version.
       if (product.type === 'perfume') {
         if (version?.macerationStatus === 'ready') {
@@ -110,7 +133,7 @@ export async function getHomeDashboard(userId: string) {
             kind: 'maceration_ready',
             href,
             productName: product.name,
-            variantLabel: variant.label,
+            versionLabel,
           })
         } else if (version?.macerationStatus === 'macerating') {
           pushAttention({
@@ -118,7 +141,7 @@ export async function getHomeDashboard(userId: string) {
             kind: 'macerating',
             href,
             productName: product.name,
-            variantLabel: variant.label,
+            versionLabel,
             daysLeft: daysUntil(version.macerationTargetAt),
           })
         }
@@ -130,7 +153,7 @@ export async function getHomeDashboard(userId: string) {
           kind: 'unbalanced',
           href,
           productName: product.name,
-          variantLabel: variant.label,
+          versionLabel,
           totalPercent: formulaPercentTotal(rows),
         })
       }
@@ -195,7 +218,7 @@ export async function getHomeDashboard(userId: string) {
       formulaCosts.push({
         productId: product.id,
         productName: product.name,
-        variantLabel: picked.variant.label,
+        versionLabel: picked.versionLabel,
         href,
         costPerKg: cost.costPerKg,
         pricedPercent: cost.pricedPercent,

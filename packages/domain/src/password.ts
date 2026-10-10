@@ -52,6 +52,16 @@ function lengthOf(password: string) {
 }
 
 export function passwordCriteria(password: string): Record<PasswordCriterion, boolean> {
+  // Empty field: every rule unread / unmet, including no spaces (nothing typed yet).
+  if (lengthOf(password) === 0) {
+    return {
+      min_length: false,
+      no_spaces: false,
+      has_letter: false,
+      has_number: false,
+      has_special: false,
+    }
+  }
   return {
     min_length: lengthOf(password) >= PASSWORD_MIN_LENGTH,
     no_spaces: !/\s/u.test(password),

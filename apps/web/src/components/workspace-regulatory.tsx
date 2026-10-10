@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { OFFICIAL_LINKS, type RegulatoryCheck, type RegulatoryHit, type VariantWorkspace } from '@/lib/api'
 import { useLanguage } from '@/i18n/language-provider'
+import { versionDisplayLabel } from '@formulario/domain'
 
 export function WorkspaceRegulatory({
   variant,
@@ -17,13 +18,16 @@ export function WorkspaceRegulatory({
   checks: RegulatoryCheck[]
 }) {
   const { t } = useLanguage()
+  const finalName = variant.version
+    ? versionDisplayLabel(variant.version)
+    : variant.variant.label
 
   return (
     <div className="flex flex-col gap-8">
       <InciPreview
         rows={variant.rows}
         preview={false}
-        trailing={<Badge variant="secondary">{variant.variant.label}</Badge>}
+        trailing={<Badge variant="secondary">{finalName}</Badge>}
       />
 
       <Tabs defaultValue="markets">

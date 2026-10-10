@@ -22,7 +22,7 @@ import { formulaContentEquals } from '@/lib/formula-drafts'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/lib/auth'
 import { useLanguage } from '@/i18n/language-provider'
-import type { ProductClaim } from '@formulario/domain'
+import { versionDisplayLabel, type ProductClaim } from '@formulario/domain'
 
 function hasIngredients(rows: FormulaRow[]) {
   return rows.some((row) => row.inci.trim())
@@ -412,11 +412,27 @@ function ProductWorkspace({ id }: { id: string }) {
             ) : (
               <EmptyState
                 title={t('workspace.final.lockedTitle')}
-                description={t('workspace.final.lockedDescription')}
+                description={
+                  viewedVersion && hasIngredients(viewedVersion.rows)
+                    ? t('workspace.final.lockedDescriptionNamed', {
+                        version: versionDisplayLabel(viewedVersion),
+                      })
+                    : t('workspace.final.lockedDescription')
+                }
               >
-                <Button variant="outline" size="sm" onClick={() => setTab('workspace')}>
-                  {t('workspace.final.editFormula')}
-                </Button>
+                {viewedVersion && hasIngredients(viewedVersion.rows) ? (
+                  <Button
+                    size="sm"
+                    disabled={setFinalVersionMutation.isPending || !rowsSynced}
+                    onClick={() => setFinalVersionMutation.mutate(viewedVersion.id)}
+                  >
+                    {t('workspace.versions.chooseFinal')}
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => setTab('workspace')}>
+                    {t('workspace.final.editFormula')}
+                  </Button>
+                )}
               </EmptyState>
             )}
           </TabsContent>

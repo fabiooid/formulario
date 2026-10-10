@@ -36,7 +36,7 @@ describe('password rules', () => {
   it('reports live criteria as the person types', () => {
     expect(passwordCriteria('')).toEqual({
       min_length: false,
-      no_spaces: true,
+      no_spaces: false,
       has_letter: false,
       has_number: false,
       has_special: false,

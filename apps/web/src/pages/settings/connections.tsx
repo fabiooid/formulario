@@ -21,9 +21,25 @@ export function SettingsConnectionsPage() {
   return <SettingsSection title={t('connections.title')}>
     <Card>
       <CardHeader><CardTitle>{t('connections.title')}</CardTitle><CardDescription>{t('connections.description')}</CardDescription></CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm">{t('connections.setup')}</p>
+      <CardContent className="flex flex-col gap-3">
+        <ol className="list-decimal space-y-2 pl-5 text-sm">
+          <li>{t('connections.step1')}</li>
+          <li>{t('connections.step2')}</li>
+          <li>{t('connections.step3')}</li>
+        </ol>
+        <p className="text-sm font-medium">{t('connections.urlLabel')}</p>
         {connections.data && <code className="block break-all rounded-md bg-muted p-3 text-sm">{connections.data.endpoint}</code>}
+        <p className="text-sm text-muted-foreground">
+          {t('connections.docsHint')}{' '}
+          <a
+            href="https://github.com/fabiooid/formulario/blob/main/docs/mcp.md"
+            target="_blank"
+            rel="noreferrer"
+            className="text-foreground underline underline-offset-4"
+          >
+            {t('connections.docsLink')}
+          </a>
+        </p>
         <p className="text-sm text-muted-foreground">{t('connections.boundary')}</p>
       </CardContent>
     </Card>

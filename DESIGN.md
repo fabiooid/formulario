@@ -207,7 +207,7 @@ The Lab Assistant sparkle is hidden here. Breadcrumb: app name / Settings / curr
 
 ### Product list
 
-Header actions, right side: Active / Archived filter, view switcher, then primary **New from brief**.
+Header actions, right side: Active / Archived filter, view switcher, then primary **New product**.
 
 - **Cards** (default): 1 / 2 / 3 columns (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`). Cards cap at `max-w-sm` and share one height: 1-line name, 2-line brief (empty still uses the slot), only type and stage pills, one Updated date (creation date retained in the date hover text and accessible text). Remove the page subtitle; keep card header/content spacing at gap-3 without extra header bottom padding. Same meta order as list: type, then stage. Markets belong inside the product. Selected claims use muted Lucide icons (Vegan, Leaf for natural, Sprout for organic), with translated accessible labels and native hover titles; they do not imply certification. Overflow menu (Duplicate / Archive / Delete) sits top-right; pin sits to its left and still reveals on hover.
 - **List:** one bordered card wrapping rows (`rounded-xl border-border/70 shadow-soft`). Each row is a link. Same type and stage metadata as cards. At 800px of available list width, rows use a flexible name/brief column, an 11rem date column, and a 19rem metadata column with equal type/stage slots and a reserved 4rem claim-icon slot. Below that, rows stack. Pin and the same overflow menu sit at the end of the row.
@@ -399,4 +399,4 @@ Product pin and overflow controls use shadcn `icon-sm` buttons (32px targets) an
 
 ### External assistant connections
 
-Connections uses the same narrow Settings card stack. Show the MCP endpoint, brief setup guidance and existing connections with revoke actions. An OAuth request adds a consent card naming the client and return address, explaining which data is shared, and requiring explicit workspace selection. No automatic consent. External proposals appear in the existing formula review UI; the workspace refreshes periodically without replacing local drafts.
+Connections uses the same narrow Settings card stack. Lead with a short maker-language loop (connect assistant → propose formula → accept in Formulario), then the MCP endpoint URL, a link to `docs/mcp.md` for tunnels/HTTPS, and existing connections with revoke actions. An OAuth request adds a consent card naming the client and return address, explaining which data is shared, and requiring explicit workspace selection. No automatic consent. External proposals appear in the existing formula review UI; the workspace refreshes periodically without replacing local drafts.
