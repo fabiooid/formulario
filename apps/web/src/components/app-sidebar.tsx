@@ -11,6 +11,7 @@ import {
   PlugIcon,
   LayoutGridIcon,
   TruckIcon,
+  CalendarDaysIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   SunMoonIcon,
@@ -120,6 +121,7 @@ export function AppSidebar() {
   const productsPath = location.pathname === '/products'
   const ingredientsPath = location.pathname === '/ingredients'
   const suppliersPath = location.pathname === '/suppliers'
+  const calendarPath = location.pathname === '/calendar'
   const workspaceMatch = location.pathname.match(/^\/products\/([^/]+)/)
   const activeProductId = workspaceMatch?.[1]
   const pinnedProducts = (data?.products ?? [])
@@ -314,6 +316,13 @@ export function AppSidebar() {
                 icon={TruckIcon}
                 label={t('nav.suppliers')}
                 active={suppliersPath}
+                onNavigate={closeMobile}
+              />
+              <SidebarNavLink
+                to="/calendar"
+                icon={CalendarDaysIcon}
+                label={t('nav.calendar')}
+                active={calendarPath}
                 onNavigate={closeMobile}
               />
             </nav>
