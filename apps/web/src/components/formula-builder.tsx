@@ -1,6 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
-import { GripVerticalIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  GripVerticalIcon,
+  PlusIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -21,6 +29,14 @@ import { StockBadge } from '@/components/stock-badge'
 import type { FormulaRow } from '@/lib/api'
 import { api } from '@/lib/api'
 import {
+  applyFormulaPercentSort,
+  cycleFormulaPercentSort,
+  readFormulaPercentSort,
+  rowsWithDisplayOrder,
+  writeFormulaPercentSort,
+  type FormulaPercentSort,
+} from '@/lib/formula-sort'
+import {
   evaluateClaimHits,
   findInventoryMatch,
   formulaPercentTotal,
@@ -39,6 +55,7 @@ export function FormulaBuilder({
   autosaving,
   variantControls,
   claims = [],
+  productId,
   proposal,
 }: {
   rows: FormulaRow[]
@@ -46,6 +63,8 @@ export function FormulaBuilder({
   autosaving?: boolean
   variantControls?: ReactNode
   claims?: ProductClaim[]
+  /** Local sort preference key only; never sent to the server. */
+  productId?: string
   /** When set, the table shows a read-only proposed formula with accept/reject. */
   proposal?: {
     stale?: boolean
@@ -60,6 +79,16 @@ export function FormulaBuilder({
   const balanced = isPercentBalanced(rows)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [sortMode, setSortMode] = useState<FormulaPercentSort>('saved')
+
+  useEffect(() => {
+    setSortMode(productId ? readFormulaPercentSort(productId) : 'saved')
+  }, [productId])
+
+  const sorted = sortMode !== 'saved'
+  const displayRows = applyFormulaPercentSort(rows, sortMode)
+  const canDrag = !readOnly && !sorted
+
   const { data: inventoryData } = useQuery({
     queryKey: ['ingredients'],
     queryFn: () => api.listIngredients(),
@@ -77,6 +106,24 @@ export function FormulaBuilder({
     const list = claimHitsByInci.get(key) ?? []
     list.push(hit)
     claimHitsByInci.set(key, list)
+  }
+
+  function setMode(next: FormulaPercentSort) {
+    setSortMode(next)
+    if (productId) writeFormulaPercentSort(productId, next)
+  }
+
+  function cycleSort() {
+    setMode(cycleFormulaPercentSort(sortMode))
+  }
+
+  function backToYourOrder() {
+    setMode('saved')
+  }
+
+  function keepThisOrder() {
+    onChange(rowsWithDisplayOrder(displayRows))
+    setMode('saved')
   }
 
   function updateRow(id: string, patch: Partial<FormulaRow>) {
@@ -102,7 +149,7 @@ export function FormulaBuilder({
   }
 
   function moveRow(sourceId: string, targetId: string) {
-    if (sourceId === targetId) return
+    if (sourceId === targetId || sorted) return
 
     const sourceIndex = rows.findIndex((row) => row.id === sourceId)
     const targetIndex = rows.findIndex((row) => row.id === targetId)
@@ -113,6 +160,23 @@ export function FormulaBuilder({
     nextRows.splice(targetIndex, 0, movedRow)
     onChange(nextRows.map((row, index) => ({ ...row, sortOrder: index })))
   }
+
+  const sortAriaLabel =
+    sortMode === 'saved'
+      ? t('formula.sortAriaYourOrder')
+      : sortMode === 'percent-desc'
+        ? t('formula.sortAriaHighest')
+        : t('formula.sortAriaLowest')
+
+  const ariaSort =
+    sortMode === 'percent-desc' ? 'descending' : sortMode === 'percent-asc' ? 'ascending' : 'none'
+
+  const SortIcon =
+    sortMode === 'percent-desc'
+      ? ArrowDownIcon
+      : sortMode === 'percent-asc'
+        ? ArrowUpIcon
+        : ArrowUpDownIcon
 
   return (
     <TooltipProvider delay={200}>
@@ -164,6 +228,29 @@ export function FormulaBuilder({
         <p className="text-sm text-muted-foreground">{t('workspace.formulaConflict')}</p>
       ) : null}
 
+      {sorted ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <p className="min-w-0 flex-1 basis-full sm:basis-auto">
+            {sortMode === 'percent-desc'
+              ? t('formula.sortNoteHighest')
+              : t('formula.sortNoteLowest')}
+          </p>
+          <Button type="button" size="sm" variant="outline" onClick={backToYourOrder}>
+            {t('formula.sortBack')}
+          </Button>
+          {readOnly ? null : (
+            <Button
+              type="button"
+              size="sm"
+              onClick={keepThisOrder}
+              disabled={autosaving}
+            >
+              {t('formula.sortKeep')}
+            </Button>
+          )}
+        </div>
+      ) : null}
+
       <div className="min-w-0 overflow-x-auto rounded-xl bg-card shadow-soft">
         <Table className="min-w-[36rem] table-fixed">
           <TableHeader className="bg-muted/60">
@@ -174,14 +261,35 @@ export function FormulaBuilder({
               <TableHead className="border-r border-border text-xs tracking-wide text-muted-foreground uppercase">
                 {t('formula.inci')}
               </TableHead>
-              <TableHead className="w-28 border-r border-border text-right text-xs tracking-wide text-muted-foreground uppercase">
-                {t('formula.percent')}
+              <TableHead
+                aria-sort={ariaSort}
+                className="w-28 border-r border-border p-0 text-xs tracking-wide text-muted-foreground uppercase"
+              >
+                <button
+                  type="button"
+                  onClick={cycleSort}
+                  aria-label={sortAriaLabel}
+                  className={cn(
+                    'flex h-10 w-full items-center justify-end gap-1 px-3 text-right font-medium tracking-wide uppercase',
+                    'text-muted-foreground hover:text-foreground',
+                    'focus-visible:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                  )}
+                >
+                  <span>{t('formula.percent')}</span>
+                  <SortIcon
+                    className={cn(
+                      'size-3.5 shrink-0',
+                      sorted ? 'text-foreground' : 'text-muted-foreground',
+                    )}
+                    aria-hidden
+                  />
+                </button>
               </TableHead>
               {readOnly ? null : <TableHead className="w-12" />}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
+            {displayRows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={readOnly ? 3 : 4}
@@ -191,7 +299,7 @@ export function FormulaBuilder({
                 </TableCell>
               </TableRow>
             ) : null}
-            {rows.map((row, index) => {
+            {displayRows.map((row, index) => {
               const rowHits = row.inci.trim()
                 ? (claimHitsByInci.get(normalizeInci(row.inci)) ?? [])
                 : []
@@ -200,41 +308,41 @@ export function FormulaBuilder({
               <TableRow
                 key={row.id}
                 onDragOver={
-                  readOnly
-                    ? undefined
-                    : (event) => {
+                  canDrag
+                    ? (event) => {
                         event.preventDefault()
                         event.dataTransfer.dropEffect = 'move'
                         setDragOverId(row.id)
                       }
+                    : undefined
                 }
                 onDrop={
-                  readOnly
-                    ? undefined
-                    : (event) => {
+                  canDrag
+                    ? (event) => {
                         event.preventDefault()
                         const sourceId = event.dataTransfer.getData('text/plain') || draggingId
                         if (sourceId) moveRow(sourceId, row.id)
                         setDraggingId(null)
                         setDragOverId(null)
                       }
+                    : undefined
                 }
                 className={cn(
                   'h-12',
                   readOnly ? 'bg-muted/20 hover:bg-muted/20' : 'hover:bg-muted/30',
-                  !readOnly && draggingId === row.id ? 'opacity-40' : '',
-                  !readOnly && dragOverId === row.id && draggingId !== row.id ? 'bg-muted/60' : '',
+                  canDrag && draggingId === row.id ? 'opacity-40' : '',
+                  canDrag && dragOverId === row.id && draggingId !== row.id ? 'bg-muted/60' : '',
                 )}
               >
                 <TableCell className="border-r border-border bg-muted/20 p-0 text-muted-foreground">
                   <div className="flex h-12 items-center justify-center gap-1">
-                    {readOnly ? null : (
+                    {canDrag ? (
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon-xs"
                         draggable
-                        aria-label={`Move ingredient ${index + 1}`}
+                        aria-label={t('formula.moveRow', { n: index + 1 })}
                         className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
                         onDragStart={(event) => {
                           setDraggingId(row.id)
@@ -248,7 +356,7 @@ export function FormulaBuilder({
                       >
                         <GripVerticalIcon className="size-3.5" />
                       </Button>
-                    )}
+                    ) : null}
                     <span className="font-mono text-xs">{index + 1}</span>
                   </div>
                 </TableCell>

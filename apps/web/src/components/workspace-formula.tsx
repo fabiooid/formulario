@@ -120,6 +120,7 @@ export function WorkspaceFormula({
         rows={tableRows}
         onChange={onRowsChange}
         autosaving={autosaving}
+        productId={product.id}
         claims={product.claims ?? []}
         proposal={
           reviewingPatch

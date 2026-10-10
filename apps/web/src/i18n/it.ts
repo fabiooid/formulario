@@ -310,6 +310,19 @@ export const it = {
     saving: 'Salvataggio…',
     inci: 'Ingrediente',
     percent: '%',
+    moveRow: 'Sposta ingrediente {n}',
+    sortAriaYourOrder:
+      'Percentuale. Il tuo ordine. Attiva per ordinare dal più alto al più basso.',
+    sortAriaHighest:
+      'Percentuale. Più alto prima. Attiva per ordinare dal più basso al più alto.',
+    sortAriaLowest:
+      'Percentuale. Più basso prima. Attiva per tornare al tuo ordine.',
+    sortNoteHighest:
+      'Mostro il % più alto per primo. Il trascinamento è disattivato finché non torni al tuo ordine.',
+    sortNoteLowest:
+      'Mostro il % più basso per primo. Il trascinamento è disattivato finché non torni al tuo ordine.',
+    sortBack: 'Torna al tuo ordine',
+    sortKeep: 'Mantieni questo ordine',
   },
   agent: {
     title: 'Lab Assistant',
