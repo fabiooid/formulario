@@ -91,6 +91,17 @@ export const formulaPatches = sqliteTable('formula_patches', {
   resolvedAt: text('resolved_at'),
 })
 
+export const suppliers = sqliteTable('suppliers', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull().references(() => organizations.id),
+  name: text('name').notNull(),
+  website: text('website'),
+  notes: text('notes'),
+  contactEmail: text('contact_email'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
 export const ingredients = sqliteTable('ingredients', {
   id: text('id').primaryKey(),
   organizationId: text('organization_id').notNull().references(() => organizations.id),
@@ -116,6 +127,8 @@ export const ingredients = sqliteTable('ingredients', {
     .default('unknown'),
   pricePerKg: real('price_per_kg'),
   onHandGrams: real('on_hand_grams'),
+  supplierId: text('supplier_id').references(() => suppliers.id, { onDelete: 'set null' }),
+  supplierProductUrl: text('supplier_product_url'),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

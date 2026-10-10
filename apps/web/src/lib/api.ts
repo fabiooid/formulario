@@ -140,6 +140,9 @@ export interface InventoryIngredient {
   organicCertified: TriStateFlag
   pricePerKg?: number
   onHandGrams?: number
+  supplierId?: string | null
+  supplierName?: string | null
+  supplierProductUrl?: string | null
   notes?: string
   createdAt: string
   updatedAt: string
@@ -156,7 +159,34 @@ export interface IngredientInput {
   organicCertified: TriStateFlag
   pricePerKg?: number | null
   onHandGrams?: number | null
+  supplierId?: string | null
+  supplierProductUrl?: string | null
   notes?: string | null
+}
+
+export interface Supplier {
+  id: string
+  name: string
+  website?: string
+  notes?: string
+  contactEmail?: string
+  createdAt: string
+  updatedAt: string
+  ingredients: Array<{
+    id: string
+    inci: string
+    tradeName?: string
+    pricePerKg?: number
+    supplierProductUrl?: string
+    stockStatus: string
+  }>
+}
+
+export interface SupplierInput {
+  name: string
+  website?: string | null
+  notes?: string | null
+  contactEmail?: string | null
 }
 
 export type HomeAttentionKind =
@@ -375,6 +405,19 @@ export const api = {
       body: JSON.stringify({ organizationId }),
     }),
   getHome: () => request<HomeDashboard>('/app/home'),
+  listSuppliers: () => request<{ suppliers: Supplier[] }>('/app/suppliers'),
+  createSupplier: (input: SupplierInput) =>
+    request<{ supplier: Supplier }>('/app/suppliers', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  updateSupplier: (supplierId: string, input: SupplierInput) =>
+    request<{ supplier: Supplier }>(`/app/suppliers/${supplierId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+  deleteSupplier: (supplierId: string) =>
+    request<{ ok: boolean }>(`/app/suppliers/${supplierId}`, { method: 'DELETE' }),
   listIngredients: () => request<{ ingredients: InventoryIngredient[] }>('/app/ingredients'),
   createIngredient: (input: IngredientInput) =>
     request<{ ingredient: InventoryIngredient }>('/app/ingredients', {

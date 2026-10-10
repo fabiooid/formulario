@@ -5,6 +5,7 @@ import {
   collectPurchaseSuggestions,
   findInventoryMatch,
   generateInciList,
+  groupPurchaseSuggestionsBySupplier,
   isWaterInci,
   normalizeProductClaims,
   productTracksMaceration,
@@ -190,5 +191,61 @@ describe('collectPurchaseSuggestions', () => {
       [{ inci: 'Vanilla Absolute', stockStatus: 'to_buy', pricePerKg: 980 }],
     )
     expect(suggestions[0]?.pricePerKg).toBe(980)
+  })
+
+  it('carries supplier fields onto purchase suggestions', () => {
+    const suggestions = collectPurchaseSuggestions(
+      [{ inci: 'Coumarin', productName: 'No. 3' }],
+      [
+        {
+          inci: 'Coumarin',
+          stockStatus: 'low',
+          pricePerKg: 32,
+          supplierId: 'sup-1',
+          supplierName: 'Creating Perfume',
+          supplierProductUrl: 'https://example.com/coumarin',
+        },
+      ],
+    )
+    expect(suggestions[0]).toMatchObject({
+      supplierId: 'sup-1',
+      supplierName: 'Creating Perfume',
+      supplierProductUrl: 'https://example.com/coumarin',
+    })
+  })
+})
+
+describe('groupPurchaseSuggestionsBySupplier', () => {
+  it('groups by supplier and puts unlinked items last', () => {
+    const groups = groupPurchaseSuggestionsBySupplier([
+      { inci: 'MadeUpine', reason: 'missing', usedIn: ['Face oil'] },
+      {
+        inci: 'Coumarin',
+        reason: 'low',
+        usedIn: ['No. 3'],
+        supplierId: 'b',
+        supplierName: 'Creating Perfume',
+      },
+      {
+        inci: 'Shea Butter',
+        reason: 'low',
+        usedIn: ['Cream'],
+        supplierId: 'a',
+        supplierName: 'Aroma Zone',
+      },
+      {
+        inci: 'Vanilla Absolute',
+        reason: 'to_buy',
+        usedIn: [],
+        supplierId: 'b',
+        supplierName: 'Creating Perfume',
+      },
+    ])
+    expect(groups.map((group) => group.supplierName)).toEqual([
+      'Aroma Zone',
+      'Creating Perfume',
+      null,
+    ])
+    expect(groups[1]?.items.map((item) => item.inci)).toEqual(['Coumarin', 'Vanilla Absolute'])
   })
 })
