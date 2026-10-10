@@ -58,8 +58,8 @@ function daysUntil(iso?: string | null) {
 function pickCostVariant<
   T extends {
     variant: { label: string }
-    rows: Array<{ inci: string }>
-    versions: Array<{ isFinal: boolean; rows: Array<{ inci: string }> }>
+    rows: Array<{ inci: string; percent: number }>
+    versions: Array<{ isFinal: boolean; rows: Array<{ inci: string; percent: number }> }>
   },
 >(variants: T[]) {
   for (const item of variants) {

@@ -681,7 +681,7 @@ async function getVersionForWrite(
     .where(and(eq(productVariants.id, version.variantId), eq(productVariants.productId, productId)))
     .limit(1)
   if (!variant) throw new ProductWriteError(404, 'not_found', 'Product or variant not found')
-  return version
+  return { ...version, variantId: version.variantId }
 }
 
 async function saveVersionRowsInTransaction(
