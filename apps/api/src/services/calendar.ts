@@ -116,9 +116,13 @@ export function buildCalendarDashboard(input: {
     return a.productName.localeCompare(b.productName)
   })
 
-  const stock: CalendarStockEntry[] = input.inventory
-    .filter((item) => item.stockStatus === 'low' || item.stockStatus === 'to_buy')
-    .map((item) => ({
+  const stockWatch = input.inventory.filter(
+    (item): item is typeof item & { stockStatus: 'low' | 'to_buy' } =>
+      item.stockStatus === 'low' || item.stockStatus === 'to_buy',
+  )
+
+  const stock: CalendarStockEntry[] = stockWatch
+    .map((item): CalendarStockEntry => ({
       id: `stock-${item.id}`,
       kind: item.stockStatus === 'low' ? 'stock_low' : 'stock_to_buy',
       date: null,
@@ -126,10 +130,10 @@ export function buildCalendarDashboard(input: {
       inci: item.inci,
       stockStatus: item.stockStatus,
       onHandGrams: item.onHandGrams ?? null,
-      canEstimateRunOut: false as const,
+      canEstimateRunOut: false,
     }))
     .sort((a, b) => {
-      const order = { to_buy: 0, low: 1 } as const
+      const order: Record<'low' | 'to_buy', number> = { to_buy: 0, low: 1 }
       return order[a.stockStatus] - order[b.stockStatus] || a.inci.localeCompare(b.inci)
     })
 
