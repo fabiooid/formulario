@@ -74,6 +74,8 @@ const emptyForm: IngredientInput = {
   organicCertified: 'unknown',
   pricePerKg: null,
   onHandGrams: null,
+  supplierId: null,
+  supplierProductUrl: '',
   notes: '',
 }
 
@@ -90,6 +92,8 @@ function toForm(ingredient?: InventoryIngredient | null): IngredientInput {
     organicCertified: ingredient.organicCertified ?? 'unknown',
     pricePerKg: ingredient.pricePerKg ?? null,
     onHandGrams: ingredient.onHandGrams ?? null,
+    supplierId: ingredient.supplierId ?? null,
+    supplierProductUrl: ingredient.supplierProductUrl ?? '',
     notes: ingredient.notes ?? '',
   }
 }
@@ -111,6 +115,13 @@ export function IngredientsPage() {
     queryFn: () => api.listIngredients(),
     enabled: !!user,
   })
+
+  const { data: suppliersData } = useQuery({
+    queryKey: ['suppliers'],
+    queryFn: () => api.listSuppliers(),
+    enabled: !!user,
+  })
+  const suppliers = suppliersData?.suppliers ?? []
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -390,6 +401,44 @@ export function IngredientsPage() {
                 placeholder={t('ingredients.casPlaceholder')}
               />
             </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel>{t('ingredients.supplier')}</FieldLabel>
+                <Select
+                  value={form.supplierId ?? 'none'}
+                  onValueChange={(value) =>
+                    setForm({ ...form, supplierId: !value || value === 'none' ? null : value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {form.supplierId
+                        ? (suppliers.find((item) => item.id === form.supplierId)?.name ??
+                          t('ingredients.supplierNone'))
+                        : t('ingredients.supplierNone')}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('ingredients.supplierNone')}</SelectItem>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>{t('ingredients.supplierHint')}</FieldDescription>
+              </Field>
+              <Field>
+                <FieldLabel>{t('ingredients.supplierProductUrl')}</FieldLabel>
+                <Input
+                  value={form.supplierProductUrl ?? ''}
+                  maxLength={500}
+                  onChange={(event) => setForm({ ...form, supplierProductUrl: event.target.value })}
+                  placeholder={t('ingredients.supplierProductUrlPlaceholder')}
+                />
+              </Field>
+            </div>
             <Field>
               <FieldLabel>{t('ingredients.notes')}</FieldLabel>
               <Textarea

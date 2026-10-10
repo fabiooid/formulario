@@ -10,6 +10,7 @@ import {
   LanguagesIcon,
   PlugIcon,
   LayoutGridIcon,
+  TruckIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   SunMoonIcon,
@@ -118,6 +119,7 @@ export function AppSidebar() {
   const homePath = location.pathname === '/'
   const productsPath = location.pathname === '/products'
   const ingredientsPath = location.pathname === '/ingredients'
+  const suppliersPath = location.pathname === '/suppliers'
   const workspaceMatch = location.pathname.match(/^\/products\/([^/]+)/)
   const activeProductId = workspaceMatch?.[1]
   const pinnedProducts = (data?.products ?? [])
@@ -305,6 +307,13 @@ export function AppSidebar() {
                 icon={FlaskConicalIcon}
                 label={t('nav.ingredients')}
                 active={ingredientsPath}
+                onNavigate={closeMobile}
+              />
+              <SidebarNavLink
+                to="/suppliers"
+                icon={TruckIcon}
+                label={t('nav.suppliers')}
+                active={suppliersPath}
                 onNavigate={closeMobile}
               />
             </nav>

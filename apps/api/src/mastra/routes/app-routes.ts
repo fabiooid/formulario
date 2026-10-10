@@ -9,6 +9,7 @@ import {
   MarketSchema,
   ProductClaimSchema,
   ProductTypeSchema,
+  SupplierInputSchema,
   TriStateFlagSchema,
 } from '@formulario/domain'
 import { canUseAssistant, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@formulario/domain'
@@ -62,6 +63,12 @@ import {
   listIngredients,
   updateIngredient,
 } from '../../services/ingredients.js'
+import {
+  createSupplier,
+  deleteSupplier,
+  listSuppliers,
+  updateSupplier,
+} from '../../services/suppliers.js'
 import { getHomeDashboard } from '../../services/home.js'
 import { listPendingProposals, resolveProposal } from '../../services/proposals.js'
 import { createFeedback } from '../../services/feedback.js'
@@ -95,6 +102,8 @@ const ingredientInputSchema = z.object({
   organicCertified: TriStateFlagSchema.default('unknown'),
   pricePerKg: z.number().nonnegative().max(1_000_000).nullable().optional(),
   onHandGrams: z.number().nonnegative().max(10_000_000).nullable().optional(),
+  supplierId: z.string().trim().min(1).max(80).nullable().optional(),
+  supplierProductUrl: z.string().trim().max(500).nullable().optional(),
   notes: z.string().trim().max(500).optional().nullable(),
 })
 
@@ -297,6 +306,57 @@ export const appRoutes = [
     method: 'GET',
     requiresAuth: false,
     handler: async (c) => withUser(c, async (user) => c.json(await getHomeDashboard(user.id))),
+  }),
+  registerApiRoute('/app/suppliers', {
+    method: 'GET',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => c.json({ suppliers: await listSuppliers(user.id) })),
+  }),
+  registerApiRoute('/app/suppliers', {
+    method: 'POST',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const parsed = SupplierInputSchema.safeParse(await c.req.json())
+        if (!parsed.success) return c.json({ error: 'Invalid input' }, 400)
+        try {
+          const supplier = await createSupplier(user.id, parsed.data)
+          return c.json({ supplier }, 201)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Could not save supplier'
+          const status = message.includes('already') ? 409 : 400
+          return c.json({ error: message }, status)
+        }
+      }),
+  }),
+  registerApiRoute('/app/suppliers/:supplierId', {
+    method: 'PATCH',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const parsed = SupplierInputSchema.safeParse(await c.req.json())
+        if (!parsed.success) return c.json({ error: 'Invalid input' }, 400)
+        try {
+          const supplier = await updateSupplier(user.id, c.req.param('supplierId'), parsed.data)
+          if (!supplier) return c.json({ error: 'Not found' }, 404)
+          return c.json({ supplier })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Could not save supplier'
+          const status = message.includes('already') ? 409 : 400
+          return c.json({ error: message }, status)
+        }
+      }),
+  }),
+  registerApiRoute('/app/suppliers/:supplierId', {
+    method: 'DELETE',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async (user) => {
+        const removed = await deleteSupplier(user.id, c.req.param('supplierId'))
+        if (!removed) return c.json({ error: 'Not found' }, 404)
+        return c.json({ ok: true })
+      }),
   }),
   registerApiRoute('/app/ingredients', {
     method: 'GET',

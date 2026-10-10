@@ -6,6 +6,7 @@ import { AgentProvider } from '@/components/agent-provider'
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { HomePage } from '@/pages/home'
 import { IngredientsPage } from '@/pages/ingredients'
+import { SuppliersPage } from '@/pages/suppliers'
 import { ChoosePasswordPage } from '@/pages/choose-password'
 import { LoginPage } from '@/pages/login'
 import { ProductWorkspacePage } from '@/pages/product-workspace'
@@ -67,6 +68,7 @@ export function App() {
                   <Route path="/products" element={<ProductsPage />} />
                   <Route path="/products/:id" element={<ProductWorkspacePage />} />
                   <Route path="/ingredients" element={<IngredientsPage />} />
+                  <Route path="/suppliers" element={<SuppliersPage />} />
                 </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

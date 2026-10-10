@@ -2,6 +2,7 @@ import {
   AlertTriangleIcon,
   BanIcon,
   BanknoteIcon,
+  ExternalLinkIcon,
   FlaskConicalIcon,
   PackageMinusIcon,
   PackageXIcon,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { groupPurchaseSuggestionsBySupplier } from '@formulario/domain'
 import { Link, Navigate } from 'react-router-dom'
 import { AppShell, PageHeader } from '@/components/layout'
 import { SimpleBarChart } from '@/components/simple-bar-chart'
@@ -33,6 +35,13 @@ import {
 import { useAuth } from '@/lib/auth'
 import { formatEur } from '@/lib/format'
 import { cn } from '@/lib/utils'
+
+function hrefFor(url?: string | null) {
+  if (!url?.trim()) return null
+  const trimmed = url.trim()
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  return `https://${trimmed}`
+}
 
 function attentionDetail(item: HomeAttention, t: (key: MessageKey, vars?: TranslateVars) => string) {
   if (item.kind === 'banned') return t('home.attention.banned', { inci: item.inci ?? '' })
@@ -375,43 +384,64 @@ export function HomePage() {
                     }
                   />
                 ) : (
-                  <div className="flex flex-col divide-y divide-border">
-                    {data.purchaseSuggestions.map((item) => {
-                      const stockLabel = t(
-                        `ingredients.stockStatus.${item.reason === 'missing' ? 'missing' : item.reason}` as MessageKey,
-                      )
-                      return (
-                        <div
-                          key={`${item.reason}-${item.inci}`}
-                          className="flex min-w-0 flex-col gap-2 py-3 first:pt-0 last:pb-0"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="min-w-0 break-words font-medium tracking-tight">{item.inci}</p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {item.pricePerKg != null ? (
-                                <p className="font-mono text-sm tabular-nums tracking-tight">
-                                  {formatEur(item.pricePerKg, language)}
-                                  <span className="ml-1 font-sans text-muted-foreground">
-                                    {t('ingredients.priceUnit')}
-                                  </span>
-                                </p>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">{t('home.purchase.noPrice')}</p>
-                              )}
-                              <StockBadge status={item.reason === 'missing' ? 'missing' : item.reason} />
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <StockLevelMeter reason={item.reason} label={stockLabel} />
-                            <p className="text-sm text-muted-foreground">
-                              {item.usedIn.length
-                                ? t('home.purchase.usedIn', { names: item.usedIn.join(', ') })
-                                : t('home.purchase.unused')}
-                            </p>
-                          </div>
+                  <div className="flex flex-col gap-5">
+                    {groupPurchaseSuggestionsBySupplier(data.purchaseSuggestions).map((group) => (
+                      <div key={group.supplierId ?? 'none'} className="flex min-w-0 flex-col gap-2">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {group.supplierName ?? t('home.purchase.noSupplier')}
+                        </p>
+                        <div className="flex flex-col divide-y divide-border">
+                          {group.items.map((item) => {
+                            const stockLabel = t(
+                              `ingredients.stockStatus.${item.reason === 'missing' ? 'missing' : item.reason}` as MessageKey,
+                            )
+                            const productUrl = hrefFor(item.supplierProductUrl)
+                            return (
+                              <div
+                                key={`${item.reason}-${item.inci}`}
+                                className="flex min-w-0 flex-col gap-2 py-3 first:pt-0 last:pb-0"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p className="min-w-0 break-words font-medium tracking-tight">{item.inci}</p>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {item.pricePerKg != null ? (
+                                      <p className="font-mono text-sm tabular-nums tracking-tight">
+                                        {formatEur(item.pricePerKg, language)}
+                                        <span className="ml-1 font-sans text-muted-foreground">
+                                          {t('ingredients.priceUnit')}
+                                        </span>
+                                      </p>
+                                    ) : (
+                                      <p className="text-sm text-muted-foreground">{t('home.purchase.noPrice')}</p>
+                                    )}
+                                    <StockBadge status={item.reason === 'missing' ? 'missing' : item.reason} />
+                                    {productUrl ? (
+                                      <a
+                                        href={productUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1 text-sm text-foreground underline-offset-4 hover:underline"
+                                      >
+                                        {t('home.purchase.productLink')}
+                                        <ExternalLinkIcon className="size-3.5" />
+                                      </a>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <StockLevelMeter reason={item.reason} label={stockLabel} />
+                                  <p className="text-sm text-muted-foreground">
+                                    {item.usedIn.length
+                                      ? t('home.purchase.usedIn', { names: item.usedIn.join(', ') })
+                                      : t('home.purchase.unused')}
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          })}
                         </div>
-                      )
-                    })}
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>

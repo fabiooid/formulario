@@ -11,9 +11,10 @@ import {
 } from '@formulario/domain'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/client.js'
-import { ingredients } from '../db/schema.js'
+import { ingredients, suppliers } from '../db/schema.js'
 import { getActiveOrganizationId } from './organizations.js'
 import { DEMO_INGREDIENTS } from '../db/demo-ingredients.js'
+import { assertSupplierInOrg } from './suppliers.js'
 
 export type InventoryIngredientRecord = {
   id: string
@@ -27,6 +28,9 @@ export type InventoryIngredientRecord = {
   organicCertified: TriStateFlag
   pricePerKg?: number
   onHandGrams?: number
+  supplierId?: string | null
+  supplierName?: string | null
+  supplierProductUrl?: string | null
   notes?: string
   createdAt: string
   updatedAt: string
@@ -43,10 +47,15 @@ export type IngredientInput = {
   organicCertified: TriStateFlag
   pricePerKg?: number | null
   onHandGrams?: number | null
+  supplierId?: string | null
+  supplierProductUrl?: string | null
   notes?: string | null
 }
 
-function fromDb(row: typeof ingredients.$inferSelect): InventoryIngredientRecord {
+function fromDb(
+  row: typeof ingredients.$inferSelect,
+  supplierName?: string | null,
+): InventoryIngredientRecord {
   return {
     id: row.id,
     inci: row.inci,
@@ -59,6 +68,9 @@ function fromDb(row: typeof ingredients.$inferSelect): InventoryIngredientRecord
     organicCertified: TriStateFlagSchema.parse(row.organicCertified),
     pricePerKg: row.pricePerKg ?? undefined,
     onHandGrams: row.onHandGrams ?? undefined,
+    supplierId: row.supplierId ?? null,
+    supplierName: supplierName ?? null,
+    supplierProductUrl: row.supplierProductUrl ?? null,
     notes: row.notes ?? undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -70,26 +82,36 @@ function emptyToNull(value?: string | null) {
   return trimmed ? trimmed : null
 }
 
+async function supplierNameMap(organizationId: string) {
+  const rows = await db
+    .select({ id: suppliers.id, name: suppliers.name })
+    .from(suppliers)
+    .where(eq(suppliers.organizationId, organizationId))
+  return new Map(rows.map((row) => [row.id, row.name]))
+}
+
 export async function listIngredients(userId: string): Promise<InventoryIngredientRecord[]> {
   const organizationId = await getActiveOrganizationId(userId)
   if (!organizationId) return []
+  const names = await supplierNameMap(organizationId)
   const rows = await db
     .select()
     .from(ingredients)
     .where(eq(ingredients.organizationId, organizationId))
     .orderBy(ingredients.inci)
-  return rows.map(fromDb)
+  return rows.map((row) => fromDb(row, row.supplierId ? names.get(row.supplierId) ?? null : null))
 }
 
 export async function getIngredient(userId: string, ingredientId: string) {
   const organizationId = await getActiveOrganizationId(userId)
   if (!organizationId) return null
+  const names = await supplierNameMap(organizationId)
   const [row] = await db
     .select()
     .from(ingredients)
     .where(and(eq(ingredients.id, ingredientId), eq(ingredients.organizationId, organizationId)))
     .limit(1)
-  return row ? fromDb(row) : null
+  return row ? fromDb(row, row.supplierId ? names.get(row.supplierId) ?? null : null) : null
 }
 
 export async function findIngredientByInci(userId: string, inci: string) {
@@ -121,6 +143,10 @@ export async function createIngredient(userId: string, input: IngredientInput) {
   if (await findDuplicate(organizationId, input.inci)) {
     throw new Error('This ingredient is already in your list')
   }
+  const supplierId = emptyToNull(input.supplierId)
+  if (!(await assertSupplierInOrg(organizationId, supplierId))) {
+    throw new Error('Supplier not found')
+  }
 
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
@@ -137,14 +163,17 @@ export async function createIngredient(userId: string, input: IngredientInput) {
     organicCertified: input.organicCertified,
     pricePerKg: input.pricePerKg ?? null,
     onHandGrams: input.onHandGrams ?? null,
+    supplierId,
+    supplierProductUrl: emptyToNull(input.supplierProductUrl),
     notes: emptyToNull(input.notes),
     createdAt: now,
     updatedAt: now,
   })
 
+  const names = await supplierNameMap(organizationId)
   const [created] = await db.select().from(ingredients).where(eq(ingredients.id, id)).limit(1)
   if (!created) throw new Error('Failed to load created ingredient')
-  return fromDb(created)
+  return fromDb(created, created.supplierId ? names.get(created.supplierId) ?? null : null)
 }
 
 export async function updateIngredient(userId: string, ingredientId: string, input: IngredientInput) {
@@ -158,6 +187,10 @@ export async function updateIngredient(userId: string, ingredientId: string, inp
   if (!existing) return null
   if (await findDuplicate(organizationId, input.inci, ingredientId)) {
     throw new Error('This ingredient is already in your list')
+  }
+  const supplierId = emptyToNull(input.supplierId)
+  if (!(await assertSupplierInOrg(organizationId, supplierId))) {
+    throw new Error('Supplier not found')
   }
 
   await db
@@ -173,14 +206,17 @@ export async function updateIngredient(userId: string, ingredientId: string, inp
       organicCertified: input.organicCertified,
       pricePerKg: input.pricePerKg ?? null,
       onHandGrams: input.onHandGrams ?? null,
+      supplierId,
+      supplierProductUrl: emptyToNull(input.supplierProductUrl),
       notes: emptyToNull(input.notes),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(ingredients.id, ingredientId))
 
+  const names = await supplierNameMap(organizationId)
   const [updated] = await db.select().from(ingredients).where(eq(ingredients.id, ingredientId)).limit(1)
   if (!updated) return null
-  return fromDb(updated)
+  return fromDb(updated, updated.supplierId ? names.get(updated.supplierId) ?? null : null)
 }
 
 export async function deleteIngredient(userId: string, ingredientId: string) {

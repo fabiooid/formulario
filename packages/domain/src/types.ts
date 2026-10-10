@@ -264,6 +264,9 @@ export const InventoryIngredientSchema = z.object({
   organicCertified: TriStateFlagSchema.default('unknown'),
   pricePerKg: z.number().nonnegative().optional(),
   onHandGrams: z.number().nonnegative().optional(),
+  supplierId: z.string().nullable().optional(),
+  supplierName: z.string().nullable().optional(),
+  supplierProductUrl: z.string().nullable().optional(),
   notes: z.string().optional(),
 })
 export type InventoryIngredient = z.infer<typeof InventoryIngredientSchema>
@@ -279,9 +282,22 @@ export const IngredientInputSchema = z.object({
   organicCertified: TriStateFlagSchema.default('unknown'),
   pricePerKg: z.number().nonnegative().max(1_000_000).nullable().optional(),
   onHandGrams: z.number().nonnegative().max(10_000_000).nullable().optional(),
+  supplierId: z.string().trim().min(1).max(80).nullable().optional(),
+  supplierProductUrl: z.string().trim().max(500).nullable().optional(),
   notes: z.string().trim().max(500).optional().nullable(),
 })
 export type IngredientInput = z.infer<typeof IngredientInputSchema>
+
+export const SupplierInputSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  website: z.string().trim().max(500).optional().nullable(),
+  notes: z.string().trim().max(500).optional().nullable(),
+  contactEmail: z
+    .union([z.string().trim().email().max(200), z.literal(''), z.null()])
+    .optional()
+    .transform((value) => (value === '' || value == null ? null : value)),
+})
+export type SupplierInput = z.infer<typeof SupplierInputSchema>
 
 export const AgentProposalKindSchema = z.enum([
   'inventory_create',
@@ -322,6 +338,15 @@ export type PurchaseSuggestion = {
   reason: PurchaseReason
   usedIn: string[]
   pricePerKg?: number
+  supplierId?: string | null
+  supplierName?: string | null
+  supplierProductUrl?: string | null
+}
+
+export type PurchaseSupplierGroup = {
+  supplierId: string | null
+  supplierName: string | null
+  items: PurchaseSuggestion[]
 }
 
 export function findInventoryMatch<T extends { inci: string }>(
@@ -333,17 +358,33 @@ export function findInventoryMatch<T extends { inci: string }>(
   return inventory.find((item) => normalizeInci(item.inci) === normalized)
 }
 
-function withPrice(
+function withSupplierFields(
   suggestion: PurchaseSuggestion,
-  pricePerKg?: number | null,
+  item?: {
+    pricePerKg?: number | null
+    supplierId?: string | null
+    supplierName?: string | null
+    supplierProductUrl?: string | null
+  },
 ): PurchaseSuggestion {
-  if (pricePerKg == null) return suggestion
-  return { ...suggestion, pricePerKg }
+  const next = { ...suggestion }
+  if (item?.pricePerKg != null) next.pricePerKg = item.pricePerKg
+  if (item?.supplierId) next.supplierId = item.supplierId
+  if (item?.supplierName) next.supplierName = item.supplierName
+  if (item?.supplierProductUrl) next.supplierProductUrl = item.supplierProductUrl
+  return next
 }
 
 export function collectPurchaseSuggestions(
   usedIngredients: Array<{ inci: string; productName: string }>,
-  inventory: Array<{ inci: string; stockStatus: IngredientStockStatus; pricePerKg?: number | null }>,
+  inventory: Array<{
+    inci: string
+    stockStatus: IngredientStockStatus
+    pricePerKg?: number | null
+    supplierId?: string | null
+    supplierName?: string | null
+    supplierProductUrl?: string | null
+  }>,
   options?: { includeUnused?: boolean },
 ): PurchaseSuggestion[] {
   const usedByInci = new Map<string, { display: string; usedIn: Set<string> }>()
@@ -367,13 +408,13 @@ export function collectPurchaseSuggestions(
     }
     if (match.stockStatus === 'to_buy' || match.stockStatus === 'low') {
       suggestions.push(
-        withPrice(
+        withSupplierFields(
           {
             inci: match.inci,
             reason: match.stockStatus,
             usedIn: [...value.usedIn],
           },
-          match.pricePerKg,
+          match,
         ),
       )
       seen.add(key)
@@ -385,14 +426,39 @@ export function collectPurchaseSuggestions(
     if (item.stockStatus !== 'to_buy' && item.stockStatus !== 'low') continue
     const key = normalizeInci(item.inci)
     if (!key || seen.has(key)) continue
-    suggestions.push(
-      withPrice({ inci: item.inci, reason: item.stockStatus, usedIn: [] }, item.pricePerKg),
-    )
+    suggestions.push(withSupplierFields({ inci: item.inci, reason: item.stockStatus, usedIn: [] }, item))
     seen.add(key)
   }
 
   const order: Record<PurchaseReason, number> = { missing: 0, to_buy: 1, low: 2 }
   return suggestions.sort((a, b) => order[a.reason] - order[b.reason] || a.inci.localeCompare(b.inci))
+}
+
+/** Group buy-list rows by supplier so the Home list reads like an order sheet. */
+export function groupPurchaseSuggestionsBySupplier(
+  suggestions: PurchaseSuggestion[],
+): PurchaseSupplierGroup[] {
+  const groups = new Map<string, PurchaseSupplierGroup>()
+
+  for (const item of suggestions) {
+    const key = item.supplierId ?? ''
+    const existing = groups.get(key)
+    if (existing) {
+      existing.items.push(item)
+      continue
+    }
+    groups.set(key, {
+      supplierId: item.supplierId ?? null,
+      supplierName: item.supplierName ?? null,
+      items: [item],
+    })
+  }
+
+  return [...groups.values()].sort((a, b) => {
+    if (!a.supplierName && b.supplierName) return 1
+    if (a.supplierName && !b.supplierName) return -1
+    return (a.supplierName ?? '').localeCompare(b.supplierName ?? '')
+  })
 }
 
 export function formulaPercentTotal(rows: Pick<FormulaRow, 'percent'>[]): number {

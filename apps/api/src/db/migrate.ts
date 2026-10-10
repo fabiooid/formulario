@@ -9,6 +9,7 @@ import {
   backfillIngredientPrices,
   seedDemoIngredients,
 } from '../services/ingredients.js'
+import { seedDemoSuppliers } from '../services/suppliers.js'
 import { refreshDerived } from '../services/products.js'
 
 async function backfillVariants() {
@@ -79,6 +80,7 @@ async function backfillDemoIngredients() {
   if (!demo) return
   const personal = await ensurePersonalOrganization(demo.id)
   await seedDemoIngredients(personal.id)
+  await seedDemoSuppliers(personal.id)
   await backfillIngredientClaimFlags()
   await backfillIngredientPrices()
   await backfillIngredientOnHand()
