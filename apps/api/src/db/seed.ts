@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from './client.js'
 import {
   chatThreads,
@@ -12,7 +12,7 @@ import {
 import { hashPassword } from '../lib/auth.js'
 import { ensurePersonalOrganization } from '../services/organizations.js'
 import { listDateFromVersion, loadedEuVersion, prepareEuList, replaceEuBanRules } from './official-lists.js'
-import { refreshDerived, setSelectedFinalVariant } from '../services/products.js'
+import { refreshDerived, setFinalVersion } from '../services/products.js'
 import { seedDemoIngredients } from '../services/ingredients.js'
 
 function now() {
@@ -61,6 +61,55 @@ async function seedDemoUser() {
   return { userId, existed: false }
 }
 
+/** Demo perfume should show Regulatory findings on first look (final version set). */
+async function ensureDemoPerfumeFinal(userId: string) {
+  const productId = 'prod-perfume'
+  const [product] = await db.select({ id: products.id }).from(products).where(eq(products.id, productId)).limit(1)
+  if (!product) return
+
+  const [alreadyFinal] = await db
+    .select({ id: formulaVersions.id })
+    .from(formulaVersions)
+    .where(and(eq(formulaVersions.productId, productId), eq(formulaVersions.isFinal, true)))
+    .limit(1)
+  if (alreadyFinal) return
+
+  const [selected] = await db
+    .select({ id: productVariants.id })
+    .from(productVariants)
+    .where(and(eq(productVariants.productId, productId), eq(productVariants.isSelectedFinal, true)))
+    .limit(1)
+  const variantId = selected?.id
+  const [version] = variantId
+    ? await db
+        .select({ id: formulaVersions.id })
+        .from(formulaVersions)
+        .where(and(eq(formulaVersions.variantId, variantId), eq(formulaVersions.isCurrent, true)))
+        .limit(1)
+    : await db
+        .select({ id: formulaVersions.id })
+        .from(formulaVersions)
+        .where(eq(formulaVersions.productId, productId))
+        .limit(1)
+  if (!version) return
+
+  await setFinalVersion(version.id, productId, userId)
+  // Align leftover "Variant …" seed labels with versions-only wording when still present.
+  const variants = await db.select().from(productVariants).where(eq(productVariants.productId, productId))
+  for (const variant of variants) {
+    const nextLabel = variant.label
+      .replace(/^Variant\s+\d+\s*[—–-]\s*/i, '')
+      .trim()
+    if (nextLabel && nextLabel !== variant.label) {
+      await db.update(productVariants).set({ label: nextLabel }).where(eq(productVariants.id, variant.id))
+      await db
+        .update(formulaVersions)
+        .set({ label: nextLabel })
+        .where(eq(formulaVersions.variantId, variant.id))
+    }
+  }
+}
+
 async function seedProductWithVariants(
   userId: string,
   organizationId: string,
@@ -72,6 +121,8 @@ async function seedProductWithVariants(
     claims?: Array<'vegan' | 'natural' | 'organic'>
     variants: Array<{
       label: string
+      /** Shown in the versions-only UI; falls back to label. */
+      versionLabel?: string
       isSelectedFinal?: boolean
       macerationStartedAt?: string
       macerationTargetAt?: string
@@ -101,18 +152,19 @@ async function seedProductWithVariants(
     updatedAt: created,
   })
 
-  let finalVariantId: string | null = null
+  let finalVersionId: string | null = null
 
   for (const [index, variantInput] of input.variants.entries()) {
     const variantId = crypto.randomUUID()
     const versionId = crypto.randomUUID()
+    const versionLabel = variantInput.versionLabel ?? variantInput.label
 
     await db.insert(productVariants).values({
       id: variantId,
       productId: input.id,
       label: variantInput.label,
       sortOrder: index,
-      isSelectedFinal: variantInput.isSelectedFinal ?? false,
+      isSelectedFinal: false,
       createdAt: created,
     })
 
@@ -121,7 +173,7 @@ async function seedProductWithVariants(
       productId: input.id,
       variantId,
       versionNumber: 1,
-      label: 'v1',
+      label: versionLabel,
       isCurrent: true,
       macerationStartedAt: variantInput.macerationStartedAt ?? null,
       macerationTargetAt: variantInput.macerationTargetAt ?? null,
@@ -142,7 +194,7 @@ async function seedProductWithVariants(
       })),
     )
 
-    if (variantInput.isSelectedFinal) finalVariantId = variantId
+    if (variantInput.isSelectedFinal) finalVersionId = versionId
   }
 
   await db.insert(chatThreads).values({
@@ -152,8 +204,8 @@ async function seedProductWithVariants(
     createdAt: created,
   })
 
-  if (finalVariantId) {
-    await setSelectedFinalVariant(input.id, finalVariantId, userId)
+  if (finalVersionId) {
+    await setFinalVersion(finalVersionId, input.id, userId)
   } else {
     await refreshDerived(input.id, userId)
   }
@@ -169,6 +221,8 @@ async function main() {
   }
   const { userId, existed } = await seedDemoUser()
   if (existed) {
+    // Older seeds set the selected-final variant without marking a formula version final.
+    await ensureDemoPerfumeFinal(userId)
     await refreshSavedChecks()
     console.log('Demo user already exists — official bans reloaded and saved checks refreshed.')
     return
@@ -225,7 +279,8 @@ async function main() {
     brief: 'Oil-based perfume. Includes an ingredient named on the EU banned list.',
     variants: [
       {
-        label: 'Variant 1 — softer',
+        label: 'Softer',
+        versionLabel: 'Softer',
         macerationStartedAt: macerationStart,
         macerationTargetAt: macerationTarget,
         macerationNotes: 'Testing lower coumarin.',
@@ -238,7 +293,8 @@ async function main() {
         ],
       },
       {
-        label: 'Variant 2 — original',
+        label: 'Original',
+        versionLabel: 'Original',
         isSelectedFinal: true,
         rows: [
           { inci: 'Fragrance', function: 'Fragrance', phase: 'Fragrance', percent: 18 },
@@ -249,7 +305,8 @@ async function main() {
         ],
       },
       {
-        label: 'Variant 3 — brighter top',
+        label: 'Brighter top',
+        versionLabel: 'Brighter top',
         rows: [
           { inci: 'Fragrance', function: 'Fragrance', phase: 'Fragrance', percent: 17 },
           { inci: 'Linalool', function: 'Fragrance allergen', phase: 'Fragrance', percent: 0.12 },

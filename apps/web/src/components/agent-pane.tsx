@@ -445,6 +445,9 @@ export function AgentPane() {
             <MessageScroller className="min-h-0 flex-1">
               <MessageScrollerViewport aria-label={t('agent.messages')}>
                 <MessageScrollerContent className="mx-auto w-full max-w-[900px] gap-4 px-3 py-4">
+                  {messages.length === 0 && proposals.length === 0 && !waitingOnFirstToken ? (
+                    <p className="text-sm text-muted-foreground">{t('agent.emptyStarter')}</p>
+                  ) : null}
                   {messages.map((message) => (
                     <MessageScrollerItem
                       key={message.id}

@@ -24,10 +24,12 @@ function attentionDetail(item: HomeAttention, t: (key: MessageKey, vars?: Transl
     return t('home.attention.unbalanced', { total: item.totalPercent ?? 0 })
   }
   if (item.kind === 'maceration_ready') {
-    return t('home.attention.ready', { variant: item.variantLabel ?? '' })
+    return t('home.attention.ready', { version: item.versionLabel ?? '' })
   }
-  if (item.daysLeft == null) return t('home.attention.maceratingNoDate', { variant: item.variantLabel ?? '' })
-  return t('home.attention.macerating', { days: item.daysLeft, variant: item.variantLabel ?? '' })
+  if (item.daysLeft == null) {
+    return t('home.attention.maceratingNoDate', { version: item.versionLabel ?? '' })
+  }
+  return t('home.attention.macerating', { days: item.daysLeft, version: item.versionLabel ?? '' })
 }
 
 function HeroCard({

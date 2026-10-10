@@ -187,7 +187,7 @@ export function FormulaBuilder({
                   colSpan={readOnly ? 3 : 4}
                   className="h-12 px-3 text-sm text-muted-foreground"
                 >
-                  {t('formula.emptyProposal')}
+                  {t(proposal ? 'formula.emptyProposal' : 'formula.emptyDraft')}
                 </TableCell>
               </TableRow>
             ) : null}

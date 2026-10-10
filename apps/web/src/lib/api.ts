@@ -172,7 +172,7 @@ export interface HomeAttention {
   kind: HomeAttentionKind
   href: string
   productName: string
-  variantLabel?: string
+  versionLabel?: string
   inci?: string
   claim?: ProductClaim
   daysLeft?: number
@@ -182,7 +182,7 @@ export interface HomeAttention {
 export interface HomeFormulaCost {
   productId: string
   productName: string
-  variantLabel: string
+  versionLabel: string
   href: string
   costPerKg: number | null
   pricedPercent: number

@@ -222,7 +222,7 @@ export function ProductsPage() {
               disabled={createMutation.isPending}
             >
               <PlusIcon data-icon="inline-start" />
-              {createMutation.isPending ? t('products.creating') : t('products.newFromBrief')}
+              {createMutation.isPending ? t('products.creating') : t('products.newProduct')}
             </Button>
           </>
         }
