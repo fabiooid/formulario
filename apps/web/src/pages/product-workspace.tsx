@@ -42,8 +42,11 @@ function ProductWorkspace({ id }: { id: string }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const { setVariantId, setVersionId } = useAgent()
   const versionFromUrl = searchParams.get('version')
+  const tabFromUrl = searchParams.get('tab')
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(versionFromUrl)
-  const [tab, setTab] = useState('workspace')
+  const [tab, setTab] = useState(
+    tabFromUrl === 'regulatory' || tabFromUrl === 'workspace' ? tabFromUrl : 'workspace',
+  )
   const [rows, setRows] = useState<FormulaRow[]>([])
   const rowsRef = useRef(rows)
   rowsRef.current = rows
@@ -61,6 +64,10 @@ function ProductWorkspace({ id }: { id: string }) {
   useEffect(() => {
     if (versionFromUrl) setSelectedVersionId(versionFromUrl)
   }, [versionFromUrl])
+
+  useEffect(() => {
+    if (tabFromUrl === 'regulatory' || tabFromUrl === 'workspace') setTab(tabFromUrl)
+  }, [tabFromUrl])
 
   const selectedVariantId = data?.activeVariantId ?? data?.variants[0]?.variant.id ?? null
   const selected = data?.variants.find((v) => v.variant.id === selectedVariantId)

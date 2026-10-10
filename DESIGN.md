@@ -240,7 +240,7 @@ Header actions, right side: Active / Archived filter, view switcher, then primar
 A morning brief, not a metrics wall. Same cards as everywhere else. Small icons, meters, and one cost chart are welcome when they carry meaning (stock level, maceration progress, % priced). Do not add decorative sparklines, badge clusters, or colour-only status.
 
 1. Three small numbers: shelf value, to-purchase count, formulas that are fully priced **and** balanced near 100%
-2. **Formulas at risk:** one line per product (ban on a final formula, or missing / low stock on the active or final formula). Lucide icon + text reason + product link. Ordered by severity. Do not repeat the same ban under Needs attention.
+2. **Formulas at risk:** one line per product (ban on a final formula, or missing / low stock on the active or final formula). Lucide icon + plain-language reason naming the ingredient (and market / list / grams when known) + product link (Regulatory tab for bans, version for stock). If a product has several reasons, show the top one and an “and N more” expand. Ordered by severity. Do not repeat the same ban under Needs attention.
 3. Two working lists: to purchase (ingredients that block an active/final formula, with € / kg, `StockBadge`, and a small stock-level meter) and needs attention (claims, over-limits, unbalanced totals, maceration on versions the maker can open). Group attention by product; each finding has a type icon and text. Maceration rows show a progress meter (days rested vs target) and deep-link with `?version=`. Show the full list and a count; do not silently truncate.
 4. Ranked formula cost (`SimpleBarChart`, foreground fill, mono money) with a second quiet meter for how much of each formula is priced
 

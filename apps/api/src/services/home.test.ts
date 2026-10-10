@@ -171,6 +171,13 @@ describe('home dashboard rules', () => {
       now,
     })
     expect(withFinal.atRisk.map((item) => item.kind)).toContain('banned')
+    const banReason = withFinal.atRisk.find((item) => item.kind === 'banned')?.reasons[0]
+    expect(banReason).toMatchObject({
+      kind: 'banned',
+      inci: 'Butylphenyl Methylpropional',
+      market: 'EU',
+      instrument: 'Annex II',
+    })
     expect(withFinal.attention.some((item) => item.kind === 'claim_block')).toBe(true)
     // Ban detail stays on at-risk only (no duplicate in attention).
     expect(withFinal.attention.some((item) => item.kind === 'banned')).toBe(false)
@@ -393,6 +400,36 @@ describe('home dashboard rules', () => {
       'Perfume',
       'Face Oil',
       'Cream',
+    ])
+    const perfume = dashboard.atRisk.find((item) => item.productName === 'Perfume')
+    expect(perfume?.href).toContain('tab=regulatory')
+    expect(perfume?.reasons.map((reason) => reason.kind)).toEqual(['banned', 'stock_out'])
+    expect(perfume?.reasons[0]).toMatchObject({
+      inci: 'Butylphenyl Methylpropional',
+      market: 'EU',
+      instrument: 'Annex II',
+    })
+    expect(perfume?.reasons[1]).toMatchObject({
+      inci: 'Coumarin',
+      onHandGrams: 2,
+      formulaPercent: 99,
+    })
+    const oil = dashboard.atRisk.find((item) => item.productName === 'Face Oil')
+    expect(oil?.reasons).toEqual([
+      expect.objectContaining({
+        kind: 'missing_ingredient',
+        inci: 'MadeUpine',
+        formulaPercent: 5,
+      }),
+    ])
+    const cream = dashboard.atRisk.find((item) => item.productName === 'Cream')
+    expect(cream?.reasons).toEqual([
+      expect.objectContaining({
+        kind: 'stock_out',
+        inci: 'Shea Butter',
+        onHandGrams: 10,
+        formulaPercent: 100,
+      }),
     ])
     expect(dashboard.attention.some((item) => item.kind === 'banned')).toBe(false)
     expect(dashboard.attentionTotal).toBe(dashboard.attention.length)

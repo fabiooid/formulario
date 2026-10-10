@@ -184,12 +184,21 @@ export interface HomeAttention {
   totalPercent?: number
 }
 
+export interface HomeAtRiskReason {
+  kind: HomeAtRiskKind
+  inci: string
+  market?: string
+  instrument?: string
+  onHandGrams?: number | null
+  formulaPercent?: number
+}
+
 export interface HomeAtRisk {
   id: string
   kind: HomeAtRiskKind
   href: string
   productName: string
-  reasonInci?: string
+  reasons: HomeAtRiskReason[]
 }
 
 export interface HomeFormulaCost {

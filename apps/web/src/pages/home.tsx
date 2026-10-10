@@ -9,6 +9,7 @@ import {
   ShoppingBagIcon,
   SparklesIcon,
 } from 'lucide-react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Navigate } from 'react-router-dom'
 import { AppShell, PageHeader } from '@/components/layout'
@@ -16,6 +17,7 @@ import { SimpleBarChart } from '@/components/simple-bar-chart'
 import { StockBadge } from '@/components/stock-badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Meter, MeterIndicator, MeterTrack } from '@/components/ui/meter'
 import { EmptyState } from '@/components/empty-state'
 import { useLanguage } from '@/i18n/language-provider'
@@ -26,6 +28,7 @@ import {
   type HomeAttentionKind,
   type HomeAtRisk,
   type HomeAtRiskKind,
+  type HomeAtRiskReason,
 } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { formatEur } from '@/lib/format'
@@ -50,12 +53,84 @@ function attentionDetail(item: HomeAttention, t: (key: MessageKey, vars?: Transl
   return t('home.attention.macerating', { days: item.daysLeft, version: item.versionLabel ?? '' })
 }
 
-function atRiskDetail(item: HomeAtRisk, t: (key: MessageKey, vars?: TranslateVars) => string) {
-  if (item.kind === 'banned') return t('home.atRisk.banned', { inci: item.reasonInci ?? '' })
-  if (item.kind === 'missing_ingredient') {
-    return t('home.atRisk.missing', { inci: item.reasonInci ?? '' })
+function atRiskReasonText(
+  reason: HomeAtRiskReason,
+  t: (key: MessageKey, vars?: TranslateVars) => string,
+) {
+  if (reason.kind === 'banned') {
+    return t('home.atRisk.banned', {
+      market: reason.market ?? 'EU',
+      inci: reason.inci,
+      instrument: reason.instrument ?? 'Annex II',
+    })
   }
-  return t('home.atRisk.stockOut', { inci: item.reasonInci ?? '' })
+  if (reason.kind === 'missing_ingredient') {
+    return t('home.atRisk.missing', { inci: reason.inci })
+  }
+  if (reason.onHandGrams != null && reason.onHandGrams >= 0) {
+    return t('home.atRisk.stockOutWithGrams', {
+      inci: reason.inci,
+      grams: Math.round(reason.onHandGrams * 10) / 10,
+    })
+  }
+  return t('home.atRisk.stockOut', { inci: reason.inci })
+}
+
+function AtRiskRow({
+  item,
+  t,
+}: {
+  item: HomeAtRisk
+  t: (key: MessageKey, vars?: TranslateVars) => string
+}) {
+  const [open, setOpen] = useState(false)
+  const reasons = item.reasons?.length ? item.reasons : []
+  const primary = reasons[0]
+  const extra = reasons.slice(1)
+  const Icon = AT_RISK_ICONS[item.kind]
+  const kindLabel = t(`home.atRisk.kind.${item.kind}` as MessageKey)
+
+  return (
+    <div className="flex min-w-0 items-start gap-3 px-2 py-3">
+      <KindIcon
+        icon={Icon}
+        label={kindLabel}
+        tone={item.kind === 'banned' ? 'danger' : 'warning'}
+      />
+      <div className="min-w-0 flex-1">
+        <Link
+          to={item.href}
+          className="block rounded-md transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <p className="break-words font-medium tracking-tight">{item.productName}</p>
+          {primary ? (
+            <p className="text-sm text-muted-foreground">{atRiskReasonText(primary, t)}</p>
+          ) : null}
+        </Link>
+        {extra.length > 0 ? (
+          <Collapsible open={open} onOpenChange={setOpen} className="mt-1.5">
+            <CollapsibleTrigger className="rounded-md text-left text-xs text-muted-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
+              {open ? t('home.atRisk.hideReasons') : t('home.atRisk.moreReasons', { count: extra.length })}
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <ul className="mt-1.5 flex flex-col gap-1">
+                {extra.map((reason) => (
+                  <li key={`${reason.kind}-${reason.inci}`} className="text-sm text-muted-foreground">
+                    <Link
+                      to={item.href}
+                      className="rounded-md transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      {atRiskReasonText(reason, t)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : null}
+      </div>
+    </div>
+  )
 }
 
 const ATTENTION_ICONS: Record<
@@ -266,27 +341,9 @@ export function HomePage() {
                 />
               ) : (
                 <div className="flex flex-col divide-y divide-border">
-                  {data.atRisk.map((item) => {
-                    const Icon = AT_RISK_ICONS[item.kind]
-                    const kindLabel = t(`home.atRisk.kind.${item.kind}` as MessageKey)
-                    return (
-                      <Link
-                        key={item.id}
-                        to={item.href}
-                        className="flex min-w-0 items-start gap-3 rounded-md px-2 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                      >
-                        <KindIcon
-                          icon={Icon}
-                          label={kindLabel}
-                          tone={item.kind === 'banned' ? 'danger' : 'warning'}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="break-words font-medium tracking-tight">{item.productName}</p>
-                          <p className="text-sm text-muted-foreground">{atRiskDetail(item, t)}</p>
-                        </div>
-                      </Link>
-                    )
-                  })}
+                  {data.atRisk.map((item) => (
+                    <AtRiskRow key={item.id} item={item} t={t} />
+                  ))}
                 </div>
               )}
             </CardContent>

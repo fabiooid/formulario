@@ -42,12 +42,27 @@ export type HomeAttention = {
   totalPercent?: number
 }
 
+/** One concrete cause for a product being at risk (plain-language fields for i18n). */
+export type HomeAtRiskReason = {
+  kind: HomeAtRiskKind
+  inci: string
+  /** Market code when kind is banned (e.g. EU). */
+  market?: string
+  /** Official list / instrument label (e.g. Annex II). */
+  instrument?: string
+  /** Grams on hand when known (low stock). */
+  onHandGrams?: number | null
+  /** Share of the active/final formula, when known. */
+  formulaPercent?: number
+}
+
 export type HomeAtRisk = {
   id: string
+  /** Highest-severity reason kind (for icon / sort). */
   kind: HomeAtRiskKind
   href: string
   productName: string
-  reasonInci?: string
+  reasons: HomeAtRiskReason[]
 }
 
 export type HomeFormulaCost = {
@@ -213,8 +228,25 @@ export function pickActiveFormulaRows(variants: HomeVariant[]): HomeRow[] {
   return withRows?.rows ?? []
 }
 
-function productHref(productId: string, versionId?: string) {
-  return versionId ? `/products/${productId}?version=${versionId}` : `/products/${productId}`
+function shortInstrument(instrument: string) {
+  const trimmed = instrument.trim()
+  // Keep the annex / list name short for Home copy (e.g. "EU Annex II" -> "Annex II").
+  return trimmed.replace(/^(EU|UK|US|HK|ASEAN)\s+/i, '').trim() || trimmed
+}
+
+function productHref(
+  productId: string,
+  options?: { versionId?: string; tab?: 'workspace' | 'regulatory' },
+) {
+  const params = new URLSearchParams()
+  if (options?.versionId) params.set('version', options.versionId)
+  if (options?.tab) params.set('tab', options.tab)
+  const query = params.toString()
+  return query ? `/products/${productId}?${query}` : `/products/${productId}`
+}
+
+function reasonSortKey(kind: HomeAtRiskKind) {
+  return AT_RISK_ORDER[kind]
 }
 
 export function buildHomeDashboard(input: {
@@ -228,24 +260,13 @@ export function buildHomeDashboard(input: {
   const attention: HomeAttention[] = []
   const atRisk: HomeAtRisk[] = []
   const seenAttention = new Set<string>()
-  const seenAtRisk = new Set<string>()
   const formulaCosts: HomeFormulaCost[] = []
-  const atRiskProductIds = new Set<string>()
 
   function pushAttention(item: HomeAttention) {
     const key = `${item.kind}:${item.href}:${item.inci ?? item.versionLabel ?? item.totalPercent ?? ''}`
     if (seenAttention.has(key)) return
     seenAttention.add(key)
     attention.push(item)
-  }
-
-  function pushAtRisk(item: HomeAtRisk) {
-    if (atRiskProductIds.has(item.href)) return
-    const key = `${item.kind}:${item.href}`
-    if (seenAtRisk.has(key)) return
-    seenAtRisk.add(key)
-    atRiskProductIds.add(item.href)
-    atRisk.push(item)
   }
 
   for (const { product, variants } of input.catalog) {
@@ -256,6 +277,7 @@ export function buildHomeDashboard(input: {
       .find((version) => version.isFinal && version.rows.some((row) => row.inci.trim()))
     const finalRows = finalVersion?.rows
     const activeRows = pickActiveFormulaRows(variants)
+    const productReasons: HomeAtRiskReason[] = []
 
     for (const row of activeRows) {
       if (row.inci.trim()) usedIngredients.push({ inci: row.inci, productName: product.name })
@@ -266,7 +288,7 @@ export function buildHomeDashboard(input: {
     if (product.type === 'perfume' && visible) {
       for (const version of visible.versions) {
         const versionLabel = versionDisplayLabel(version)
-        const href = productHref(product.id, version.id)
+        const href = productHref(product.id, { versionId: version.id })
         if (version.macerationStatus === 'ready') {
           pushAttention({
             id: `ready-${version.id}`,
@@ -317,7 +339,9 @@ export function buildHomeDashboard(input: {
       pushAttention({
         id: `unbalanced-${product.id}`,
         kind: 'unbalanced',
-        href: balanceVersion ? productHref(product.id, balanceVersion.id) : baseHref,
+        href: balanceVersion
+          ? productHref(product.id, { versionId: balanceVersion.id })
+          : baseHref,
         productName: product.name,
         versionLabel: balanceVersion ? versionDisplayLabel(balanceVersion) : undefined,
         versionId: balanceVersion?.id,
@@ -337,33 +361,31 @@ export function buildHomeDashboard(input: {
         productType: product.type,
         rules: input.rules,
       })
-      let bannedInci: string | undefined
+      const seenBanInci = new Set<string>()
       for (const check of checks) {
         for (const hit of check.hits) {
           if (hit.effect === 'cannot_sell') {
-            bannedInci ??= hit.inci
+            const key = hit.inci.trim().toLowerCase()
+            if (!seenBanInci.has(key)) {
+              seenBanInci.add(key)
+              productReasons.push({
+                kind: 'banned',
+                inci: hit.inci,
+                market: hit.market,
+                instrument: shortInstrument(hit.instrument),
+              })
+            }
           }
           if (hit.effect === 'reduce_percent') {
             pushAttention({
               id: `restricted-${product.id}-${hit.inci}`,
               kind: 'restricted',
-              href: baseHref,
+              href: productHref(product.id, { tab: 'regulatory' }),
               productName: product.name,
               inci: hit.inci,
             })
           }
         }
-      }
-      // Bans live on Formulas at risk (one line per product) so Needs attention
-      // does not repeat the same issue.
-      if (bannedInci) {
-        pushAtRisk({
-          id: `risk-banned-${product.id}`,
-          kind: 'banned',
-          href: baseHref,
-          productName: product.name,
-          reasonInci: bannedInci,
-        })
       }
 
       const claimHits = evaluateClaimHits({
@@ -389,40 +411,68 @@ export function buildHomeDashboard(input: {
       }
     }
 
-    // Stock risk on the active / final formula (skip if already at risk from a ban).
-    if (!atRiskProductIds.has(baseHref) && activeRows.some((row) => row.inci.trim())) {
-      let missingInci: string | undefined
-      let lowInci: string | undefined
+    // Stock / missing on the active or final formula (can stack with a ban on
+    // a different ingredient). Skip stock lines for an INCI already banned.
+    if (activeRows.some((row) => row.inci.trim())) {
+      const bannedKeys = new Set(
+        productReasons
+          .filter((reason) => reason.kind === 'banned')
+          .map((reason) => reason.inci.trim().toLowerCase()),
+      )
+      const seenMissing = new Set<string>()
+      const seenLow = new Set<string>()
       for (const row of activeRows) {
         const inci = row.inci.trim()
         if (!inci) continue
+        const key = inci.toLowerCase()
+        if (bannedKeys.has(key)) continue
         const match = input.inventory.find(
-          (item) => item.inci.trim().toLowerCase() === inci.toLowerCase(),
+          (item) => item.inci.trim().toLowerCase() === key,
         )
-        if (!match) {
-          missingInci ??= inci
+        if (!match || match.stockStatus === 'to_buy') {
+          if (seenMissing.has(key)) continue
+          seenMissing.add(key)
+          productReasons.push({
+            kind: 'missing_ingredient',
+            inci: match?.inci ?? inci,
+            formulaPercent: row.percent,
+          })
           continue
         }
-        if (match.stockStatus === 'to_buy') missingInci ??= match.inci
-        else if (match.stockStatus === 'low') lowInci ??= match.inci
+        if (match.stockStatus === 'low') {
+          if (seenLow.has(key)) continue
+          seenLow.add(key)
+          productReasons.push({
+            kind: 'stock_out',
+            inci: match.inci,
+            onHandGrams: match.onHandGrams ?? null,
+            formulaPercent: row.percent,
+          })
+        }
       }
-      if (missingInci) {
-        pushAtRisk({
-          id: `risk-missing-${product.id}`,
-          kind: 'missing_ingredient',
-          href: baseHref,
-          productName: product.name,
-          reasonInci: missingInci,
-        })
-      } else if (lowInci) {
-        pushAtRisk({
-          id: `risk-stock-${product.id}`,
-          kind: 'stock_out',
-          href: baseHref,
-          productName: product.name,
-          reasonInci: lowInci,
-        })
-      }
+    }
+
+    if (productReasons.length) {
+      productReasons.sort(
+        (a, b) =>
+          reasonSortKey(a.kind) - reasonSortKey(b.kind) || a.inci.localeCompare(b.inci),
+      )
+      const primary = productReasons[0]
+      const href =
+        primary.kind === 'banned'
+          ? productHref(product.id, { tab: 'regulatory' })
+          : finalVersion
+            ? productHref(product.id, { versionId: finalVersion.id })
+            : visible?.version
+              ? productHref(product.id, { versionId: visible.version.id })
+              : baseHref
+      atRisk.push({
+        id: `risk-${product.id}`,
+        kind: primary.kind,
+        href,
+        productName: product.name,
+        reasons: productReasons,
+      })
     }
 
     const picked = pickCostVariant(variants)
