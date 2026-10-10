@@ -21,6 +21,8 @@ export const en = {
     deny: 'Deny',
     active: 'Active connections',
     empty: 'No active connections.',
+    emptyTitle: 'No active connections',
+    emptyDescription: 'When an external assistant connects, it shows up here so you can revoke it.',
     revoke: 'Revoke',
   },
   appName: 'Formulario',

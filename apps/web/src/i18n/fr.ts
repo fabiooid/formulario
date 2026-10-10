@@ -23,6 +23,9 @@ export const fr = {
     deny: 'Refuser',
     active: 'Connexions actives',
     empty: 'Aucune connexion active.',
+    emptyTitle: 'Aucune connexion active',
+    emptyDescription:
+      'Quand un assistant externe se connecte, il apparaît ici pour que vous puissiez le révoquer.',
     revoke: 'Révoquer',
   },
   appName: 'Formulario',

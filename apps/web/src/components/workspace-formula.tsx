@@ -4,6 +4,7 @@ import { FormulaBuilder } from '@/components/formula-builder'
 import { InciPreview } from '@/components/inci-preview'
 import { MacerationCard } from '@/components/maceration-card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
@@ -414,7 +415,7 @@ function VersionNameInput({
   }
 
   return (
-    <input
+    <Input
       ref={inputRef}
       defaultValue={name}
       maxLength={80}
@@ -432,7 +433,7 @@ function VersionNameInput({
       }}
       aria-label={t('workspace.versions.rename')}
       placeholder={t('workspace.versions.rename')}
-      className="h-8 w-44 rounded-md border border-input bg-card px-2.5 text-sm outline-none focus-visible:border-foreground/40 disabled:opacity-50 dark:bg-input/30"
+      className="h-8 w-44"
     />
   )
 }

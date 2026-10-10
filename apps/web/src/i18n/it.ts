@@ -23,6 +23,9 @@ export const it = {
     deny: 'Rifiuta',
     active: 'Connessioni attive',
     empty: 'Nessuna connessione attiva.',
+    emptyTitle: 'Nessuna connessione attiva',
+    emptyDescription:
+      'Quando un assistente esterno si connette, compare qui così puoi revocarlo.',
     revoke: 'Revoca',
   },
   appName: 'Formulario',

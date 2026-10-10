@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { EmptyState } from '@/components/empty-state'
 import { Meter, MeterIndicator, MeterLabel, MeterTrack } from '@/components/ui/meter'
 
 export function SimpleBarChart({
@@ -13,7 +14,7 @@ export function SimpleBarChart({
   const max = Math.max(...items.map((item) => item.value), 0)
 
   if (!items.length) {
-    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+    return <EmptyState title={emptyLabel} />
   }
 
   return (

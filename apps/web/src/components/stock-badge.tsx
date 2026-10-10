@@ -14,7 +14,7 @@ export function StockBadge({ status }: { status: StockDisplayStatus }) {
   return (
     <Badge
       variant={variant}
-      className={status === 'low' ? 'border-foreground/50 text-foreground' : undefined}
+      className={status === 'low' ? 'border-foreground/60 text-foreground' : undefined}
     >
       {t(`ingredients.stockStatus.${status}` as MessageKey)}
     </Badge>

@@ -13,14 +13,14 @@ export function EmptyState({
   children,
 }: {
   title: string
-  description: string
+  description?: string
   children?: ReactNode
 }) {
   return (
     <Empty>
       <EmptyHeader>
         <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>{description}</EmptyDescription>
+        {description ? <EmptyDescription>{description}</EmptyDescription> : null}
       </EmptyHeader>
       {children ? <EmptyContent>{children}</EmptyContent> : null}
     </Empty>

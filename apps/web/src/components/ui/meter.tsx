@@ -56,7 +56,7 @@ const meterIndicatorVariants = cva(
     variants: {
       variant: {
         default: "bg-foreground",
-        muted: "bg-border",
+        muted: "bg-muted-foreground/45",
       },
     },
     defaultVariants: {

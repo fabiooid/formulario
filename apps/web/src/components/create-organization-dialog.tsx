@@ -43,7 +43,7 @@ export function CreateOrganizationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-border/80 bg-background">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('org.createTitle')}</DialogTitle>
         </DialogHeader>

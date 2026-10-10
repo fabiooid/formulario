@@ -25,7 +25,7 @@ export function AuthScreen({
       </header>
 
       <div className="flex flex-1 items-center justify-center p-4 pb-16">
-        <Card className="w-full max-w-[400px] border-border/60">
+        <Card className="w-full max-w-[400px]">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl font-semibold tracking-tight">{title}</CardTitle>
             <CardDescription className="text-sm leading-relaxed">{description}</CardDescription>
