@@ -83,9 +83,10 @@ Added for the first testers:
   | `hallucination-scorer` | LLM judge, sampled | quantities or records not in the tool results (**lower is better**) |
 
   The judges cost one extra model call each per reply. `SCORER_SAMPLE_RATE` (default 1) sets the share of replies they score. A generic answer-relevancy judge was tried and dropped: it scored correct refusals as 0.
-- **Reports** for production, where Studio is off. Run inside `railway ssh`:
+- **Reports** for production (also useful when Studio is off). Run inside `railway ssh`:
   - `npm run scores:report -- --days 7`: averages per scorer and the latest flagged replies, with what was asked.
   - `npm run feedback:report -- --days 7`: messages from the in-app feedback form.
+- **Mastra Studio (opt-in):** follows Mastra’s [Deploy overview](https://mastra.ai/docs/deployment/overview) **Mastra server** path and [Studio alongside your API](https://mastra.ai/docs/studio/deployment) (`mastra build --studio` + `MASTRA_STUDIO_PATH`). Set `MASTRA_STUDIO=1` on Railway (Dockerfile exports `MASTRA_STUDIO_PATH` and `MASTRA_AUTO_DETECT_URL`). Sign in → Settings → Connections → **Open Studio** (passes your session via Mastra’s `auth_header`). Without a Formulario Bearer token, framework agent/tool APIs return 401. Mastra platform Studio remains an alternative if you want hosted org login later.
 - **Sign-in throttle:** 10 failed attempts per account in 15 minutes returns 429.
 - **Chat requires a chosen password:** an account still on its temporary password can't use the assistant.
 - **Chat thread per person per organization.** Before, team members shared one thread ID, which Mastra rejects for the second member ("thread belongs to a different resource").
@@ -136,7 +137,7 @@ Done for the alpha. For a fresh project, or if the GitHub link is missing:
 | `NODE_ENV`, `MASTRA_HOST` | set by the Dockerfile (`production`, `0.0.0.0`) |
 | `PORT` | set by Railway |
 | `GEMINI_API_KEY` | **not set** |
-| `MASTRA_STUDIO` | **never set** |
+| `MASTRA_STUDIO` | **optional.** Set to `1` to enable production Studio at `/studio` (Mastra `build --studio` + `MASTRA_STUDIO_PATH`). Framework `/api/*` then require a Formulario session via Mastra `server.auth`. Leave unset to keep `/studio` and non-stream `/api/*` as 404. |
 
 With `NODE_ENV=production`, the API refuses to start with the example JWT secret or with plain-HTTP public URLs.
 
@@ -147,7 +148,7 @@ With `NODE_ENV=production`, the API refuses to start with the example JWT secret
 3. Create the first account: `npm run users:create -- you@example.com`. The temporary password prints to the terminal. Run this inside `railway ssh`, not `railway run`, because `railway run` runs on your laptop against your local database.
 4. In the browser: sign in, choose a password, create a product, edit the formula, check the regulatory tab, and send a Lab Assistant message (the reply must stream in pieces, not arrive all at once at the end).
 5. Check that `demo@local.test` can't sign in.
-6. Check that `/api/agents` returns 404.
+6. Check that `/api/agents` returns 404 when `MASTRA_STUDIO` is unset. With `MASTRA_STUDIO=1`, it returns 401 without a session and works after Settings → Connections → Open Studio.
 7. Connect Claude or ChatGPT to `https://<origin>/mcp`: OAuth consent, organization choice, read a formula, and propose a patch that shows up as pending in Formulario.
 8. Check light and dark mode, and a narrow window.
 9. **Restore drill:** restore a backup into a new service and confirm it boots with the data. Do this before inviting anyone.

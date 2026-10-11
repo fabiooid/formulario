@@ -5,8 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/empty-state'
 import { useLanguage } from '@/i18n/language-provider'
-import { api } from '@/lib/api'
+import { api, getToken } from '@/lib/api'
 import { SettingsSection } from './section'
+
+function openStudio(path: string) {
+  const token = getToken()
+  if (!token) return
+  const url = new URL(path, window.location.origin)
+  url.searchParams.set('auth_header', `Bearer ${token}`)
+  window.open(url.toString(), '_blank', 'noopener,noreferrer')
+}
 
 export function SettingsConnectionsPage() {
   const { t } = useLanguage()
@@ -15,10 +23,11 @@ export function SettingsConnectionsPage() {
   const [organizationId, setOrganizationId] = useState('')
   const client = useQueryClient()
   const connections = useQuery({ queryKey: ['connections'], queryFn: api.getConnections })
+  const studio = useQuery({ queryKey: ['studio'], queryFn: api.getStudio })
   const consent = useQuery({ queryKey: ['connection-request', requestId], queryFn: () => api.getConnectionRequest(requestId!), enabled: !!requestId, retry: false })
   const authorize = useMutation({ mutationFn: (allow: boolean) => api.authorizeConnection({ requestId: requestId!, organizationId, allow }), onSuccess: result => window.location.assign(result.redirect) })
   const revoke = useMutation({ mutationFn: api.revokeConnection, onSuccess: () => client.invalidateQueries({ queryKey: ['connections'] }) })
-  const error = connections.error ?? consent.error ?? authorize.error ?? revoke.error
+  const error = connections.error ?? consent.error ?? authorize.error ?? revoke.error ?? studio.error
   return <SettingsSection title={t('connections.title')}>
     <Card>
       <CardHeader><CardTitle>{t('connections.title')}</CardTitle><CardDescription>{t('connections.description')}</CardDescription></CardHeader>
@@ -42,6 +51,25 @@ export function SettingsConnectionsPage() {
           </a>
         </p>
         <p className="text-sm text-muted-foreground">{t('connections.boundary')}</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('connections.studioTitle')}</CardTitle>
+        <CardDescription>{t('connections.studioDescription')}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {studio.isLoading ? (
+          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+        ) : studio.data?.enabled ? (
+          <div>
+            <Button type="button" onClick={() => openStudio(studio.data.path)}>
+              {t('connections.studioOpen')}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t('connections.studioUnavailable')}</p>
+        )}
       </CardContent>
     </Card>
     {requestId && consent.data && <Card>

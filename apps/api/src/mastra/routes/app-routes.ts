@@ -75,6 +75,7 @@ import { listPendingProposals, resolveProposal } from '../../services/proposals.
 import { createFeedback } from '../../services/feedback.js'
 import { libsql } from '../../db/client.js'
 import { clearLoginFailures, loginRetryAfter, recordLoginFailure } from '../../lib/login-throttle.js'
+import { isMastraStudioEnabled, MASTRA_STUDIO_BASE } from '../studio-env.js'
 
 type HonoLike = {
   req: {
@@ -240,6 +241,17 @@ export const authRoutes = [
 ]
 
 export const appRoutes = [
+  registerApiRoute('/app/studio', {
+    method: 'GET',
+    requiresAuth: false,
+    handler: async (c) =>
+      withUser(c, async () =>
+        c.json({
+          enabled: isMastraStudioEnabled(),
+          path: MASTRA_STUDIO_BASE,
+        }),
+      ),
+  }),
   registerApiRoute('/app/plan', {
     method: 'PATCH',
     requiresAuth: false,
