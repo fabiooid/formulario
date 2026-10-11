@@ -27,6 +27,11 @@ export const it = {
     emptyDescription:
       'Quando un assistente esterno si connette, compare qui così puoi revocarlo.',
     revoke: 'Revoca',
+    studioTitle: 'Mastra Studio',
+    studioDescription:
+      'Apri l’interfaccia Mastra Studio di questo server. Usa la sessione Formulario; le API degli agent restano chiuse senza di essa.',
+    studioOpen: 'Apri Studio',
+    studioUnavailable: 'Studio non è attivo su questo server.',
   },
   appName: 'Formulario',
   common: {
