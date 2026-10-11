@@ -137,8 +137,21 @@ Done for the alpha. For a fresh project, or if the GitHub link is missing:
 | `PORT` | set by Railway |
 | `GEMINI_API_KEY` | **not set** |
 | `MASTRA_STUDIO` | **never set** |
+| `MASTRA_PLATFORM_ACCESS_TOKEN` | Access token from the Mastra project (projects.mastra.ai). Leave empty locally |
+| `MASTRA_PROJECT_ID` | Project ID from that Mastra project page |
+| `MASTRA_PLATFORM_OBSERVABILITY_ENDPOINT` | `https://observability.eu.mastra.ai` |
 
 With `NODE_ENV=production`, the API refuses to start with the example JWT secret or with plain-HTTP public URLs.
+
+### Viewing production traces
+
+The Lab Assistant already writes traces to `observability.duckdb` on the Railway volume. Studio is off in production (`MASTRA_STUDIO` must stay unset), so you cannot browse that file in the app.
+
+Set the three `MASTRA_PLATFORM_*` variables above. The same traces then also go to Mastra's hosted observability in the EU. Without the access token the platform exporter does nothing, so local dev and CI stay unchanged.
+
+Open the project at https://projects.mastra.ai and filter by service name `formulario`. Scores and tester feedback reports stay on the Railway volume (`npm run scores:report`, `npm run feedback:report`).
+
+The DuckDB file on the volume still grows without a retention policy. Hosted traces are the place to review production; do not change sampling to shrink the file.
 
 ## Phase 3 — First deploy and smoke test
 
@@ -158,7 +171,7 @@ With `NODE_ENV=production`, the API refuses to start with the example JWT secret
 - **Deploys:** push (or merge) to `main`. GitHub Actions (`.github/workflows/ci.yml`) runs typecheck + `npm test`. Railway’s GitHub integration waits for those checks, then builds the Dockerfile and deploys. Do **not** also deploy from Actions — one path only. With a volume, Railway stops the old container before starting the new one, so expect a few seconds of downtime per deploy. Emergency fallback: `railway up` from a laptop still works, but prefer GitHub.
 - **Migrations:** they run on every boot. Make each new migration backward-safe: add first, drop in a later release.
 - **Testing loop:** run `npm run scores:report` and `npm run feedback:report` every few days while testers are active.
-- **Monitoring:** Railway logs and metrics, the refresh heartbeat, an uptime check on `/healthz`, and volume usage (`observability.duckdb` grows without a retention policy).
+- **Monitoring:** Railway logs and metrics, the refresh heartbeat, an uptime check on `/healthz`, hosted traces on Mastra Platform (see "Viewing production traces"), and volume usage (`observability.duckdb` grows without a retention policy).
 
 ## Later
 
