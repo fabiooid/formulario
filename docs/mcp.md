@@ -11,11 +11,11 @@ Formulario owns descriptions, formulas, versions, calculations and trial notes. 
 
 The endpoint is **`/mcp`**. Tools are a Mastra MCP server named `formulario`. Login, workspace choice and revoke stay in Formulario → Settings → Connections. No model API key is required for MCP; reasoning runs in the external client. The administrative assistant still uses the configured model key.
 
-Mastra Studio can list this server when `MASTRA_STUDIO=1`. That flag also opens extra Mastra APIs, so keep it off in production. External assistants should use **`/mcp`** with OAuth, not Studio’s `/api/mcp/...` routes.
+Mastra Studio at `/studio` can list this server when `MASTRA_STUDIO_JWT_SECRET` is set and you paste a Studio Bearer token in Studio Settings > Headers. Never set `MASTRA_STUDIO=1`; that old flag left `/api` open. External assistants should use **`/mcp`** with OAuth, not Studio's `/api/mcp/...` routes.
 
 ## Connect a remote assistant
 
-A cloud client must be able to reach the API. Deploy it behind HTTPS (or configure a supported private development tunnel) and set the two canonical origins above. Use a strong `MASTRA_JWT_SECRET`; production refuses the example secret. Reverse proxies must preserve the canonical Host and route `/mcp`, `/oauth/*`, `/.well-known/*`, `/auth/*` and `/app/*` to the API. Set the web origin in the API CORS configuration when hosting the web and API separately. The MVP blocks generic framework APIs and exposes only the authenticated assistant stream under `/api`; Studio/editor is disabled. Publish only the application and MCP routes through the proxy.
+A cloud client must be able to reach the API. Deploy it behind HTTPS (or configure a supported private development tunnel) and set the two canonical origins above. Use a strong `MASTRA_JWT_SECRET`; production refuses the example secret. Reverse proxies must preserve the canonical Host and route `/mcp`, `/oauth/*`, `/.well-known/*`, `/auth/*` and `/app/*` to the API. Set the web origin in the API CORS configuration when hosting the web and API separately. The product API exposes the authenticated assistant stream under `/api`. Self-hosted Studio is at `/studio` and needs a Studio JWT. Reverse proxies must also leave `/studio` on the API origin. Publish the application, MCP, and Studio routes through the proxy.
 
 In the client's custom connector settings, add `https://YOUR_API_ORIGIN/mcp` and choose OAuth. The server provides protected-resource metadata, authorization-server metadata and dynamic public-client registration. It requires an exact registered redirect URI, authorization code + S256 PKCE, the MCP resource indicator, and the `formulario:read formulario:propose` scope. Client credentials are not used.
 
