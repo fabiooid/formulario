@@ -8,7 +8,7 @@ The formula table is the source of truth. Chat proposes changes; the person acce
 - Env file: copy `.env.example` to `.env` if it is missing
 - Database: `npm run db:setup` (migrate + seed demo data)
 - Dev: `npm run dev` (web http://localhost:5173, API http://localhost:4111)
-- The product API exposes the authenticated assistant stream under `/api`. Self-hosted Mastra Studio is served at `/studio` when `MASTRA_STUDIO_JWT_SECRET` is set. Never set `MASTRA_STUDIO=1` (that old flag left `/api` open). Mint a Studio token with `npm run studio:token` and paste it in Studio Settings > Headers. Run evals from the CLI.
+- The product API exposes the authenticated assistant stream under `/api`. Self-hosted Mastra Studio is served at `/studio` when `MASTRA_STUDIO_JWT_SECRET` is set. Never set `MASTRA_STUDIO=1` (that old flag left `/api` open). Mint a Studio token with `npm run studio:token`. First visit uses `/studio?auth_header=Bearer%20<token>`, then save it in Studio Settings > Headers. Run evals from the CLI.
 - Tests: `npm test`
 
 ## Formula drafting

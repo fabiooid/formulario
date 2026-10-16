@@ -54,7 +54,16 @@ async function main() {
     .setExpirationTime(`${Math.round(days)}d`)
     .sign(new TextEncoder().encode(secret))
 
+  const origin = (process.env.MCP_PUBLIC_URL ?? process.env.APP_PUBLIC_URL ?? 'http://localhost:4111').replace(/\/$/, '')
+  const studioPath = process.env.MASTRA_STUDIO_BASE_PATH?.trim() || '/studio'
+  const openUrl = `${origin}${studioPath}?auth_header=${encodeURIComponent(`Bearer ${token}`)}`
+
   console.log(token)
+  console.error('')
+  console.error('Paste in Studio Settings > Headers:')
+  console.error('  Authorization    Bearer <token>')
+  console.error('First visit, if Studio asks for authentication with no login form, open:')
+  console.error(`  ${openUrl}`)
 }
 
 await main()

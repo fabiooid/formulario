@@ -156,9 +156,12 @@ Studio is served on this same Railway service at `https://<origin>/studio`. Fabi
    ```
 
    The command prints one token. It does not print the secret.
-3. Open `https://<origin>/studio`.
-4. In Studio go to **Settings > Headers**. Add a header named `Authorization` with value `Bearer <token>` (one space after `Bearer`).
-5. Reload Studio. Traces and the Lab Assistant should load. Score a run by hand in Studio when you want a score. Do not turn on automatic scorers in Studio.
+3. Open Studio with the token in the address (Studio then removes it from the URL):
+
+   `https://<origin>/studio?auth_header=Bearer%20<token>`
+
+   JWT has no login form. That query is the first-visit unlock. After Studio loads, go to **Settings > Headers** and save `Authorization` = `Bearer <token>` (one space after `Bearer`) so a reload still works.
+4. Traces and the Lab Assistant should load. Score a run by hand in Studio when you want a score. Do not turn on automatic scorers in Studio.
 
 Without `MASTRA_STUDIO_JWT_SECRET`, `/studio` may still show the empty Studio shell, but `/api/*` stays closed except the Formulario chat stream. A Formulario login token cannot open Studio APIs.
 

@@ -4,6 +4,13 @@ import { jwtVerify } from 'jose'
 export const STUDIO_BASE_PATH = '/studio'
 export const ASSISTANT_STREAM_PATH = '/api/agents/assistantAgent/stream'
 
+// JWT has no login form. In production Mastra only reads the current user for
+// Simple Auth, Cloud, or an EE license. This flag is the Simple Auth exemption
+// so Studio JWT works without RBAC and without MASTRA_LICENSE_KEY.
+class FormularioStudioJwtAuth extends MastraJwtAuth {
+  readonly isSimpleAuth = true
+}
+
 type GateContext = {
   req: {
     method: string
@@ -53,7 +60,7 @@ export function createStudioConfig() {
   const secret = studioJwtSecret()
   if (!secret) return undefined
   return {
-    auth: new MastraJwtAuth({ secret }),
+    auth: new FormularioStudioJwtAuth({ secret }),
   }
 }
 

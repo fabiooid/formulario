@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SignJWT } from 'jose'
+import { MastraJwtAuth } from '@mastra/auth'
 import {
   assertStudioEnv,
   createStudioApiMiddleware,
@@ -45,15 +46,18 @@ async function readJson(response: Response | void) {
   return { status: response.status, body: await response.json() }
 }
 
+function clearStudioEnv() {
+  delete process.env.MASTRA_STUDIO
+  delete process.env.MASTRA_STUDIO_JWT_SECRET
+  delete process.env.MASTRA_STUDIO_BASE_PATH
+  delete process.env.MASTRA_JWT_SECRET
+  delete process.env.APP_PUBLIC_URL
+  process.env.NODE_ENV = 'test'
+}
+
 describe('studio config', () => {
-  afterEach(() => {
-    delete process.env.MASTRA_STUDIO
-    delete process.env.MASTRA_STUDIO_JWT_SECRET
-    delete process.env.MASTRA_STUDIO_BASE_PATH
-    delete process.env.MASTRA_JWT_SECRET
-    delete process.env.APP_PUBLIC_URL
-    process.env.NODE_ENV = 'test'
-  })
+  beforeEach(clearStudioEnv)
+  afterEach(clearStudioEnv)
 
   it('keeps Studio off until the Studio secret is set', () => {
     expect(createStudioConfig()).toBeUndefined()
@@ -63,7 +67,8 @@ describe('studio config', () => {
     process.env.MASTRA_STUDIO_JWT_SECRET = studioSecret
     const config = createStudioConfig()
     expect(config?.auth).toBeDefined()
-    expect(config?.auth.constructor.name).toBe('MastraJwtAuth')
+    expect(config?.auth).toBeInstanceOf(MastraJwtAuth)
+    expect(config?.auth).toMatchObject({ isSimpleAuth: true })
   })
 
   it('serves Studio under /studio unless MASTRA_STUDIO_BASE_PATH is set', () => {
@@ -97,9 +102,8 @@ describe('studio config', () => {
 })
 
 describe('studio tokens', () => {
-  afterEach(() => {
-    delete process.env.MASTRA_STUDIO_JWT_SECRET
-  })
+  beforeEach(clearStudioEnv)
+  afterEach(clearStudioEnv)
 
   it('reads a Bearer token from the Authorization header', () => {
     expect(getBearerToken('Bearer abc.def')).toBe('abc.def')
@@ -114,13 +118,19 @@ describe('studio tokens', () => {
     const appToken = await signToken(appSecret)
     await expect(verifyStudioToken(studioToken)).resolves.toBe(true)
     await expect(verifyStudioToken(appToken)).resolves.toBe(false)
+
+    const user = await createStudioConfig()?.auth.getCurrentUser(
+      new Request('http://localhost/api/auth/capabilities', {
+        headers: { Authorization: `Bearer ${studioToken}` },
+      }),
+    )
+    expect(user).toMatchObject({ id: 'fabio' })
   })
 })
 
 describe('studio API gate', () => {
-  afterEach(() => {
-    delete process.env.MASTRA_STUDIO_JWT_SECRET
-  })
+  beforeEach(clearStudioEnv)
+  afterEach(clearStudioEnv)
 
   it('hides generic /api routes when Studio auth is off', async () => {
     const agentGate = vi.fn()
