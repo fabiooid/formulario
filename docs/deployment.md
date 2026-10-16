@@ -19,7 +19,7 @@ Vercel stays useful later for a marketing site on the root domain.
 Browser ─┐
          ├─ https://<origin> ─ Railway service "formulario"
 Claude / │                      Node 22, node .mastra/output/index.mjs
-ChatGPT ─┘                      serves web/dist + /auth /app /api /mcp /oauth /.well-known /healthz
+ChatGPT ─┘                      serves web/dist + /studio + /auth /app /api /mcp /oauth /.well-known /healthz
                                 volume → /app/apps/api/data
                                   app.db, mastra.db, observability.duckdb, official/
 ```
@@ -53,7 +53,8 @@ Only one origin works for MCP at a time. After the switch, the old `*.up.railway
 |---|---|
 | Mastra packages pinned | `apps/api/package.json`, lockfile |
 | `db:seed:official`: official list only, re-checks saved formulas when the list changes | `apps/api/src/db/seed.ts` |
-| API serves `apps/web/dist` with an SPA fallback, when `NODE_ENV=production`. API prefixes never fall back. A missing `/assets/*` file returns 404. Path traversal is blocked | `apps/api/src/mastra/web-static.ts` |
+| API serves `apps/web/dist` with an SPA fallback, when `NODE_ENV=production`. API prefixes never fall back. `/studio` is reserved for Mastra Studio so the web app does not swallow it. A missing `/assets/*` file returns 404. Path traversal is blocked | `apps/api/src/mastra/web-static.ts` |
+| Production image builds Studio (`mastra build --studio`) and serves it at `/studio` when `MASTRA_STUDIO_PATH=.mastra/output/studio` | `apps/api/package.json`, `Dockerfile` |
 | `GET /healthz` returns 200 after a DB read | `apps/api/src/mastra/routes/app-routes.ts` |
 | Daily refresh at 03:00 UTC inside the API process, one run at a time. It pings `REFRESH_HEARTBEAT_URL` on success and `…/fail` on failure | `apps/api/src/services/refresh-schedule.ts`, `official-refresh.ts` |
 | `npm run rules:refresh` still works by hand (same code) | `apps/api/src/db/refresh-official-lists.ts` |
@@ -83,7 +84,7 @@ Added for the first testers:
   | `hallucination-scorer` | LLM judge, sampled | quantities or records not in the tool results (**lower is better**) |
 
   The judges cost one extra model call each per reply. `SCORER_SAMPLE_RATE` (default 1) sets the share of replies they score. A generic answer-relevancy judge was tried and dropped: it scored correct refusals as 0.
-- **Reports** for production, where Studio is off. Run inside `railway ssh`:
+- **Reports** for production. Live traces stay on. Studio at `/studio` is JWT-only (no RBAC, no license key). You can still run reports inside `railway ssh`:
   - `npm run scores:report -- --days 7`: averages per scorer and the latest flagged replies, with what was asked.
   - `npm run feedback:report -- --days 7`: messages from the in-app feedback form.
 - **Sign-in throttle:** 10 failed attempts per account in 15 minutes returns 429.
@@ -124,7 +125,8 @@ Done for the alpha. For a fresh project, or if the GitHub link is missing:
 
 | Variable | Value |
 |---|---|
-| `MASTRA_JWT_SECRET` | `openssl rand -base64 48`. Rotating it signs everyone out |
+| `MASTRA_JWT_SECRET` | `openssl rand -base64 48`. Rotating it signs everyone out of Formulario |
+| `MASTRA_STUDIO_JWT_SECRET` | a **different** `openssl rand -base64 48`. This is only for Studio. Do not reuse `MASTRA_JWT_SECRET` |
 | `DATABASE_URL` | `file:/app/apps/api/data/app.db` |
 | `APP_PUBLIC_URL` | `https://<name>.up.railway.app` |
 | `MCP_PUBLIC_URL` | same as `APP_PUBLIC_URL` |
@@ -134,9 +136,33 @@ Done for the alpha. For a fresh project, or if the GitHub link is missing:
 | `REFRESH_HEARTBEAT_URL` | Healthchecks.io ping URL for a daily check (grace period about 2 hours) |
 | `SCORER_SAMPLE_RATE` | optional, default `1` (judge every reply). Lower it if testing grows |
 | `NODE_ENV`, `MASTRA_HOST` | set by the Dockerfile (`production`, `0.0.0.0`) |
+| `MASTRA_STUDIO_PATH` | set by the Dockerfile (`.mastra/output/studio`) |
+| `MASTRA_STUDIO_BASE_PATH` | set by the Dockerfile (`/studio`) |
+| `MASTRA_AUTO_DETECT_URL` | set by the Dockerfile (`true`) so Studio uses the public origin |
 | `PORT` | set by Railway |
 | `GEMINI_API_KEY` | **not set** |
-| `MASTRA_STUDIO` | **never set** |
+| `MASTRA_STUDIO` | **never set**. Production refuses to start if this flag is on |
+| `MASTRA_LICENSE_KEY` | **not set**. Studio is JWT only, with no RBAC |
+
+### Mastra Studio (same origin)
+
+Studio is served on this same Railway service at `https://<origin>/studio`. Fabio is the only admin. Access is a Studio JWT, not Formulario login and not Mastra Enterprise RBAC.
+
+1. Set `MASTRA_STUDIO_JWT_SECRET` in Railway (a new secret, not `MASTRA_JWT_SECRET`).
+2. Open a shell with `railway ssh`, then mint a token:
+
+   ```bash
+   npm run studio:token -- --sub fabio --days 90
+   ```
+
+   The command prints one token. It does not print the secret.
+3. Open `https://<origin>/studio`.
+4. In Studio go to **Settings > Headers**. Add a header named `Authorization` with value `Bearer <token>` (one space after `Bearer`).
+5. Reload Studio. Traces and the Lab Assistant should load. Score a run by hand in Studio when you want a score. Do not turn on automatic scorers in Studio.
+
+Without `MASTRA_STUDIO_JWT_SECRET`, `/studio` may still show the empty Studio shell, but `/api/*` stays closed except the Formulario chat stream. A Formulario login token cannot open Studio APIs.
+
+Never set `MASTRA_STUDIO=1`. That old local flag left `/api` open without `Authorization`. Production throws if it is set.
 
 With `NODE_ENV=production`, the API refuses to start with the example JWT secret or with plain-HTTP public URLs.
 
@@ -147,7 +173,7 @@ With `NODE_ENV=production`, the API refuses to start with the example JWT secret
 3. Create the first account: `npm run users:create -- you@example.com`. The temporary password prints to the terminal. Run this inside `railway ssh`, not `railway run`, because `railway run` runs on your laptop against your local database.
 4. In the browser: sign in, choose a password, create a product, edit the formula, check the regulatory tab, and send a Lab Assistant message (the reply must stream in pieces, not arrive all at once at the end).
 5. Check that `demo@local.test` can't sign in.
-6. Check that `/api/agents` returns 404.
+6. Check that `/api/agents` returns 401 without a Studio token (or 404 if `MASTRA_STUDIO_JWT_SECRET` is not set). Check that `/studio` is Mastra Studio, not the Formulario app.
 7. Connect Claude or ChatGPT to `https://<origin>/mcp`: OAuth consent, organization choice, read a formula, and propose a patch that shows up as pending in Formulario.
 8. Check light and dark mode, and a narrow window.
 9. **Restore drill:** restore a backup into a new service and confirm it boots with the data. Do this before inviting anyone.
@@ -157,8 +183,9 @@ With `NODE_ENV=production`, the API refuses to start with the example JWT secret
 - **Accounts:** registration is closed. Create users with `railway ssh` → `npm run users:create`. An invite email can come later.
 - **Deploys:** push (or merge) to `main`. GitHub Actions (`.github/workflows/ci.yml`) runs typecheck + `npm test`. Railway’s GitHub integration waits for those checks, then builds the Dockerfile and deploys. Do **not** also deploy from Actions — one path only. With a volume, Railway stops the old container before starting the new one, so expect a few seconds of downtime per deploy. Emergency fallback: `railway up` from a laptop still works, but prefer GitHub.
 - **Migrations:** they run on every boot. Make each new migration backward-safe: add first, drop in a later release.
-- **Testing loop:** run `npm run scores:report` and `npm run feedback:report` every few days while testers are active.
-- **Monitoring:** Railway logs and metrics, the refresh heartbeat, an uptime check on `/healthz`, and volume usage (`observability.duckdb` grows without a retention policy).
+- **Testing loop:** open `/studio` with the Studio JWT for live traces. Also run `npm run scores:report` and `npm run feedback:report` every few days while testers are active.
+- **Monitoring:** Railway logs and metrics, Studio traces, the refresh heartbeat, an uptime check on `/healthz`, and volume usage (`observability.duckdb` grows without a retention policy).
+- **Studio tokens:** mint a new token after rotating `MASTRA_STUDIO_JWT_SECRET`. Keep the token off git, chat logs, and screenshots.
 
 ## Later
 

@@ -8,7 +8,7 @@ The formula table is the source of truth. Chat proposes changes; the person acce
 - Env file: copy `.env.example` to `.env` if it is missing
 - Database: `npm run db:setup` (migrate + seed demo data)
 - Dev: `npm run dev` (web http://localhost:5173, API http://localhost:4111)
-- The MVP exposes only the authenticated assistant stream under `/api`. Mastra Studio/editor and generic framework APIs are disabled. Run evals from the CLI. Local Studio listing of the Formulario MCP needs `MASTRA_STUDIO=1`; do not use that flag in production.
+- The product API exposes the authenticated assistant stream under `/api`. Self-hosted Mastra Studio is served at `/studio` when `MASTRA_STUDIO_JWT_SECRET` is set. Never set `MASTRA_STUDIO=1` (that old flag left `/api` open). Mint a Studio token with `npm run studio:token` and paste it in Studio Settings > Headers. Run evals from the CLI.
 - Tests: `npm test`
 
 ## Formula drafting
@@ -25,7 +25,7 @@ Public registration is closed. Create an account with `npm run users:create -- p
 
 V1 gives every account the Lab Assistant: `ASSISTANT_REQUIRES_PAID_PLAN` in `packages/domain/src/plans.ts` is the single switch for the API gate, the chat pane and Settings → Plan. Accounts cannot change their own plan in production.
 
-The Lab Assistant has live scorers in `apps/api/src/mastra/scorers/assistant-scorers.ts` (code checks on every reply, two LLM judges sampled by `SCORER_SAMPLE_RATE`). Studio is off in production; read results with `npm run scores:report` and tester feedback with `npm run feedback:report`. Deployment: `docs/deployment.md`.
+The Lab Assistant has live scorers in `apps/api/src/mastra/scorers/assistant-scorers.ts` (code checks on every reply, two LLM judges sampled by `SCORER_SAMPLE_RATE`). Production Studio at `/studio` is JWT-only (no RBAC). Read scores with Studio or `npm run scores:report`, and tester feedback with `npm run feedback:report`. Deployment: `docs/deployment.md`.
 
 ## Cursor Cloud specific instructions
 
@@ -36,6 +36,7 @@ Secrets belong in Cursor Cloud settings, not in git:
 - `OPENAI_API_KEY` — needed to try the paid Lab Assistant with OpenAI
 - `GEMINI_API_KEY` — needed to try it with Gemini
 - `FORMULATOR_PROVIDER` — `openai` or `gemini` (Gemini is the default when both keys exist)
-- `MASTRA_JWT_SECRET` — optional; a local default exists
+- `MASTRA_JWT_SECRET` — optional; a local default exists (Formulario login)
+- `MASTRA_STUDIO_JWT_SECRET` — optional; needed to open `/studio`. Do not reuse `MASTRA_JWT_SECRET`
 
 After install, `npm run dev` starts on its own (web 5173, API 4111). Use the demo login to click through the app. Check light and dark, and a narrow window, for UI changes. Never commit `.env`.

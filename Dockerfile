@@ -14,6 +14,9 @@ FROM node:22-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
 ENV MASTRA_HOST=0.0.0.0
+ENV MASTRA_STUDIO_PATH=.mastra/output/studio
+ENV MASTRA_STUDIO_BASE_PATH=/studio
+ENV MASTRA_AUTO_DETECT_URL=true
 # node_modules stays: tsx runs migrate, seed, users:create and rules:refresh from source.
 COPY --from=build /app /app
 WORKDIR /app/apps/api
