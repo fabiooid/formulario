@@ -40,7 +40,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "latest",
     "drizzle-kit": "^0.31.1",
     "mastra": "1.27.2",
