@@ -8,8 +8,9 @@
   },
   "scripts": {
     "dev": "NODE_OPTIONS='--experimental-strip-types --no-network-family-autoselection' node --env-file=../../.env ../../node_modules/.bin/mastra dev",
-    "build": "mastra build",
+    "build": "npm_config_legacy_peer_deps=true mastra build --studio",
     "start": "mastra start",
+    "studio:token": "tsx --env-file-if-exists=../../.env src/mastra/mint-studio-token.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",

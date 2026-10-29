@@ -9,20 +9,27 @@ import { mcpConfig, mcpRoutes } from '../mcp/routes.js'
 import { formularioMcpServer } from '../mcp/tools.js'
 import { assistantAgent } from './agents/assistant-agent.js'
 import { agentGateMiddleware, appRoutes, authRoutes, healthRoutes } from './routes/app-routes.js'
+import {
+  assertStudioEnv,
+  createStudioApiMiddleware,
+  createStudioConfig,
+  isStudioAuthEnabled,
+  studioServerHints,
+} from './studio.js'
 import { webStaticEnabled, webStaticMiddleware } from './web-static.js'
 import { startRefreshSchedule } from '../services/refresh-schedule.js'
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const mastraDbUrl = `file:${path.join(apiRoot, 'data/mastra.db')}`
 const observabilityDbPath = path.join(apiRoot, 'data/observability.duckdb')
-const studioEnabled = process.env.MASTRA_STUDIO === '1' || process.env.MASTRA_STUDIO === 'true'
 const webOrigin = mcpConfig().web
-const corsOrigins = studioEnabled
-  ? [webOrigin, 'http://localhost:3000', 'http://127.0.0.1:3000']
-  : [webOrigin]
+const studioConfig = createStudioConfig()
+const studioHints = studioServerHints()
+const studioApiMiddleware = createStudioApiMiddleware(agentGateMiddleware)
 
-if (studioEnabled) {
-  console.warn('[formulario] Mastra Studio APIs are open for local use. Do not use this flag in production.')
+assertStudioEnv()
+if (isStudioAuthEnabled()) {
+  console.info('[formulario] Mastra Studio is on at /studio. APIs need a Studio JWT. Do not set MASTRA_STUDIO.')
 }
 
 if (process.env.NODE_ENV === 'production') startRefreshSchedule()
@@ -55,29 +62,26 @@ export const mastra = new Mastra({
       },
     },
   }),
+  studio: studioConfig,
   server: {
     port: Number(process.env.PORT ?? 4111),
     host: process.env.MASTRA_HOST ?? '0.0.0.0',
+    studioBase: studioHints.studioBase,
+    studioHost: studioHints.studioHost,
+    studioProtocol: studioHints.studioProtocol,
+    studioPort: studioHints.studioPort,
     mcpOptions: {
       serverless: true,
     },
     cors: {
-      origin: corsOrigins,
-      allowHeaders: ['Content-Type', 'Authorization'],
+      origin: [webOrigin],
+      allowHeaders: ['Content-Type', 'Authorization', 'x-mastra-client-type'],
       allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     },
     middleware: [
       {
         path: '/api/*',
-        handler: async (c, next) => {
-          const isAssistantStream = c.req.path === '/api/agents/assistantAgent/stream'
-          if (!isAssistantStream) {
-            return studioEnabled ? next() : c.json({ error: 'Not found' }, 404)
-          }
-          // Studio has no app token. App chat still uses the paid-plan gate.
-          if (studioEnabled && !c.req.header('authorization')) return next()
-          return agentGateMiddleware(c, next)
-        },
+        handler: studioApiMiddleware,
       },
       ...(webStaticEnabled ? [{ path: '*', handler: webStaticMiddleware }] : []),
     ],

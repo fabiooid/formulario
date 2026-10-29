@@ -8,13 +8,17 @@ const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.
 const webDist = path.resolve(process.env.WEB_DIST_DIR ?? path.join(apiRoot, '../web/dist'))
 const indexPath = path.join(webDist, 'index.html')
 
-// Everything under these prefixes belongs to the API and must never fall back to index.html.
-const apiPrefixes = ['/api', '/auth', '/app', '/mcp', '/oauth', '/.well-known', '/healthz']
+// Everything under these prefixes belongs to the API or Studio and must never fall back to index.html.
+const apiPrefixes = ['/api', '/auth', '/app', '/mcp', '/oauth', '/.well-known', '/healthz', '/studio']
 
 export const webStaticEnabled = process.env.NODE_ENV === 'production' && existsSync(indexPath)
 
-function isApiPath(pathname: string) {
+export function isWebStaticReservedPath(pathname: string) {
   return apiPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
+
+function isApiPath(pathname: string) {
+  return isWebStaticReservedPath(pathname)
 }
 
 function fileResponse(filePath: string, cacheControl: string) {
