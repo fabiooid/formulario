@@ -26,4 +26,6 @@ WORKDIR /app/apps/api
 EXPOSE 4111
 # Migrations and the official-list seed are idempotent and need the volume, which
 # Railway mounts only at runtime, so they run here and not in a pre-deploy step.
-CMD ["sh", "-c", "npm run db:migrate && npm run db:seed:official && exec node .mastra/output/index.mjs"]
+# When MASTRA_STUDIO=1, serve Studio from the build (mastra build --studio) and let the
+# browser detect the same-origin API URL. See docs/deployment.md and Mastra Studio deployment.
+CMD ["sh", "-c", "npm run db:migrate && npm run db:seed:official && if [ \"$MASTRA_STUDIO\" = \"1\" ] || [ \"$MASTRA_STUDIO\" = \"true\" ]; then export MASTRA_STUDIO_PATH=.mastra/output/studio MASTRA_AUTO_DETECT_URL=true; fi && exec node .mastra/output/index.mjs"]
