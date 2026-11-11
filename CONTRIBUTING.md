@@ -1,6 +1,6 @@
 # Contributing to Formulario
 
-The project is a local prototype and is licensed under the [MIT License](LICENSE). How the product should look and feel is in [DESIGN.md](DESIGN.md). Agent and product notes are in [AGENTS.md](AGENTS.md).
+The project is in a production pilot and is licensed under the [MIT License](LICENSE). How the product should look and feel is in [DESIGN.md](DESIGN.md). Agent and product notes are in [AGENTS.md](AGENTS.md).
 
 - Use fictional or public sample data. Never commit credentials, customer formulas you do not own, traces, or local databases.
 - Keep `.env`, local databases, and private data out of git.

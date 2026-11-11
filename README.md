@@ -5,10 +5,10 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node.js >= 22](https://img.shields.io/badge/node-%3E%3D22-339933)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6)
-![Status: local prototype](https://img.shields.io/badge/status-local%20prototype-orange)
+![Status: production pilot](https://img.shields.io/badge/status-production%20pilot-blue)
 
 > [!IMPORTANT]
-> Formulario is a **local prototype**. It is not a compliance product. It does not replace a safety assessor, and it does not say a formula is legal to sell. Read [Project status](#project-status) before you treat any check as regulatory advice.
+> Formulario is in a production pilot. Registration is closed. It is not a compliance product. It does not replace a safety assessor, and it does not say a formula is legal to sell. Read [Project status](#project-status) before you treat any check as regulatory advice.
 
 ---
 
@@ -38,7 +38,7 @@ An in-app Lab Assistant can help with admin work such as empty products, stock p
 - **The committed formula is the source of truth.** INCI lists and market notes always come from the formula you committed, not from chat.
 - **No guessing.** Unknown ingredients stay unknown. Official references (CosIng, EU rules, IFRA, ASEAN) are linked in the app, not scraped into false certainty.
 - **Nothing writes without you.** Chat can propose a change. You accept it, or it does not land.
-- **Local prototype first.** The demo path runs without treating the tool as production compliance software.
+- **Pilot, not compliance software.** The hosted app and the local demo path both help you work on formulas. Neither is a legal clearance to sell.
 
 ## Quick start
 
@@ -86,7 +86,7 @@ Settings come from `.env` (see [`.env.example`](.env.example)):
 
 ## Project status
 
-Formulario is a **local prototype**.
+Formulario is in a production pilot. Registration is closed.
 
 **Working**
 
@@ -96,7 +96,7 @@ Formulario is a **local prototype**.
 
 **Not yet**
 
-- [ ] Production-ready compliance tooling (out of scope for this prototype)
+- [ ] Production-ready compliance tooling (out of scope for this pilot)
 
 ## Contributing
 
