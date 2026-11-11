@@ -4,10 +4,11 @@ import { Mastra } from '@mastra/core/mastra'
 import { MastraCompositeStore } from '@mastra/core/storage'
 import { DuckDBStore } from '@mastra/duckdb'
 import { LibSQLStore } from '@mastra/libsql'
-import { Observability, MastraStorageExporter } from '@mastra/observability'
+import { Observability } from '@mastra/observability'
 import { mcpConfig, mcpRoutes } from '../mcp/routes.js'
 import { formularioMcpServer } from '../mcp/tools.js'
 import { assistantAgent } from './agents/assistant-agent.js'
+import { observabilityExporters, sensitiveDataFilterOptions } from './observability.js'
 import { agentGateMiddleware, appRoutes, authRoutes, healthRoutes } from './routes/app-routes.js'
 import { webStaticEnabled, webStaticMiddleware } from './web-static.js'
 import { startRefreshSchedule } from '../services/refresh-schedule.js'
@@ -51,9 +52,10 @@ export const mastra = new Mastra({
     configs: {
       default: {
         serviceName: 'formulario',
-        exporters: [new MastraStorageExporter()],
+        exporters: observabilityExporters(),
       },
     },
+    sensitiveDataFilter: sensitiveDataFilterOptions,
   }),
   server: {
     port: Number(process.env.PORT ?? 4111),
