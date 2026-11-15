@@ -383,6 +383,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getStudio: () => request<{ enabled: boolean; path: string }>('/app/studio'),
   getConnections: () => request<{ endpoint: string; organizations: OrganizationSummary[]; grants: Array<{ id: string; clientName: string; organizationId: string; createdAt: number; expiresAt: number }> }>('/app/connections'),
   getConnectionRequest: (id: string) => request<{ clientName: string; redirectUri: string; scope: string }>(`/app/connections/request/${encodeURIComponent(id)}`),
   authorizeConnection: (input: { requestId: string; organizationId: string; allow: boolean }) => request<{ redirect: string }>('/app/connections/authorize', { method: 'POST', body: JSON.stringify(input) }),

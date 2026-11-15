@@ -8,7 +8,7 @@ The formula table is the source of truth. Chat proposes changes; the person acce
 - Env file: copy `.env.example` to `.env` if it is missing
 - Database: `npm run db:setup` (migrate + seed demo data)
 - Dev: `npm run dev` (web http://localhost:5173, API http://localhost:4111)
-- The MVP exposes only the authenticated assistant stream under `/api`. Mastra Studio/editor and generic framework APIs are disabled. Run evals from the CLI. Local Studio listing of the Formulario MCP needs `MASTRA_STUDIO=1`; do not use that flag in production.
+- By default only the authenticated Lab Assistant stream is exposed under `/api`. Set `MASTRA_STUDIO=1` to serve Mastra Studio at `/studio` (`mastra build --studio` + `MASTRA_STUDIO_PATH`) with Mastra `server.auth` (Formulario session). Without a session, framework agent/tool APIs stay closed. Run evals from the CLI.
 - Tests: `npm test`
 
 ## Formula drafting
@@ -25,7 +25,7 @@ Public registration is closed. Create an account with `npm run users:create -- p
 
 V1 gives every account the Lab Assistant: `ASSISTANT_REQUIRES_PAID_PLAN` in `packages/domain/src/plans.ts` is the single switch for the API gate, the chat pane and Settings → Plan. Accounts cannot change their own plan in production.
 
-The Lab Assistant has live scorers in `apps/api/src/mastra/scorers/assistant-scorers.ts` (code checks on every reply, two LLM judges sampled by `SCORER_SAMPLE_RATE`). Studio is off in production; read results with `npm run scores:report` and tester feedback with `npm run feedback:report`. Deployment: `docs/deployment.md`.
+The Lab Assistant has live scorers in `apps/api/src/mastra/scorers/assistant-scorers.ts` (code checks on every reply, two LLM judges sampled by `SCORER_SAMPLE_RATE`). Production Studio is opt-in via `MASTRA_STUDIO=1` (secured); when off, use `npm run scores:report` and `npm run feedback:report`. Deployment: `docs/deployment.md`.
 
 ## Cursor Cloud specific instructions
 

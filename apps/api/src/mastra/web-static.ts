@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getMimeType } from 'hono/utils/mime'
+import { isMastraStudioEnabled, MASTRA_STUDIO_BASE } from './studio-env.js'
 
 // In production the API serves the built web app, so browser, API and MCP share one origin.
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -14,6 +15,11 @@ const apiPrefixes = ['/api', '/auth', '/app', '/mcp', '/oauth', '/.well-known', 
 export const webStaticEnabled = process.env.NODE_ENV === 'production' && existsSync(indexPath)
 
 function isApiPath(pathname: string) {
+  if (isMastraStudioEnabled()) {
+    if (pathname === MASTRA_STUDIO_BASE || pathname.startsWith(`${MASTRA_STUDIO_BASE}/`)) {
+      return true
+    }
+  }
   return apiPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
 }
 

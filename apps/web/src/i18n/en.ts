@@ -24,6 +24,11 @@ export const en = {
     emptyTitle: 'No active connections',
     emptyDescription: 'When an external assistant connects, it shows up here so you can revoke it.',
     revoke: 'Revoke',
+    studioTitle: 'Mastra Studio',
+    studioDescription:
+      'Open the Mastra Studio UI for this server. Uses your Formulario session; agent APIs stay locked without it.',
+    studioOpen: 'Open Studio',
+    studioUnavailable: 'Studio is not enabled on this server.',
   },
   appName: 'Formulario',
   common: {
